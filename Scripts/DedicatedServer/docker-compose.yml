@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  noble-fermi-dedicated:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: noble-fermi-vps-server
+    restart: unless-stopped
+    ports:
+      - "7777:7777/udp"
+      - "27015:27015/udp"
+    environment:
+      - PORT=7777
+      - QUERY_PORT=27015
+      - MAX_PLAYERS=16
+      - TICK_RATE=128
+      - SERVER_NAME=Noble Fermi 128-Tick Linux VPS
+      - MAP_NAME=/Game/Maps/TDM_Crash
