@@ -16,7 +16,8 @@ public class NobleFermi : ModuleRules
 			"Slate",
 			"SlateCore",
 			"CommonUI",
-			"CommonInput"
+			"CommonInput",
+			"PhysicsCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
