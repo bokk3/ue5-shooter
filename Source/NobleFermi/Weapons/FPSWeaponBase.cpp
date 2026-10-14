@@ -5,6 +5,8 @@
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
+#include "Radar/FPSRadarSubsystem.h"
+#include "Multiplayer/FPSPlayerState.h"
 
 AFPSWeaponBase::AFPSWeaponBase()
 {
@@ -112,15 +114,30 @@ void AFPSWeaponBase::FireShot()
 			TraceParams.bReturnPhysicalMaterial = true;
 
 			UWorld* World = GetWorld();
-			if (World && World->LineTraceSingleByChannel(HitResult, CameraLoc, TraceEnd, ECC_Visibility, TraceParams))
+			if (World)
 			{
-				AActor* HitActor = HitResult.GetActor();
-				if (HitActor)
+				UFPSRadarSubsystem* RadarSubsystem = World->GetSubsystem<UFPSRadarSubsystem>();
+				if (RadarSubsystem)
 				{
-					UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
-					if (HealthComp)
+					EFPSPlayerTeam ShooterTeam = EFPSPlayerTeam::None;
+					AFPSPlayerState* PS = PawnOwner->GetPlayerState<AFPSPlayerState>();
+					if (PS)
 					{
-						HealthComp->ApplyDamage(BaseDamage, PawnOwner, HitResult);
+						ShooterTeam = PS->GetPlayerTeam();
+					}
+					RadarSubsystem->ReportGunfire(PawnOwner, PawnOwner->GetActorLocation(), ShooterTeam, bIsSuppressed);
+				}
+
+				if (World->LineTraceSingleByChannel(HitResult, CameraLoc, TraceEnd, ECC_Visibility, TraceParams))
+				{
+					AActor* HitActor = HitResult.GetActor();
+					if (HitActor)
+					{
+						UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
+						if (HealthComp)
+						{
+							HealthComp->ApplyDamage(BaseDamage, PawnOwner, HitResult);
+						}
 					}
 				}
 			}
