@@ -16,8 +16,15 @@ echo  Port: %PORT% ^| Tickrate: %TICK_RATE%Hz
 echo =================================================================
 
 :START_SERVER
-echo [%DATE% %TIME%] Starting NobleFermiServer.exe...
-NobleFermiServer.exe "%MAP_NAME%" -log -unattended -Port=%PORT% -QueryPort=%QUERY_PORT% -MaxPlayers=%MAX_PLAYERS% -TickRate=%TICK_RATE% -ServerName="%SERVER_NAME%"
+if exist NobleFermiServer.exe (
+    set SERVER_EXE=NobleFermiServer.exe
+    set SERVER_ARGS="%MAP_NAME%" -log -unattended -Port=%PORT% -QueryPort=%QUERY_PORT% -MaxPlayers=%MAX_PLAYERS% -TickRate=%TICK_RATE% -ServerName="%SERVER_NAME%"
+) else (
+    set SERVER_EXE=NobleFermi.exe
+    set SERVER_ARGS="%MAP_NAME%" -server -nullrhi -log -unattended -Port=%PORT% -QueryPort=%QUERY_PORT% -MaxPlayers=%MAX_PLAYERS% -TickRate=%TICK_RATE% -ServerName="%SERVER_NAME%"
+)
+echo [%DATE% %TIME%] Launching %SERVER_EXE%...
+%SERVER_EXE% %SERVER_ARGS%
 
 echo [%DATE% %TIME%] Server closed. Restarting in 5 seconds...
 timeout /t 5 /nobreak

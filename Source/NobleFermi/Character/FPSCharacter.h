@@ -41,10 +41,21 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UFPSInventoryComponent> InventoryComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<class UFPSEquipmentComponent> EquipmentComponent;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UFPSHUDWidget> HUDWidgetClass;
 
 	// Actions
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
+	void StartCookingLethal();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
+	void ReleaseLethal();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
+	void ThrowTactical();
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
 	void StartFire();
 

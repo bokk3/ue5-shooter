@@ -46,7 +46,7 @@ public:
 	int32 GetAssists() const { return Assists; }
 
 	UFUNCTION(BlueprintPure, Category = "FPS Stats")
-	int32 GetScore() const { return Score; }
+	int32 GetCombatScore() const { return FMath::RoundToInt(GetScore()); }
 
 	UFUNCTION(BlueprintPure, Category = "FPS Stats")
 	int32 GetCurrentStreak() const { return CurrentStreak; }
@@ -77,14 +77,13 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_StatsChanged, VisibleInstanceOnly, Category = "FPS Stats")
 	int32 Assists = 0;
 
-	UPROPERTY(ReplicatedUsing = OnRep_StatsChanged, VisibleInstanceOnly, Category = "FPS Stats")
-	int32 Score = 0;
-
 	UPROPERTY(ReplicatedUsing = OnRep_StreakChanged, VisibleInstanceOnly, Category = "FPS Stats")
 	int32 CurrentStreak = 0;
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "FPS Stats")
 	EFPSPlayerTeam PlayerTeam = EFPSPlayerTeam::Alpha;
+
+	virtual void OnRep_Score() override;
 
 	UFUNCTION()
 	void OnRep_StatsChanged();

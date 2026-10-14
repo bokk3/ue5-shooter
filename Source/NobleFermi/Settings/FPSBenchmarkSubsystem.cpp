@@ -10,8 +10,8 @@ FFPSHardwareReport UFPSBenchmarkSubsystem::RunAutoBenchmark()
 		Settings->RunHardwareBenchmark();
 		Settings->ApplyHardwareBenchmarkResults();
 
-		Report.CPUScore = Settings->GetBenchmarkFallbackCPUMark();
-		Report.GPUScore = Settings->GetBenchmarkFallbackGPUMark();
+		Report.CPUScore = Settings->GetLastCPUBenchmarkResult();
+		Report.GPUScore = Settings->GetLastGPUBenchmarkResult();
 		Report.RecommendedQualityPreset = Settings->GetOverallScalabilityLevel();
 
 		switch (Report.RecommendedQualityPreset)

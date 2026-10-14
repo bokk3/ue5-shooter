@@ -2,6 +2,7 @@
 #include "Character/FPSCharacterMovementComponent.h"
 #include "Combat/FPSHealthComponent.h"
 #include "Inventory/FPSInventoryComponent.h"
+#include "Combat/FPSEquipmentComponent.h"
 #include "Weapons/FPSWeaponBase.h"
 #include "UI/FPSHUDWidget.h"
 #include "Camera/CameraComponent.h"
@@ -33,6 +34,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 
 	HealthComponent = CreateDefaultSubobject<UFPSHealthComponent>(TEXT("HealthComponent"));
 	InventoryComponent = CreateDefaultSubobject<UFPSInventoryComponent>(TEXT("InventoryComponent"));
+	EquipmentComponent = CreateDefaultSubobject<UFPSEquipmentComponent>(TEXT("EquipmentComponent"));
 }
 
 void AFPSCharacter::BeginPlay()
@@ -254,5 +256,29 @@ void AFPSCharacter::StopCrouchOrSlide()
 		{
 			UnCrouch();
 		}
+	}
+}
+
+void AFPSCharacter::StartCookingLethal()
+{
+	if (EquipmentComponent)
+	{
+		EquipmentComponent->StartCookingLethal();
+	}
+}
+
+void AFPSCharacter::ReleaseLethal()
+{
+	if (EquipmentComponent)
+	{
+		EquipmentComponent->ReleaseAndThrowLethal();
+	}
+}
+
+void AFPSCharacter::ThrowTactical()
+{
+	if (EquipmentComponent)
+	{
+		EquipmentComponent->ThrowTactical();
 	}
 }

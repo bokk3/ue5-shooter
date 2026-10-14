@@ -63,7 +63,6 @@ public:
 
 protected:
 	virtual void NativeConstruct() override;
-	virtual TOptional<FNavigationReply> NativeOnNavigation(const FGeometry& InGeometry, const FNavigationEvent& InNavigationEvent) override;
 
 private:
 	UPROPERTY()
