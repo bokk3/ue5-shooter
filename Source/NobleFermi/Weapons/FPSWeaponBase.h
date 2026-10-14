@@ -109,6 +109,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Ammo")
 	float EmptyReloadDuration = 2.9f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Stealth")
+	bool bIsSuppressed = false;
+
 	// Recoil & Bloom Tuning
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Recoil")
 	float RecoilPitchKick = 1.2f;
