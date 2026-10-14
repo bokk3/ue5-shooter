@@ -1,0 +1,15 @@
+# Unreal Engine .gitignore
+Binaries/*
+Intermediate/*
+Saved/*
+DerivedDataCache/*
+.vs/*
+.idea/*
+*.VC.db
+*.opendb
+*.sln
+*.suo
+*.user
+*.code-workspace
+.vscode/*
+!NobleFermi.uproject
