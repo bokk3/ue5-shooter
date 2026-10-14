@@ -1,6 +1,7 @@
 #include "Game/FPSMenuGameMode.h"
 #include "Game/FPSMenuPlayerController.h"
 #include "UI/MainMenuWidget.h"
+#include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
 AFPSMenuGameMode::AFPSMenuGameMode()

@@ -4,7 +4,7 @@
 AFPSPlayerState::AFPSPlayerState()
 {
 	bReplicates = true;
-	NetUpdateFrequency = 10.0f;
+	SetNetUpdateFrequency(10.0f);
 }
 
 void AFPSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -14,7 +14,6 @@ void AFPSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AFPSPlayerState, Kills);
 	DOREPLIFETIME(AFPSPlayerState, Deaths);
 	DOREPLIFETIME(AFPSPlayerState, Assists);
-	DOREPLIFETIME(AFPSPlayerState, Score);
 	DOREPLIFETIME(AFPSPlayerState, CurrentStreak);
 	DOREPLIFETIME(AFPSPlayerState, PlayerTeam);
 }
@@ -25,7 +24,7 @@ void AFPSPlayerState::AddKill(int32 ScoreReward)
 
 	Kills++;
 	CurrentStreak++;
-	Score += ScoreReward;
+	SetScore(GetScore() + ScoreReward);
 
 	OnRep_StatsChanged();
 	OnRep_StreakChanged();
@@ -47,7 +46,7 @@ void AFPSPlayerState::AddAssist(int32 ScoreReward)
 	if (!HasAuthority()) return;
 
 	Assists++;
-	Score += ScoreReward;
+	SetScore(GetScore() + ScoreReward);
 	OnRep_StatsChanged();
 }
 
@@ -59,9 +58,15 @@ void AFPSPlayerState::SetPlayerTeam(EFPSPlayerTeam NewTeam)
 	}
 }
 
+void AFPSPlayerState::OnRep_Score()
+{
+	Super::OnRep_Score();
+	OnRep_StatsChanged();
+}
+
 void AFPSPlayerState::OnRep_StatsChanged()
 {
-	OnStatsUpdated.Broadcast(Kills, Deaths, Score);
+	OnStatsUpdated.Broadcast(Kills, Deaths, FMath::RoundToInt(GetScore()));
 }
 
 void AFPSPlayerState::OnRep_StreakChanged()

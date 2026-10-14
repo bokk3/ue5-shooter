@@ -3,7 +3,7 @@
 
 UFPSButtonBase::UFPSButtonBase()
 {
-	bIsFocusable = true;
+	SetIsFocusable(true);
 	ButtonLabel = FText::FromString(TEXT("MENU ITEM"));
 }
 

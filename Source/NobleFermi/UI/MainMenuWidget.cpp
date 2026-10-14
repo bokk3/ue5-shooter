@@ -49,8 +49,3 @@ void UMainMenuWidget::RequestQuit()
 {
 	OnShowQuitConfirmation();
 }
-
-TOptional<FNavigationReply> UMainMenuWidget::NativeOnNavigation(const FGeometry& InGeometry, const FNavigationEvent& InNavigationEvent)
-{
-	return Super::NativeOnNavigation(InGeometry, InNavigationEvent);
-}

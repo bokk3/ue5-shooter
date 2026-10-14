@@ -7,6 +7,7 @@
 #include "TimerManager.h"
 #include "Radar/FPSRadarSubsystem.h"
 #include "Multiplayer/FPSPlayerState.h"
+#include "Weapons/FPSGunsmithComponent.h"
 
 AFPSWeaponBase::AFPSWeaponBase()
 {
@@ -15,11 +16,21 @@ AFPSWeaponBase::AFPSWeaponBase()
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	RootComponent = WeaponMesh;
 	WeaponMesh->SetCollisionProfileName(TEXT("NoCollision"));
+
+	GunsmithComponent = CreateDefaultSubobject<UFPSGunsmithComponent>(TEXT("GunsmithComponent"));
 }
 
 void AFPSWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (GunsmithComponent)
+	{
+		GunsmithComponent->ApplyModifiersToWeapon(this);
+		MagazineCapacity += GunsmithComponent->GetTotalMagazineCapacityBonus();
+		TacticalReloadDuration *= GunsmithComponent->GetTotalReloadDurationMultiplier();
+		EmptyReloadDuration *= GunsmithComponent->GetTotalReloadDurationMultiplier();
+	}
 
 	CurrentAmmo = MagazineCapacity;
 	ReserveAmmo = MaxReserveAmmo;
@@ -142,9 +153,10 @@ void AFPSWeaponBase::FireShot()
 				}
 			}
 
-			// Apply camera recoil kick
-			float PitchKick = -RecoilPitchKick * (bIsAimingDownSights ? 0.6f : 1.0f);
-			float YawKick = FMath::RandRange(-RecoilYawSpread, RecoilYawSpread);
+			// Apply camera recoil kick (scaled by Gunsmith attachment modifiers)
+			float RecoilMod = GunsmithComponent ? GunsmithComponent->GetTotalRecoilMultiplier() : 1.0f;
+			float PitchKick = -RecoilPitchKick * (bIsAimingDownSights ? 0.6f : 1.0f) * RecoilMod;
+			float YawKick = FMath::RandRange(-RecoilYawSpread, RecoilYawSpread) * RecoilMod;
 			PC->AddPitchInput(PitchKick);
 			PC->AddYawInput(YawKick);
 		}

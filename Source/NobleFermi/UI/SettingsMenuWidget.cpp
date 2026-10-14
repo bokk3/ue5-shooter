@@ -55,8 +55,3 @@ void USettingsMenuWidget::SwitchTab(EFPSSettingsTab NewTab)
 	CurrentTab = NewTab;
 	OnTabChanged(NewTab);
 }
-
-TOptional<FNavigationReply> USettingsMenuWidget::NativeOnNavigation(const FGeometry& InGeometry, const FNavigationEvent& InNavigationEvent)
-{
-	return Super::NativeOnNavigation(InGeometry, InNavigationEvent);
-}

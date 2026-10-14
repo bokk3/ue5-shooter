@@ -46,6 +46,12 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Components")
 	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Components")
+	TObjectPtr<class UFPSGunsmithComponent> GunsmithComponent;
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Gunsmith")
+	class UFPSGunsmithComponent* GetGunsmithComponent() const { return GunsmithComponent; }
+
 	UPROPERTY(BlueprintAssignable, Category = "Weapon|Events")
 	FOnAmmoChangedSignature OnAmmoChanged;
 

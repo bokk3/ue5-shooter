@@ -11,7 +11,13 @@ TICK_RATE=${TICK_RATE:-128}
 SERVER_NAME=${SERVER_NAME:-"Noble Fermi Linux Dedicated Server"}
 MAP_NAME=${MAP_NAME:-"/Game/Maps/TDM_Crash"}
 
-SERVER_BIN="./NobleFermiServer"
+if [ -f "./NobleFermiServer" ]; then
+    SERVER_BIN="./NobleFermiServer"
+    EXTRA_FLAGS=""
+else
+    SERVER_BIN="./NobleFermi"
+    EXTRA_FLAGS="-server -nullrhi"
+fi
 
 echo "================================================================="
 echo " Starting Noble Fermi Dedicated Server on Linux VPS"
@@ -23,6 +29,7 @@ while true; do
     echo "[$(date)] Launching NobleFermiServer binary..."
     
     $SERVER_BIN "$MAP_NAME" \
+        $EXTRA_FLAGS \
         -log \
         -unattended \
         -Port=$PORT \

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noble Fermi - Combat Mechanics & HUD Simulator</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    .glow-red { text-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
+    .glow-cyan { text-shadow: 0 0 10px rgba(6, 182, 212, 0.8); }
+    .glow-amber { text-shadow: 0 0 10px rgba(245, 158, 11, 0.8); }
+    .hud-panel {
+      background: linear-gradient(135deg, rgba(8, 20, 32, 0.8) 0%, rgba(5, 12, 22, 0.9) 100%);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+  </style>
+</head>
+<body class="bg-[#020617] text-slate-100 font-sans select-none overflow-hidden m-0 p-0 h-screen w-screen relative">
+  <!-- Combat World Canvas (Target Dummies, Recoil, 3D Bullets) -->
+  <canvas id="gameCanvas" class="absolute inset-0 cursor-crosshair z-0"></canvas>
+
+  <!-- TOP HUD: MATCH OBJECTIVE & ROUND STATUS -->
+  <header class="absolute top-4 left-0 right-0 z-20 flex justify-center pointer-events-none">
+    <div class="hud-panel px-6 py-2 rounded-full flex items-center space-x-6 backdrop-blur-md">
+      <div class="flex items-center space-x-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+        <span class="text-xs font-mono font-bold tracking-widest text-cyan-300">TARGET RANGE SIMULATION</span>
+      </div>
+      <div class="h-4 w-[1px] bg-slate-700"></div>
+      <div class="text-xs font-mono text-slate-300">
+        DPS: <span id="stat-dps" class="text-cyan-400 font-bold">0</span> | HITS: <span id="stat-hits" class="text-white font-bold">0</span> | ACCURACY: <span id="stat-acc" class="text-emerald-400 font-bold">100%</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- CENTER HUD: DYNAMIC CROSSHAIR & HITMARKER -->
+  <div class="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+    <div id="reticle-container" class="relative w-32 h-32 flex items-center justify-center transition-opacity duration-150">
+      <!-- Reticle Crosshair Ticks -->
+      <div id="ret-top" class="absolute w-0.5 h-3 bg-cyan-400 transition-all duration-75"></div>
+      <div id="ret-bottom" class="absolute w-0.5 h-3 bg-cyan-400 transition-all duration-75"></div>
+      <div id="ret-left" class="absolute h-0.5 w-3 bg-cyan-400 transition-all duration-75"></div>
+      <div id="ret-right" class="absolute h-0.5 w-3 bg-cyan-400 transition-all duration-75"></div>
+      <div id="ret-center" class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+
+      <!-- Animated Hitmarker -->
+      <div id="hitmarker" class="absolute hidden w-8 h-8 pointer-events-none">
+        <svg viewBox="0 0 32 32" class="w-full h-full stroke-current" stroke-width="2.5" fill="none">
+          <line x1="6" y1="6" x2="12" y2="12" id="hm-l1"/>
+          <line x1="26" y1="6" x2="20" y2="12" id="hm-l2"/>
+          <line x1="6" y1="26" x2="12" y2="20" id="hm-l3"/>
+          <line x1="26" y1="26" x2="20" y2="20" id="hm-l4"/>
+        </svg>
+      </div>
+
+      <!-- Headshot text notification -->
+      <div id="headshot-tag" class="hidden absolute -top-8 font-black font-mono text-xs text-red-400 tracking-wider uppercase animate-bounce">
+        HEADSHOT!
+      </div>
+    </div>
+  </div>
+
+  <!-- DIRECTIONAL DAMAGE INDICATOR ARCS -->
+  <div id="damage-arc" class="hidden absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+    <div class="w-80 h-80 rounded-full border-4 border-red-500/70 border-t-transparent border-r-transparent border-l-transparent animate-pulse"></div>
+  </div>
+
+  <!-- BOTTOM-LEFT HUD: VITALS (HEALTH & REGENERATING SHIELD) -->
+  <div class="absolute bottom-6 left-8 z-20 pointer-events-none w-80 space-y-2">
+    <!-- Shield Bar -->
+    <div>
+      <div class="flex justify-between text-[11px] font-mono tracking-widest text-cyan-300 font-bold mb-1">
+        <span>SHIELD (TACTICAL OVERSHIELD)</span>
+        <span id="shield-val">100 / 100</span>
+      </div>
+      <div class="w-full h-2.5 bg-slate-900/90 rounded-sm border border-cyan-500/40 p-[1px]">
+        <div id="shield-bar" class="h-full bg-gradient-to-r from-cyan-500 to-cyan-300 transition-all duration-150 w-full shadow-[0_0_8px_#06b6d4]"></div>
+      </div>
+    </div>
+
+    <!-- Health Bar -->
+    <div>
+      <div class="flex justify-between text-[11px] font-mono tracking-widest text-slate-300 font-bold mb-1">
+        <span>HEALTH</span>
+        <span id="health-val">100 / 100</span>
+      </div>
+      <div class="w-full h-3 bg-slate-900/90 rounded-sm border border-slate-700 p-[1px]">
+        <div id="health-bar" class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-150 w-full"></div>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-3 text-[11px] font-mono text-slate-400">
+      <span id="movement-state" class="px-2 py-0.5 bg-slate-900 border border-slate-700 text-cyan-400 uppercase font-bold">STATE: IDLE</span>
+      <span>[SHIFT] SPRINT</span>
+      <span>[CTRL] SLIDE</span>
+    </div>
+  </div>
+
+  <!-- BOTTOM-RIGHT HUD: WEAPON & AMMO STATUS -->
+  <div class="absolute bottom-6 right-8 z-20 pointer-events-none text-right space-y-2">
+    <div class="flex items-baseline justify-end space-x-3">
+      <span id="mag-ammo" class="text-6xl font-black font-mono tracking-tighter text-white">30</span>
+      <span class="text-2xl font-mono text-slate-500 font-bold">/</span>
+      <span id="res-ammo" class="text-2xl font-mono text-cyan-400 font-bold">180</span>
+    </div>
+
+    <div class="flex items-center justify-end space-x-4">
+      <div class="text-[11px] font-mono uppercase tracking-wider text-slate-400">
+        <span id="firemode-tag" class="text-cyan-400 font-bold">AUTO</span> • 6.8MM HYBRID
+      </div>
+      <div class="hud-panel px-3 py-1 rounded text-xs font-mono text-cyan-300 font-bold uppercase tracking-wider">
+        NF-98 CARBINE
+      </div>
+    </div>
+
+    <!-- Reload Indicator -->
+    <div id="reload-indicator" class="hidden text-xs font-mono font-bold text-amber-400 tracking-wider uppercase animate-pulse">
+      RELOADING TACTICAL MAG... [R]
+    </div>
+  </div>
+
+  <!-- FLOATING CONTROLS CHEATSHEET -->
+  <div class="absolute top-16 right-8 z-20 hud-panel p-4 rounded text-xs font-mono space-y-1.5 text-slate-300 pointer-events-none">
+    <div class="text-cyan-400 font-bold border-b border-cyan-900/50 pb-1 mb-1">FPS COMBAT CONTROLS</div>
+    <div>[LEFT CLICK]: Fire (Continuous Recoil)</div>
+    <div>[RIGHT CLICK]: Aim Down Sights (ADS Zoom)</div>
+    <div>[W / A / S / D]: Move & Camera Bob</div>
+    <div>[SHIFT]: Tactical Sprint</div>
+    <div>[CTRL]: Slide (Sprint + Ctrl)</div>
+    <div>[R]: Reload Weapon</div>
+    <div>[B]: Toggle Fire Mode (Auto / Semi / Burst)</div>
+    <div>[T]: Trigger Return Fire on Player</div>
+    <div>[ESC]: In-Game Pause Menu</div>
+  </div>
+
+  <!-- IN-GAME PAUSE MENU MODAL (ESC) -->
+  <div id="pause-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md">
+    <div class="hud-panel w-96 p-8 rounded space-y-4 shadow-2xl">
+      <div class="border-b border-cyan-900/50 pb-3">
+        <h2 class="text-2xl font-black text-white uppercase tracking-wider">GAME PAUSED</h2>
+        <p class="text-xs font-mono text-slate-400">Match in progress • Target Range</p>
+      </div>
+      <div class="space-y-2.5">
+        <button onclick="togglePause()" class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-black font-black uppercase rounded tracking-wider text-sm transition-colors shadow-[0_0_12px_#06b6d4]">
+          RESUME GAME
+        </button>
+        <button onclick="alert('Opening System Settings from UFPSPauseMenuWidget!')" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold uppercase rounded tracking-wider text-xs transition-colors">
+          SYSTEM SETTINGS
+        </button>
+        <button onclick="resetDummy()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-800 font-mono uppercase rounded text-xs">
+          RESPAWN TARGET DUMMY
+        </button>
+        <button onclick="window.location.href='start_menu_preview.html'" class="w-full py-3 bg-red-950/40 hover:bg-red-900/60 border border-red-800 text-red-300 font-bold uppercase rounded tracking-wider text-xs transition-colors">
+          EXIT TO MAIN MENU
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Audio Synthesizer
+    let audioCtx = null;
+    function getCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playGunshot() {
+      try {
+        const ctx = getCtx();
+        const now = ctx.currentTime;
+        // Punch / Transient
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+
+        // Noise body
+        const bufferSize = ctx.sampleRate * 0.15;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseFilter = ctx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(1000, now);
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.2, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+        noise.start(now);
+      } catch (e) {}
+    }
+
+    function playHitSound(isHeadshot, isShieldBreak) {
+      try {
+        const ctx = getCtx();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        if (isHeadshot) {
+          // Sharp metallic crunch
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(1800, now);
+          osc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.08);
+        } else if (isShieldBreak) {
+          // Electric shatter
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(900, now);
+          osc.frequency.linearRampToValueAtTime(2200, now + 0.15);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.15);
+        } else {
+          // Standard tactile tick
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1200, now);
+          osc.frequency.setValueAtTime(800, now + 0.03);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.04);
+        }
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } catch (e) {}
+    }
+
+    // Weapon & Combat Stats
+    let ammo = 30;
+    let reserve = 180;
+    const magCap = 30;
+    let isFiring = false;
+    let isADS = false;
+    let isReloading = false;
+    let fireMode = 'AUTO'; // AUTO, BURST, SEMI
+    let currentSpread = 1.5; // degrees
+    let recoilPitch = 0;
+    let recoilYaw = 0;
+
+    // Movement & Vitals
+    let playerHealth = 100;
+    let playerShield = 100;
+    let movementState = 'IDLE';
+    let isSprinting = false;
+    let isSliding = false;
+    let slideTimer = 0;
+    let cameraBobTimer = 0;
+    let cameraBobOffset = { x: 0, y: 0 };
+    let keysDown = {};
+
+    // Target Dummy
+    let dummy = {
+      x: 0,
+      y: 0,
+      health: 100,
+      shield: 100,
+      maxHealth: 100,
+      maxShield: 100,
+      width: 90,
+      height: 220
+    };
+
+    let totalDamageDealt = 0;
+    let totalShotsFired = 0;
+    let totalHits = 0;
+
+    // Canvas Setup
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      dummy.x = canvas.width / 2;
+      dummy.y = canvas.height / 2 - 20;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Input Handling
+    window.addEventListener('mousedown', (e) => {
+      if (document.getElementById('pause-modal').classList.contains('hidden') === false) return;
+      if (e.button === 0) {
+        isFiring = true;
+        fireShot();
+      } else if (e.button === 2) {
+        isADS = true;
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 0) isFiring = false;
+      if (e.button === 2) isADS = false;
+    });
+
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    window.addEventListener('keydown', (e) => {
+      keysDown[e.key.toLowerCase()] = true;
+      if (e.key === 'Escape') togglePause();
+      if (e.key.toLowerCase() === 'r') reloadWeapon();
+      if (e.key.toLowerCase() === 'b') toggleFireMode();
+      if (e.key.toLowerCase() === 't') takeDamage(35);
+      if (e.key === 'Shift') isSprinting = true;
+      if (e.key === 'Control' && isSprinting && !isSliding) {
+        isSliding = true;
+        slideTimer = 1.0;
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keysDown[e.key.toLowerCase()] = false;
+      if (e.key === 'Shift') isSprinting = false;
+    });
+
+    function toggleFireMode() {
+      if (fireMode === 'AUTO') fireMode = 'BURST';
+      else if (fireMode === 'BURST') fireMode = 'SEMI';
+      else fireMode = 'AUTO';
+      document.getElementById('firemode-tag').innerText = fireMode;
+    }
+
+    function togglePause() {
+      const modal = document.getElementById('pause-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    function resetDummy() {
+      dummy.health = 100;
+      dummy.shield = 100;
+      togglePause();
+    }
+
+    // Firing Loop
+    let lastFireTime = 0;
+    const fireInterval = (60 / 750) * 1000; // 750 RPM = ~80ms
+
+    function fireShot() {
+      const now = performance.now();
+      if (isReloading || ammo <= 0) {
+        if (ammo <= 0) reloadWeapon();
+        return;
+      }
+      if (now - lastFireTime < fireInterval) return;
+      lastFireTime = now;
+
+      ammo--;
+      totalShotsFired++;
+      document.getElementById('mag-ammo').innerText = ammo;
+      playGunshot();
+
+      // Recoil & Spread bloom
+      currentSpread = Math.min(6.0, currentSpread + (isADS ? 0.15 : 0.45));
+      recoilPitch += isADS ? 2.5 : 4.0;
+      recoilYaw += (Math.random() - 0.5) * (isADS ? 1.0 : 2.5);
+
+      // Hitscan Trace Calculation
+      const spreadPx = (currentSpread * (isADS ? 4 : 12));
+      const aimX = (canvas.width / 2) + (Math.random() - 0.5) * spreadPx;
+      const aimY = (canvas.height / 2) - recoilPitch + (Math.random() - 0.5) * spreadPx;
+
+      checkHit(aimX, aimY);
+
+      if (fireMode === 'BURST') {
+        setTimeout(fireShot, 70);
+        setTimeout(fireShot, 140);
+      }
+    }
+
+    function checkHit(x, y) {
+      const dx = x - dummy.x;
+      const dy = y - dummy.y;
+
+      // Dummy geometry checks
+      // Headbox: circle radius 24 around dummy.y - 70
+      const headDist = Math.hypot(dx, y - (dummy.y - 70));
+      // Torsobox: rect width 70, height 90
+      const inTorso = Math.abs(dx) <= 35 && y >= (dummy.y - 45) && y <= (dummy.y + 45);
+      // Limbs: rect width 70, height 60
+      const inLimbs = Math.abs(dx) <= 40 && y > (dummy.y + 45) && y <= (dummy.y + 110);
+
+      let damage = 0;
+      let isHead = false;
+
+      if (headDist <= 24) {
+        damage = 64; // 2.0x Headshot
+        isHead = true;
+      } else if (inTorso) {
+        damage = 32; // 1.0x Torso
+      } else if (inLimbs) {
+        damage = 24; // 0.75x Limbs
+      }
+
+      if (damage > 0) {
+        totalHits++;
+        totalDamageDealt += damage;
+        let shieldBroke = false;
+
+        if (dummy.shield > 0) {
+          if (dummy.shield >= damage) {
+            dummy.shield -= damage;
+            damage = 0;
+          } else {
+            damage -= dummy.shield;
+            dummy.shield = 0;
+            shieldBroke = true;
+          }
+        }
+        if (damage > 0) {
+          dummy.health = Math.max(0, dummy.health - damage);
+        }
+
+        playHitSound(isHead, shieldBroke);
+        showHitmarker(isHead, shieldBroke);
+      }
+
+      // Update Accuracy stats
+      const acc = Math.round((totalHits / Math.max(1, totalShotsFired)) * 100);
+      document.getElementById('stat-acc').innerText = acc + '%';
+      document.getElementById('stat-hits').innerText = totalHits;
+      document.getElementById('stat-dps').innerText = Math.round(totalDamageDealt);
+    }
+
+    function showHitmarker(isHead, shieldBroke) {
+      const hm = document.getElementById('hitmarker');
+      const tag = document.getElementById('headshot-tag');
+      hm.classList.remove('hidden');
+
+      const col = isHead ? '#ef4444' : (shieldBroke ? '#38bdf8' : '#ffffff');
+      document.getElementById('hm-l1').setAttribute('stroke', col);
+      document.getElementById('hm-l2').setAttribute('stroke', col);
+      document.getElementById('hm-l3').setAttribute('stroke', col);
+      document.getElementById('hm-l4').setAttribute('stroke', col);
+
+      if (isHead) tag.classList.remove('hidden');
+      else tag.classList.add('hidden');
+
+      setTimeout(() => {
+        hm.classList.add('hidden');
+        tag.classList.add('hidden');
+      }, 120);
+    }
+
+    function reloadWeapon() {
+      if (isReloading || ammo >= magCap || reserve <= 0) return;
+      isReloading = true;
+      document.getElementById('reload-indicator').classList.remove('hidden');
+      setTimeout(() => {
+        const needed = magCap - ammo;
+        const add = Math.min(needed, reserve);
+        ammo += add;
+        reserve -= add;
+        document.getElementById('mag-ammo').innerText = ammo;
+        document.getElementById('res-ammo').innerText = reserve;
+        isReloading = false;
+        document.getElementById('reload-indicator').classList.add('hidden');
+      }, 2200);
+    }
+
+    function takeDamage(dmg) {
+      if (playerShield > 0) {
+        if (playerShield >= dmg) {
+          playerShield -= dmg;
+          dmg = 0;
+        } else {
+          dmg -= playerShield;
+          playerShield = 0;
+        }
+      }
+      if (dmg > 0) {
+        playerHealth = Math.max(0, playerHealth - dmg);
+      }
+      document.getElementById('shield-val').innerText = `${Math.round(playerShield)} / 100`;
+      document.getElementById('shield-bar').style.width = `${playerShield}%`;
+      document.getElementById('health-val').innerText = `${Math.round(playerHealth)} / 100`;
+      document.getElementById('health-bar').style.width = `${playerHealth}%`;
+
+      // Directional damage arc flash
+      const arc = document.getElementById('damage-arc');
+      arc.classList.remove('hidden');
+      setTimeout(() => arc.classList.add('hidden'), 350);
+    }
+
+    // Main Update & Render Loop
+    let lastTime = performance.now();
+
+    function update(dt) {
+      // Fire loop for full auto
+      if (isFiring && fireMode === 'AUTO') {
+        fireShot();
+      }
+
+      // Recoil & Spread Recovery
+      recoilPitch = Math.max(0, recoilPitch - (14 * dt));
+      recoilYaw *= 0.85;
+      const targetSpread = isADS ? 0.2 : (isSprinting ? 3.0 : 1.2);
+      currentSpread += (targetSpread - currentSpread) * (8 * dt);
+
+      // Movement state
+      const isMoving = keysDown['w'] || keysDown['a'] || keysDown['s'] || keysDown['d'];
+      if (isSliding) {
+        slideTimer -= dt;
+        movementState = 'SLIDING';
+        if (slideTimer <= 0) isSliding = false;
+      } else if (isSprinting && isMoving) {
+        movementState = 'TACTICAL SPRINT';
+      } else if (isMoving) {
+        movementState = 'WALKING';
+      } else {
+        movementState = 'IDLE';
+      }
+      document.getElementById('movement-state').innerText = `STATE: ${movementState}`;
+
+      // Procedural Camera Bob
+      if (isMoving || isSliding) {
+        const bobFreq = isSprinting ? 14 : (isSliding ? 6 : 9);
+        const bobAmp = isSprinting ? 10 : (isSliding ? 14 : 5);
+        cameraBobTimer += dt * bobFreq;
+        cameraBobOffset.y = Math.sin(cameraBobTimer) * bobAmp;
+        cameraBobOffset.x = Math.cos(cameraBobTimer * 0.5) * (bobAmp * 0.7);
+      } else {
+        cameraBobOffset.x *= 0.85;
+        cameraBobOffset.y *= 0.85;
+      }
+
+      // Shield Regeneration over time
+      if (playerShield < 100) {
+        playerShield = Math.min(100, playerShield + (25 * dt));
+        document.getElementById('shield-val').innerText = `${Math.round(playerShield)} / 100`;
+        document.getElementById('shield-bar').style.width = `${playerShield}%`;
+      }
+
+      // Update Reticle Tick Spacing
+      const spreadOffset = isADS ? 6 : (currentSpread * 14);
+      document.getElementById('ret-top').style.transform = `translateY(-${spreadOffset}px)`;
+      document.getElementById('ret-bottom').style.transform = `translateY(${spreadOffset}px)`;
+      document.getElementById('ret-left').style.transform = `translateX(-${spreadOffset}px)`;
+      document.getElementById('ret-right').style.transform = `translateX(${spreadOffset}px)`;
+      document.getElementById('reticle-container').style.opacity = isADS ? '0.4' : '1.0';
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(cameraBobOffset.x + recoilYaw, cameraBobOffset.y + recoilPitch);
+
+      // Draw Grid / Range Environment
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.08)';
+      ctx.lineWidth = 1;
+      const horizonY = canvas.height / 2 + 100;
+      for (let x = 0; x < canvas.width; x += 80) {
+        ctx.beginPath();
+        ctx.moveTo(x, horizonY);
+        ctx.lineTo((x - canvas.width / 2) * 3 + canvas.width / 2, canvas.height);
+        ctx.stroke();
+      }
+
+      // Draw Target Dummy
+      const dx = dummy.x;
+      const dy = dummy.y;
+
+      // Dummy Health / Shield Bar Floating Above
+      const dBarW = 90;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+      ctx.fillRect(dx - dBarW / 2, dy - 120, dBarW, 8);
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(dx - dBarW / 2, dy - 120, dBarW * (dummy.shield / dummy.maxShield), 8);
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+      ctx.fillRect(dx - dBarW / 2, dy - 110, dBarW, 8);
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(dx - dBarW / 2, dy - 110, dBarW * (dummy.health / dummy.maxHealth), 8);
+
+      // Dummy Body (Head, Torso, Limbs)
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = dummy.health <= 0 ? '#475569' : '#38bdf8';
+      ctx.fillStyle = dummy.health <= 0 ? 'rgba(71, 85, 105, 0.2)' : 'rgba(56, 189, 248, 0.15)';
+
+      // Head
+      ctx.beginPath();
+      ctx.arc(dx, dy - 70, 24, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Torso
+      ctx.beginPath();
+      ctx.roundRect(dx - 35, dy - 45, 70, 90, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      // Legs / Stand
+      ctx.beginPath();
+      ctx.moveTo(dx - 20, dy + 45);
+      ctx.lineTo(dx - 25, dy + 110);
+      ctx.moveTo(dx + 20, dy + 45);
+      ctx.lineTo(dx + 25, dy + 110);
+      ctx.stroke();
+
+      ctx.restore();
+
+      // Draw First-Person Weapon Model in Hands
+      drawFirstPersonWeapon();
+    }
+
+    function drawFirstPersonWeapon() {
+      ctx.save();
+      const gunBaseX = isADS ? (canvas.width / 2) : (canvas.width / 2 + 180 + cameraBobOffset.x);
+      const gunBaseY = isADS ? (canvas.height / 2 + 120) : (canvas.height - 40 + cameraBobOffset.y + recoilPitch * 2);
+      const gunScale = isADS ? 1.3 : 1.0;
+
+      ctx.translate(gunBaseX, gunBaseY);
+      ctx.scale(gunScale, gunScale);
+
+      // Weapon Receiver Silhouette
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 2.5;
+
+      ctx.beginPath();
+      ctx.moveTo(-40, -120);
+      ctx.lineTo(30, -120);
+      ctx.lineTo(45, 0);
+      ctx.lineTo(-20, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Barrel & Muzzle
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(-15, -220, 30, 100);
+      ctx.strokeRect(-15, -220, 30, 100);
+
+      // Muzzle Flash
+      if (isFiring && ammo > 0) {
+        ctx.fillStyle = '#fef08a';
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 25;
+        ctx.beginPath();
+        ctx.arc(0, -235, 20 + Math.random() * 15, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function gameLoop(now) {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+      update(Math.min(0.1, dt));
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>

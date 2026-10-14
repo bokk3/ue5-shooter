@@ -4,7 +4,7 @@
 AFPSMultiplayerGameState::AFPSMultiplayerGameState()
 {
 	bReplicates = true;
-	NetUpdateFrequency = 5.0f;
+	SetNetUpdateFrequency(5.0f);
 	MatchTimeRemaining = TotalMatchTimeSeconds;
 }
 
