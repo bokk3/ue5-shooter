@@ -1,4 +1,6 @@
 #include "Combat/FPSHealthComponent.h"
+#include "BodyMechanics/FPSHumanBones.h"
+#include "BodyMechanics/FPSBodyMechanicsComponent.h"
 
 UFPSHealthComponent::UFPSHealthComponent()
 {
@@ -37,23 +39,22 @@ void UFPSHealthComponent::ApplyDamage(float BaseDamage, AActor* InstigatorActor,
 
 	TimeSinceLastDamage = 0.0f;
 
-	// Bone multiplier calculation
-	float FinalDamage = BaseDamage;
-	bool bIsHeadshot = false;
+	// Anatomical human bone multiplier calculation
+	const float BoneMultiplier = FFPSHumanSkeleton::GetDamageMultiplierForBone(HitInfo.BoneName);
+	float FinalDamage = BaseDamage * BoneMultiplier;
 
-	if (HitInfo.BoneName == "head" || HitInfo.BoneName == "neck_01")
+	const bool bIsHeadshot = (FFPSHumanSkeleton::GetDamageZoneForBone(HitInfo.BoneName) == EFPSBodyDamageZone::Head);
+	const bool bIsArmorPlateHit = FFPSHumanSkeleton::IsBoneArmorProtected(HitInfo.BoneName);
+
+	// Tactical Body Armor: Chest plate absorbs 40% more bullet damage before health penetration
+	if (bIsArmorPlateHit && CurrentShield > 0.0f)
 	{
-		FinalDamage *= HeadshotMultiplier;
-		bIsHeadshot = true;
-	}
-	else if (HitInfo.BoneName.ToString().Contains("arm") || HitInfo.BoneName.ToString().Contains("leg") || HitInfo.BoneName.ToString().Contains("hand"))
-	{
-		FinalDamage *= LimbMultiplier;
+		FinalDamage *= 0.70f;
 	}
 
 	bool bShieldBroken = false;
 
-	// Deduct from shield first
+	// Deduct from shield/vest first
 	if (CurrentShield > 0.0f)
 	{
 		if (CurrentShield >= FinalDamage)
@@ -69,7 +70,7 @@ void UFPSHealthComponent::ApplyDamage(float BaseDamage, AActor* InstigatorActor,
 		}
 	}
 
-	// Excess damage penetrates to health
+	// Excess damage penetrates to biological human vitals
 	if (FinalDamage > 0.0f)
 	{
 		CurrentHealth = FMath::Max(0.0f, CurrentHealth - FinalDamage);
@@ -78,10 +79,24 @@ void UFPSHealthComponent::ApplyDamage(float BaseDamage, AActor* InstigatorActor,
 	OnHealthShieldChanged.Broadcast(CurrentHealth, CurrentShield);
 	OnDamageTaken.Broadcast(BaseDamage, InstigatorActor, HitInfo, bIsHeadshot, bShieldBroken);
 
+	// Notify Body Mechanics for Aim Punch, Flinch, and Physical Ragdoll
+	UFPSBodyMechanicsComponent* BodyMechanics = GetOwner() ? GetOwner()->FindComponentByClass<UFPSBodyMechanicsComponent>() : nullptr;
+
 	if (CurrentHealth <= 0.0f && !bIsDead)
 	{
 		bIsDead = true;
 		OnDeath.Broadcast(InstigatorActor);
+
+		if (BodyMechanics)
+		{
+			const FVector ShotDir = (HitInfo.TraceEnd - HitInfo.TraceStart).GetSafeNormal();
+			BodyMechanics->TriggerDeathRagdoll(ShotDir * (BaseDamage + 25.0f), HitInfo.ImpactPoint, HitInfo.BoneName);
+		}
+	}
+	else if (BodyMechanics)
+	{
+		const FVector ShotDir = (HitInfo.TraceEnd - HitInfo.TraceStart).GetSafeNormal();
+		BodyMechanics->ApplyBoneHitImpulse(HitInfo.BoneName, ShotDir, FinalDamage);
 	}
 }
 

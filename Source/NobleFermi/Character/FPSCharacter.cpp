@@ -3,6 +3,7 @@
 #include "Combat/FPSHealthComponent.h"
 #include "Inventory/FPSInventoryComponent.h"
 #include "Combat/FPSEquipmentComponent.h"
+#include "BodyMechanics/FPSBodyMechanicsComponent.h"
 #include "Weapons/FPSWeaponBase.h"
 #include "UI/FPSHUDWidget.h"
 #include "Camera/CameraComponent.h"
@@ -35,6 +36,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	HealthComponent = CreateDefaultSubobject<UFPSHealthComponent>(TEXT("HealthComponent"));
 	InventoryComponent = CreateDefaultSubobject<UFPSInventoryComponent>(TEXT("InventoryComponent"));
 	EquipmentComponent = CreateDefaultSubobject<UFPSEquipmentComponent>(TEXT("EquipmentComponent"));
+	BodyMechanicsComponent = CreateDefaultSubobject<UFPSBodyMechanicsComponent>(TEXT("BodyMechanicsComponent"));
 }
 
 void AFPSCharacter::BeginPlay()
@@ -111,11 +113,18 @@ void AFPSCharacter::UpdateWeaponSway(float DeltaTime)
 	DeltaRot.Normalize();
 	LastControlRotation = CurrentRot;
 
+	// Scale sway amplitude if arms are injured
+	const float ArmTraumaMultiplier = (BodyMechanicsComponent && BodyMechanicsComponent->IsArmInjured()) ? 1.75f : 1.0f;
+
 	// Sway lag
-	FRotator TargetSway = FRotator(-DeltaRot.Pitch * 1.5f, DeltaRot.Yaw * 1.5f, DeltaRot.Yaw * 0.8f);
+	FRotator TargetSway = FRotator(-DeltaRot.Pitch * 1.5f * ArmTraumaMultiplier, DeltaRot.Yaw * 1.5f * ArmTraumaMultiplier, DeltaRot.Yaw * 0.8f);
 	CurrentWeaponSwayRot = FMath::RInterpTo(CurrentWeaponSwayRot, TargetSway, DeltaTime, 10.0f);
 
-	Mesh1P->SetRelativeRotation(CurrentWeaponSwayRot);
+	// Blend weapon sway with flinch aim punch and procedural spine lean roll
+	const FRotator AimPunch = BodyMechanicsComponent ? BodyMechanicsComponent->GetCurrentAimPunch() : FRotator::ZeroRotator;
+	const FRotator SpineLean = BodyMechanicsComponent ? BodyMechanicsComponent->GetProceduralSpineRotation() : FRotator::ZeroRotator;
+
+	Mesh1P->SetRelativeRotation(CurrentWeaponSwayRot + AimPunch + FRotator(0.0f, 0.0f, SpineLean.Roll * 0.4f));
 }
 
 void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -215,6 +224,12 @@ void AFPSCharacter::Reload()
 
 void AFPSCharacter::StartSprint()
 {
+	if (BodyMechanicsComponent && BodyMechanicsComponent->IsLegInjured())
+	{
+		// Severely injured legs prevent sprint
+		return;
+	}
+
 	if (FPSMovementComponent)
 	{
 		FPSMovementComponent->SetWantsToSprint(true);
