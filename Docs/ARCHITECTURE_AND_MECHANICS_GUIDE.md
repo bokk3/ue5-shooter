@@ -177,10 +177,12 @@ The arena dynamically provisions 8 dedicated `APlayerStart` actors during `InitG
 - **4 Team Alpha Spawns (Task Force 141)**: Located in the South perimeter safe revetments at `X=-2400.0`, with protective barrier line-of-sight blocks preventing immediate sniper picks.
 - **4 Team Bravo Spawns (OpFor)**: Located in the North perimeter loading docks at `X=+2400.0`, oriented 180 degrees south toward center lane cover.
 
-### 7.3. Real-Time Atmospheric Lighting & Environmental FX
-- **Directional Sunlight**: 75,000 lux warm desert sun set at a 38-degree tactical golden-hour angle with volumetric shadow casting.
-- **Sky Atmosphere & Fog**: Physically based atmosphere model blended with warm exponential height fog (density `0.002`) simulating desert dust haze.
-- **Aviation Hazard Beacon**: Red strobe beacon atop the derrick tower dynamically pulsing via sine oscillation (`Intensity 3000 to 6000 lm`), providing visual landmark orientation.
+### 7.3. Pure Real-Time Dynamic Lighting (Lumen) & Exposure Control
+- **Global Static Light Baking Disabled**: Permanently disabled legacy lightmass baking in `Config/DefaultEngine.ini` (`r.AllowStaticLighting=False`, `bAllowStaticLighting=False`), eliminating all static lightmap caches and the "Lighting needs to be rebuilt" screen warning.
+- **Directional Sunlight (Lumen)**: Calibrated 10.0 lux warm desert sun set at a 38-degree tactical golden-hour angle with real-time Virtual Shadow Maps (`EComponentMobility::Movable`).
+- **Real-Time Skylight & Atmosphere**: Dynamically captures sky illumination with real-time capture (`bRealTimeCapture=true`) and warm exponential height dust haze (density `0.0015`).
+- **Manual Exposure Clamping**: Fully unbound `UPostProcessComponent` enforces manual camera exposure (`AutoExposureMethod = AEM_Manual`, fixed bias `0.0`, min/max brightness `1.0`), preventing eye-adaptation auto-exposure from blowing out the screen to white.
+- **Aviation Hazard Strobe**: Red beacon atop the derrick tower dynamically pulsing via sine oscillation (`Intensity 30.0`), providing visual landmark orientation.
 
 ---
 

@@ -52,23 +52,54 @@ In the start menu, click **`02. OPERATOR // CUSTOMISATION`** in the left navigat
 
 ---
 
-## 3. Multiplayer & Dedicated Server Deployment
+---
 
-### 3.1. Hosting a Dedicated Server on a VPS (Linux or Windows)
-To run a headless 128-tick authoritative server:
+## 3. Entering the Combat Arena: "Rust Tactical" (60m x 60m)
+
+Everything is launchable directly from the main menu without needing separate scripts:
+
+1. In the Start Menu, simply click **`DEPLOY NOW`** on the **Home** tab (or navigate to **`04. SERVER BROWSER & VPS`** and click **`HOST LISTEN ROOM`**).
+2. The game transitions directly into the **Rust Tactical** combat arena (`FPSMultiplayerGameMode`).
+3. You will spawn at one of the tactical team spawn points with weapon in hand, standing on the desert arena grounds.
+
+### 3.1. Tactical Controls & Locomotion
+
+| Input | Action | Tactical Details |
+| :--- | :--- | :--- |
+| **W, A, S, D** | Move Forward / Strafe | Standard 450 cm/s tactical combat movement. |
+| **Mouse X / Y** | Look & Aim | Raw input mouse look with sub-millisecond precision. |
+| **Left Click** | Fire Weapon | Full-auto / semi-auto ballistic projectile emission. |
+| **Right Click** | Aim Down Sights (ADS) | Smooth zoom alignment with dynamic crosshair hide. |
+| **Left Shift** | Tactical Sprint | Weapon raised, sprint velocity boosted to 720 cm/s. |
+| **Space** | Jump | Physical impulse vaulting over cover. |
+| **C / Left Ctrl** | Crouch | Lowered stance for cover behind Jersey barriers and containers. |
+| **R** | Reload | Tactical magazine swap with ammo count reset. |
+| **Q / G** | Tactical / Lethal | Concussion flashbangs and fragmentation grenades. |
+
+### 3.2. Pure Dynamic Lighting (Lumen) & Exposure
+- **Zero Lightmass Baking**: Static lighting has been permanently disabled in `DefaultEngine.ini` (`r.AllowStaticLighting=False`), guaranteeing zero "Lighting needs to be rebuilt" warnings.
+- **Exposure Lock**: Manual camera exposure is locked across both the preview actor and player pawn, eliminating auto-exposure eye-adaptation screen whiteout.
+- **Golden-Hour Sun & Volumetric Dust**: Directional sun at 10.0 lux with real-time dynamic shadows, sky atmosphere, warm height fog dust haze, and a pulsating aviation hazard beacon atop the 12m central derrick.
+
+---
+
+## 4. Multiplayer & Dedicated Server Deployment
+
+### 4.1. Hosting a Dedicated Server on a VPS (Linux or Windows)
+To run a headless 128-tick authoritative server on Rust Tactical:
 ```powershell
-Packaged\Windows\NobleFermi.exe -server -nullrhi -log -PORT=7777 -TickRate=128 -MaxPlayers=18
+Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode -server -nullrhi -log -PORT=7777 -TickRate=128 -MaxPlayers=18
 ```
 *(On Linux VPS hosts, execute via Proton/Wine or compile the native Linux server target).*
 
 Or simply double-click [`Launch_DedicatedServer.bat`](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Launch_DedicatedServer.bat).
 
-### 3.2. Connecting to a Dedicated Server
+### 4.2. Connecting to a Dedicated Server
 1. In the Main Menu, click **`04. SERVER BROWSER & VPS`**.
 2. Under **Direct IP Connection**, enter the server address (e.g. `127.0.0.1:7777` for local, or `YOUR_VPS_IP:7777` for remote).
 3. Click **`CONNECT`**. The client travels to the server and enters the match.
 
-### 3.3. Hosting a Client Listen Room
+### 4.3. Hosting a Client Listen Room
 If you do not have a dedicated server, you can host a room directly from your client:
 1. In the Main Menu, navigate to **`04. SERVER BROWSER & VPS`** or click **`DEPLOY NOW`** on the home screen.
 2. Click **`HOST LISTEN ROOM`**.
@@ -76,22 +107,22 @@ If you do not have a dedicated server, you can host a room directly from your cl
 
 ---
 
-## 4. Building & Compiling from Source
+## 5. Building & Compiling from Source
 
-### 4.1. Prerequisites
+### 5.1. Prerequisites
 - **Unreal Engine 5.8** (installed at `D:\epuc\UE_5.8` or your local engine path).
 - **MSVC v143 / v145** (Visual Studio 2022 C++ build tools).
 - **Windows 10/11 SDK** (`10.0.26100.0` or compatible).
 - **.NET 10.0 Runtime** (bundled in `Engine\Binaries\ThirdParty\DotNet\10.0\win-x64\dotnet.exe`).
 
-### 4.2. Compiling the Standalone Game Target
+### 5.2. Compiling the Standalone Game Target
 Set the `DOTNET_ROOT` environment variable and run UnrealBuildTool:
 ```powershell
 $env:DOTNET_ROOT = "D:\epuc\UE_5.8\Engine\Binaries\ThirdParty\DotNet\10.0\win-x64"
 & "D:\epuc\UE_5.8\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.exe" NobleFermi Win64 Development -Project="C:\Users\Boris\Documents\antigravity\noble-fermi\NobleFermi.uproject" -WaitMutex
 ```
 
-### 4.3. Cooking and Packaging Standalone Builds
+### 5.3. Cooking and Packaging Standalone Builds
 To cook assets into IoStore packages (`.ucas`/`.utoc`) and archive the standalone game:
 ```powershell
 $env:DOTNET_ROOT = "D:\epuc\UE_5.8\Engine\Binaries\ThirdParty\DotNet\10.0\win-x64"
