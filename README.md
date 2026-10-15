@@ -72,13 +72,13 @@
   1. **West Flank (Container Yard)**: 4 multi-colored industrial shipping containers with an open shoot-through interior tunnel.
   2. **Central Tower & Chokepoint**: 12-meter tall oil derrick with multi-tier diamond-plate catwalks, dual 25-degree access ramps, armored vehicle wreck, and 8 concrete Jersey barriers.
   3. **East Flank (Pipeline & Bunker)**: 30-meter elevated oil pipeline trench leading into a reinforced concrete bunker.
-- **Atmospheric Golden-Hour Lighting**: 75,000 lux tactical desert directional sunlight, real-time sky atmosphere, volumetric dust haze, and a pulsing red aviation hazard beacon atop the derrick tower.
+- **Pure Real-Time Dynamic Lighting (Lumen)**: Zero static lightmass baking required (`r.AllowStaticLighting=False`), calibrated 10.0 lux desert directional sunlight, real-time sky atmosphere, volumetric dust haze, manual exposure lock to prevent whiteout, and a pulsing red aviation hazard beacon atop the derrick tower.
 - **Domination Objectives & Tactical Spawning**: 3 holographic flag bases (A: Container Yard, B: Derrick Base, C: Bunker Trench) and 8 anti-spawn-trap PlayerStarts (4 Task Force 141 Alpha, 4 OpFor Bravo).
 
 ### 5. Hardware-Accelerated Slate Menu & Real-Time 3D Customization
 - Built entirely in native **Slate C++** with translucent military HUD panels.
 - **3D Turntable Preview Actor**: Rotates 360° continuously around Yaw (12°/s, 24°/s, 45°/s, or paused) with the operator holding weapon in Aim-Down-Sights (ADS) posture with live breathing motion.
-- **Embedded Studio Lighting**: 3-point illumination (14,000 lm key spotlight, 9,000 lm cyan rim light, 4,500 lm fill light).
+- **Embedded Studio Lighting**: 3-point dynamic illumination (key spotlight, cyan rim light, fill light) with manual exposure locking.
 - **Live Customization Controls**:
   - **Camo Patterns**: Urban Digital, Woodland Tactical, Desert Spec Ops, Stealth Blackout.
   - **Tactical Headgear**: FAST Ballistic Helmet, GPNVG-18 Quad-Nods (with phosphor green glow), Spec Ops Balaclava, Tactical Cap & Headset.
