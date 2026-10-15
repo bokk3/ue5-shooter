@@ -89,25 +89,23 @@
 
 ## Quick Launch
 
-### 1. Launch the Rust Tactical Combat Arena
-Double-click [`Launch_CombatMap.bat`](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Launch_CombatMap.bat) or run:
-```powershell
-.\Launch_CombatMap.bat
-```
-*(Direct path: `Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode -windowed -ResX=1280 -ResY=720 -log`)*
+Everything is launchable directly from the interactive start menu (`Launch_Menu.bat`), including instant match deployment into the Rust Tactical arena, 3D character customization, loadout selection, and server browsing. Headless dedicated hosting runs via the separate server binary launcher (`Launch_DedicatedServer.bat`).
 
-### 2. Launch the Standalone Start Menu & Customization
+### 1. Launch the Game & Start Menu
 Double-click [`Launch_Menu.bat`](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Launch_Menu.bat) or run:
 ```powershell
 .\Launch_Menu.bat
 ```
 *(Direct path: `Packaged\Windows\NobleFermi.exe -windowed -ResX=1280 -ResY=720 -log`)*
 
-### 3. Launch a Dedicated 128-Tick Server
+From the menu, click **DEPLOY NOW** on the Home tab to immediately enter the Rust Tactical combat arena!
+
+### 2. Launch a Dedicated 128-Tick Server
 Double-click [`Launch_DedicatedServer.bat`](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Launch_DedicatedServer.bat) or run:
 ```powershell
 .\Launch_DedicatedServer.bat
 ```
+*(Runs headless on port 7777 at 128 Hz tickrate)*
 
 ---
 
@@ -119,8 +117,7 @@ noble-fermi/
 ├── Docs/                        # Technical guides & documentation
 │   ├── ARCHITECTURE_AND_MECHANICS_GUIDE.md  # Deep-dive architecture & physics reference
 │   └── GETTING_STARTED.md                   # Setup, launching, and dedicated hosting guide
-├── Launch_CombatMap.bat         # Direct jump into Rust Tactical combat arena
-├── Launch_Menu.bat              # Instant 1280x720 windowed menu launcher
+├── Launch_Menu.bat              # Universal game launcher (Menu, 3D Customization, Match Hosting)
 ├── Launch_DedicatedServer.bat   # Headless 128-tick VPS dedicated server launcher
 ├── Packaged/Windows/            # Pre-cooked monolithic distribution (NobleFermi.exe)
 └── Source/NobleFermi/           # Modular C++20 engine source

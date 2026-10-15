@@ -1237,7 +1237,12 @@ void UMainMenuWidget::HostListenRoom()
 		FInputModeGameOnly GameOnlyInput;
 		PC->SetInputMode(GameOnlyInput);
 		PC->bShowMouseCursor = false;
-		PC->ClientTravel(TEXT("?listen?game=/Script/NobleFermi.FPSMultiplayerGameMode"), TRAVEL_Absolute);
+	}
+
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		UGameplayStatics::OpenLevel(World, FName(TEXT("/Engine/Maps/Entry")), true, TEXT("listen?game=/Script/NobleFermi.FPSMultiplayerGameMode"));
 	}
 }
 

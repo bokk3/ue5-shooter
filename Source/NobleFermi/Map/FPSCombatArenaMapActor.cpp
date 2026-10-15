@@ -5,6 +5,7 @@
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/PostProcessComponent.h"
 #include "GameFramework/PlayerStart.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -18,11 +19,12 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	RootComponent = SceneRoot;
 
-	// 1. Cinematic Golden-Hour Atmospheric Lighting
+	// 1. Cinematic Golden-Hour Atmospheric Lighting (Movable / Pure Dynamic Lumen)
 	SunLight = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("SunLight"));
 	SunLight->SetupAttachment(RootComponent);
+	SunLight->SetMobility(EComponentMobility::Movable);
 	SunLight->SetRelativeRotation(FRotator(-38.0f, 45.0f, 0.0f));
-	SunLight->SetIntensity(75000.0f);
+	SunLight->SetIntensity(10.0f); // Calibrated tactical sun lux for locked exposure
 	SunLight->SetLightColor(FLinearColor(1.0f, 0.94f, 0.84f)); // Warm tactical desert sun
 	SunLight->bAtmosphereSunLight = true;
 	SunLight->bCastVolumetricShadow = true;
@@ -30,6 +32,7 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 
 	SkyLight = CreateDefaultSubobject<USkyLightComponent>(TEXT("SkyLight"));
 	SkyLight->SetupAttachment(RootComponent);
+	SkyLight->SetMobility(EComponentMobility::Movable);
 	SkyLight->SetIntensity(1.5f);
 	SkyLight->SetLightColor(FLinearColor(0.85f, 0.92f, 1.0f));
 	SkyLight->bRealTimeCapture = true;
@@ -39,15 +42,33 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 
 	HeightFog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("HeightFog"));
 	HeightFog->SetupAttachment(RootComponent);
-	HeightFog->SetFogDensity(0.002f);
+	HeightFog->SetFogDensity(0.0015f);
 	HeightFog->SetFogInscatteringColor(FLinearColor(0.85f, 0.75f, 0.55f)); // Warm dust haze
 
 	TowerBeaconLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("TowerBeaconLight"));
 	TowerBeaconLight->SetupAttachment(RootComponent);
+	TowerBeaconLight->SetMobility(EComponentMobility::Movable);
 	TowerBeaconLight->SetRelativeLocation(FVector(0.0f, 0.0f, 780.0f));
-	TowerBeaconLight->SetIntensity(6000.0f);
+	TowerBeaconLight->SetIntensity(30.0f);
 	TowerBeaconLight->SetLightColor(FLinearColor(1.0f, 0.1f, 0.05f)); // Red hazard beacon
 	TowerBeaconLight->SetAttenuationRadius(1500.0f);
+
+	// Post Process: Lock Exposure to prevent white screen / eye adaptation blowout
+	PostProcess = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcess"));
+	PostProcess->SetupAttachment(RootComponent);
+	PostProcess->bUnbound = true;
+	PostProcess->Settings.bOverride_AutoExposureMethod = true;
+	PostProcess->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+	PostProcess->Settings.bOverride_AutoExposureBias = true;
+	PostProcess->Settings.AutoExposureBias = 0.0f;
+	PostProcess->Settings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
+	PostProcess->Settings.AutoExposureApplyPhysicalCameraExposure = 0;
+	PostProcess->Settings.bOverride_AutoExposureMinBrightness = true;
+	PostProcess->Settings.AutoExposureMinBrightness = 1.0f;
+	PostProcess->Settings.bOverride_AutoExposureMaxBrightness = true;
+	PostProcess->Settings.AutoExposureMaxBrightness = 1.0f;
+	PostProcess->Settings.bOverride_BloomIntensity = true;
+	PostProcess->Settings.BloomIntensity = 0.1f;
 
 	// 2. Load Base Meshes & Materials
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
@@ -61,6 +82,7 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 	// 3. Ground Plane (60m x 60m = 6000 x 6000 units, 100 units thick)
 	GroundFloorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GroundFloorMesh"));
 	GroundFloorMesh->SetupAttachment(RootComponent);
+	GroundFloorMesh->SetMobility(EComponentMobility::Movable);
 	if (CubeMesh) GroundFloorMesh->SetStaticMesh(CubeMesh);
 	if (BaseMat) GroundFloorMesh->SetMaterial(0, BaseMat);
 	GroundFloorMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -50.0f));
@@ -83,6 +105,7 @@ void AFPSCombatArenaMapActor::ConstructPerimeter(UStaticMesh* CubeMesh, UMateria
 	{
 		UStaticMeshComponent* Wall = CreateDefaultSubobject<UStaticMeshComponent>(*Name);
 		Wall->SetupAttachment(RootComponent);
+		Wall->SetMobility(EComponentMobility::Movable);
 		if (CubeMesh) Wall->SetStaticMesh(CubeMesh);
 		if (BaseMat) Wall->SetMaterial(0, BaseMat);
 		Wall->SetRelativeLocation(Loc);
@@ -105,6 +128,7 @@ void AFPSCombatArenaMapActor::ConstructCentralDerrick(UStaticMesh* CubeMesh, USt
 	{
 		UStaticMeshComponent* Comp = CreateDefaultSubobject<UStaticMeshComponent>(*Name);
 		Comp->SetupAttachment(RootComponent);
+		Comp->SetMobility(EComponentMobility::Movable);
 		if (Mesh) Comp->SetStaticMesh(Mesh);
 		if (BaseMat) Comp->SetMaterial(0, BaseMat);
 		Comp->SetRelativeLocation(Loc);
@@ -150,6 +174,7 @@ void AFPSCombatArenaMapActor::ConstructContainerYard(UStaticMesh* CubeMesh, UMat
 	{
 		UStaticMeshComponent* Comp = CreateDefaultSubobject<UStaticMeshComponent>(*Name);
 		Comp->SetupAttachment(RootComponent);
+		Comp->SetMobility(EComponentMobility::Movable);
 		if (CubeMesh) Comp->SetStaticMesh(CubeMesh);
 		if (BaseMat) Comp->SetMaterial(0, BaseMat);
 		Comp->SetRelativeLocation(Loc);
@@ -177,6 +202,7 @@ void AFPSCombatArenaMapActor::ConstructPipelineAndBunker(UStaticMesh* CubeMesh, 
 	{
 		UStaticMeshComponent* Comp = CreateDefaultSubobject<UStaticMeshComponent>(*Name);
 		Comp->SetupAttachment(RootComponent);
+		Comp->SetMobility(EComponentMobility::Movable);
 		if (Mesh) Comp->SetStaticMesh(Mesh);
 		if (BaseMat) Comp->SetMaterial(0, BaseMat);
 		Comp->SetRelativeLocation(Loc);
@@ -209,6 +235,7 @@ void AFPSCombatArenaMapActor::ConstructCenterCover(UStaticMesh* CubeMesh, UMater
 	{
 		UStaticMeshComponent* Comp = CreateDefaultSubobject<UStaticMeshComponent>(*Name);
 		Comp->SetupAttachment(RootComponent);
+		Comp->SetMobility(EComponentMobility::Movable);
 		if (CubeMesh) Comp->SetStaticMesh(CubeMesh);
 		if (BaseMat) Comp->SetMaterial(0, BaseMat);
 		Comp->SetRelativeLocation(Loc);
@@ -239,6 +266,7 @@ void AFPSCombatArenaMapActor::ConstructObjectives(UStaticMesh* CylinderMesh, UMa
 	{
 		UStaticMeshComponent* FlagPole = CreateDefaultSubobject<UStaticMeshComponent>(*Name);
 		FlagPole->SetupAttachment(RootComponent);
+		FlagPole->SetMobility(EComponentMobility::Movable);
 		if (CylinderMesh) FlagPole->SetStaticMesh(CylinderMesh);
 		if (BaseMat) FlagPole->SetMaterial(0, BaseMat);
 		FlagPole->SetRelativeLocation(Loc);

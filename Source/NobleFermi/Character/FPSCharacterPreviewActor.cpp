@@ -22,13 +22,22 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	PreviewCamera->SetRelativeLocation(FVector(250.0f, -40.0f, 120.0f));
 	PreviewCamera->SetRelativeRotation(FRotator(-3.4f, 171.0f, 0.0f));
 	PreviewCamera->FieldOfView = 52.0f;
+	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMethod = true;
+	PreviewCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+	PreviewCamera->PostProcessSettings.bOverride_AutoExposureBias = true;
+	PreviewCamera->PostProcessSettings.AutoExposureBias = 0.0f;
+	PreviewCamera->PostProcessSettings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
+	PreviewCamera->PostProcessSettings.AutoExposureApplyPhysicalCameraExposure = 0;
+	PreviewCamera->PostProcessSettings.bOverride_BloomIntensity = true;
+	PreviewCamera->PostProcessSettings.BloomIntensity = 0.1f;
 
-	// 3. Studio Lighting: 3-point tactical lighting
+	// 3. Studio Lighting: 3-point tactical dynamic lighting (Movable, calibrated intensity)
 	StudioKeyLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioKeyLight"));
 	StudioKeyLight->SetupAttachment(RootComponent);
+	StudioKeyLight->SetMobility(EComponentMobility::Movable);
 	StudioKeyLight->SetRelativeLocation(FVector(190.0f, -130.0f, 220.0f));
 	StudioKeyLight->SetRelativeRotation(FRotator(-40.0f, 145.0f, 0.0f));
-	StudioKeyLight->SetIntensity(14000.0f);
+	StudioKeyLight->SetIntensity(30.0f);
 	StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.96f, 0.90f));
 	StudioKeyLight->SetAttenuationRadius(600.0f);
 	StudioKeyLight->SetInnerConeAngle(25.0f);
@@ -36,16 +45,18 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 
 	StudioRimLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioRimLight"));
 	StudioRimLight->SetupAttachment(RootComponent);
+	StudioRimLight->SetMobility(EComponentMobility::Movable);
 	StudioRimLight->SetRelativeLocation(FVector(-150.0f, 110.0f, 170.0f));
 	StudioRimLight->SetRelativeRotation(FRotator(-25.0f, -35.0f, 0.0f));
-	StudioRimLight->SetIntensity(9000.0f);
+	StudioRimLight->SetIntensity(20.0f);
 	StudioRimLight->SetLightColor(FLinearColor(0.25f, 0.55f, 1.0f)); // Tactical cyan-blue rim
 	StudioRimLight->SetAttenuationRadius(500.0f);
 
 	StudioFillLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("StudioFillLight"));
 	StudioFillLight->SetupAttachment(RootComponent);
+	StudioFillLight->SetMobility(EComponentMobility::Movable);
 	StudioFillLight->SetRelativeLocation(FVector(160.0f, 140.0f, 90.0f));
-	StudioFillLight->SetIntensity(4500.0f);
+	StudioFillLight->SetIntensity(10.0f);
 	StudioFillLight->SetLightColor(FLinearColor(0.70f, 0.75f, 0.85f));
 	StudioFillLight->SetAttenuationRadius(450.0f);
 
@@ -69,6 +80,7 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	{
 		Comp = CreateDefaultSubobject<UStaticMeshComponent>(Name);
 		Comp->SetupAttachment(TurntableRoot);
+		Comp->SetMobility(EComponentMobility::Movable);
 		if (Mesh) Comp->SetStaticMesh(Mesh);
 		if (BaseMat) Comp->SetMaterial(0, BaseMat);
 		Comp->SetRelativeLocation(Loc);

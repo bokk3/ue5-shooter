@@ -11,6 +11,7 @@ class UExponentialHeightFogComponent;
 class UStaticMeshComponent;
 class USceneComponent;
 class UPointLightComponent;
+class UPostProcessComponent;
 class APlayerStart;
 
 /**
@@ -52,6 +53,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Lighting")
 	TObjectPtr<UPointLightComponent> TowerBeaconLight;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|PostProcess")
+	TObjectPtr<UPostProcessComponent> PostProcess;
 
 	// Map Geometry Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Terrain")
