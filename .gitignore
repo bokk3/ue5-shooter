@@ -13,3 +13,7 @@ DerivedDataCache/*
 *.code-workspace
 .vscode/*
 !NobleFermi.uproject
+Packaged/*
+Build/*
+ThirdParty/*
+

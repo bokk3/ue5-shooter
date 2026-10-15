@@ -8,6 +8,7 @@ AFPSMenuGameMode::AFPSMenuGameMode()
 {
 	PlayerControllerClass = AFPSMenuPlayerController::StaticClass();
 	DefaultPawnClass = nullptr;
+	MainMenuWidgetClass = UMainMenuWidget::StaticClass();
 }
 
 void AFPSMenuGameMode::BeginPlay()
