@@ -16,6 +16,24 @@ arm_obj = [o for o in data_to.objects if o.type == 'ARMATURE'][0]
 bpy.context.scene.collection.objects.link(mesh_obj)
 bpy.context.scene.collection.objects.link(arm_obj)
 
+# 0. Cleanly unparent and zero world location to (0, 0, 0)
+bpy.ops.object.select_all(action='DESELECT')
+mesh_obj.select_set(True)
+bpy.context.view_layer.objects.active = mesh_obj
+bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+
+arm_obj.location = (0, 0, 0)
+mesh_obj.location = (0, 0, 0)
+
+bpy.ops.object.select_all(action='DESELECT')
+mesh_obj.select_set(True)
+arm_obj.select_set(True)
+bpy.context.view_layer.objects.active = arm_obj
+bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+mesh_obj.parent = arm_obj
+mesh_obj.matrix_parent_inverse = arm_obj.matrix_world.inverted()
+
 # 1. Clean Vertex Group Merging
 def merge_vg_clean(source_name, target_name):
     src_vg = mesh_obj.vertex_groups.get(source_name)
@@ -142,13 +160,26 @@ bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 min_z_after = min(v.co.z for v in mesh_obj.data.vertices)
 if abs(min_z_after) > 0.001:
     print(f"Grounding character: offset by {-min_z_after:.4f}m in Z")
-    arm_obj.location.z -= min_z_after
-    mesh_obj.location.z -= min_z_after
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    for v in mesh_obj.data.vertices:
+        v.co.z -= min_z_after
+    bpy.context.view_layer.objects.active = arm_obj
+    bpy.ops.object.mode_set(mode='EDIT')
+    for eb in arm_obj.data.edit_bones:
+        if eb.name != 'root':
+            eb.head.z -= min_z_after
+            eb.tail.z -= min_z_after
+    bpy.ops.object.mode_set(mode='OBJECT')
 
 final_min_z = min(v.co.z for v in mesh_obj.data.vertices)
 final_max_z = max(v.co.z for v in mesh_obj.data.vertices)
 print(f"Final Calibrated Z Range: [{final_min_z:.4f}m, {final_max_z:.4f}m] (Height = {final_max_z - final_min_z:.4f}m)")
+
+# Ensure all face normals are consistently facing outward
+bpy.context.view_layer.objects.active = mesh_obj
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.normals_make_consistent(inside=False)
+bpy.ops.object.mode_set(mode='OBJECT')
 
 # 4. Author ADS Aiming Stance Pose
 bpy.context.view_layer.objects.active = arm_obj
@@ -262,6 +293,10 @@ bpy.context.scene.frame_start = 1
 bpy.context.scene.frame_end = 60
 
 bpy.ops.object.mode_set(mode='OBJECT')
+
+# Clear residual vertex color layers
+while mesh_obj.data.color_attributes:
+    mesh_obj.data.color_attributes.remove(mesh_obj.data.color_attributes[0])
 
 # 5. Clean Material Setup
 mat = bpy.data.materials.new(name="M_Operator_BaseBody")
