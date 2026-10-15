@@ -40,6 +40,16 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	Mesh1P->SetOnlyOwnerSee(true);
 
 	GetMesh()->SetOwnerNoSee(true);
+	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -96.0f));
+	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	GetMesh()->SetCastShadow(true);
+	GetMesh()->bCastDynamicShadow = true;
+
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> BaseMaleMeshFinder(TEXT("/Game/Characters/BaseMale/SK_BaseMale.SK_BaseMale"));
+	if (BaseMaleMeshFinder.Succeeded())
+	{
+		GetMesh()->SetSkeletalMesh(BaseMaleMeshFinder.Object);
+	}
 
 	HealthComponent = CreateDefaultSubobject<UFPSHealthComponent>(TEXT("HealthComponent"));
 	InventoryComponent = CreateDefaultSubobject<UFPSInventoryComponent>(TEXT("InventoryComponent"));

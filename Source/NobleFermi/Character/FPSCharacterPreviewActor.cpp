@@ -90,6 +90,20 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 		Comp->SetCastShadow(true);
 	};
 
+	// 5.5 Master Anatomical Player Body (SK_BaseMale with connected limbs & realistic muscle deformation)
+	BodyMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BodyMesh"));
+	BodyMesh->SetupAttachment(TurntableRoot);
+	BodyMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+	BodyMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BodyMesh->SetCastShadow(true);
+
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> BaseMaleFinder(TEXT("/Game/Characters/BaseMale/SK_BaseMale.SK_BaseMale"));
+	if (BaseMaleFinder.Succeeded())
+	{
+		BodyMesh->SetSkeletalMesh(BaseMaleFinder.Object);
+	}
+
 	// 6. Turntable Pedestal
 	SetupMeshComp(PedestalMesh, TEXT("PedestalMesh"), CylinderMesh, FVector(0.0f, 0.0f, -2.0f), FRotator::ZeroRotator, FVector(0.9f, 0.9f, 0.04f));
 
@@ -204,25 +218,58 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		}
 	};
 
-	// Uniform meshes
-	RegisterUniform(PelvisMesh);
-	RegisterUniform(SpineLowerMesh);
-	RegisterUniform(SpineUpperMesh);
-	RegisterUniform(ChestMesh);
-	RegisterUniform(NeckMesh);
-	RegisterUniform(HeadMesh);
-	RegisterUniform(RightClavicleMesh);
-	RegisterUniform(RightUpperArmMesh);
-	RegisterUniform(RightForearmMesh);
-	RegisterUniform(RightHandMesh);
-	RegisterUniform(LeftClavicleMesh);
-	RegisterUniform(LeftUpperArmMesh);
-	RegisterUniform(LeftForearmMesh);
-	RegisterUniform(LeftHandMesh);
-	RegisterUniform(LeftThighMesh);
-	RegisterUniform(LeftCalfMesh);
-	RegisterUniform(RightThighMesh);
-	RegisterUniform(RightCalfMesh);
+	// Master Anatomical Player Body or Primitive Fallback
+	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset())
+	{
+		// Hide primitive blocks when the true connected body is present
+		auto HideComp = [](UStaticMeshComponent* Comp) { if (Comp) Comp->SetVisibility(false); };
+		HideComp(PelvisMesh);
+		HideComp(SpineLowerMesh);
+		HideComp(SpineUpperMesh);
+		HideComp(ChestMesh);
+		HideComp(NeckMesh);
+		HideComp(HeadMesh);
+		HideComp(RightClavicleMesh);
+		HideComp(RightUpperArmMesh);
+		HideComp(RightForearmMesh);
+		HideComp(RightHandMesh);
+		HideComp(LeftClavicleMesh);
+		HideComp(LeftUpperArmMesh);
+		HideComp(LeftForearmMesh);
+		HideComp(LeftHandMesh);
+		HideComp(LeftThighMesh);
+		HideComp(LeftCalfMesh);
+		HideComp(RightThighMesh);
+		HideComp(RightCalfMesh);
+
+		UMaterialInstanceDynamic* BodyMID = BodyMesh->CreateDynamicMaterialInstance(0);
+		if (BodyMID)
+		{
+			UniformMaterials.Add(BodyMID);
+		}
+	}
+	else
+	{
+		// Uniform meshes fallback
+		RegisterUniform(PelvisMesh);
+		RegisterUniform(SpineLowerMesh);
+		RegisterUniform(SpineUpperMesh);
+		RegisterUniform(ChestMesh);
+		RegisterUniform(NeckMesh);
+		RegisterUniform(HeadMesh);
+		RegisterUniform(RightClavicleMesh);
+		RegisterUniform(RightUpperArmMesh);
+		RegisterUniform(RightForearmMesh);
+		RegisterUniform(RightHandMesh);
+		RegisterUniform(LeftClavicleMesh);
+		RegisterUniform(LeftUpperArmMesh);
+		RegisterUniform(LeftForearmMesh);
+		RegisterUniform(LeftHandMesh);
+		RegisterUniform(LeftThighMesh);
+		RegisterUniform(LeftCalfMesh);
+		RegisterUniform(RightThighMesh);
+		RegisterUniform(RightCalfMesh);
+	}
 
 	// Armor & Gear
 	RegisterArmor(VestMesh);
