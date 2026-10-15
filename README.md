@@ -66,7 +66,16 @@
   5. **Run & Gun Rusher (Vector .45 ACP)**: 1200 RPM extreme fire rate, 120 ms ADS speed.
 - **Tactical Ballistics**: Deterministic recoil climb, procedural breathing sway, and wall-mount stabilization.
 
-### 4. Hardware-Accelerated Slate Menu & Real-Time 3D Customization
+### 4. Competitive Combat Map: "Rust Tactical" (60m x 60m)
+- **Procedural C++ Map Architecture (`AFPSCombatArenaMapActor`)**: Automatically assembled with zero editor GUI dependency, compiling directly into standalone and dedicated server builds.
+- **3 Tactical Lanes**:
+  1. **West Flank (Container Yard)**: 4 multi-colored industrial shipping containers with an open shoot-through interior tunnel.
+  2. **Central Tower & Chokepoint**: 12-meter tall oil derrick with multi-tier diamond-plate catwalks, dual 25-degree access ramps, armored vehicle wreck, and 8 concrete Jersey barriers.
+  3. **East Flank (Pipeline & Bunker)**: 30-meter elevated oil pipeline trench leading into a reinforced concrete bunker.
+- **Atmospheric Golden-Hour Lighting**: 75,000 lux tactical desert directional sunlight, real-time sky atmosphere, volumetric dust haze, and a pulsing red aviation hazard beacon atop the derrick tower.
+- **Domination Objectives & Tactical Spawning**: 3 holographic flag bases (A: Container Yard, B: Derrick Base, C: Bunker Trench) and 8 anti-spawn-trap PlayerStarts (4 Task Force 141 Alpha, 4 OpFor Bravo).
+
+### 5. Hardware-Accelerated Slate Menu & Real-Time 3D Customization
 - Built entirely in native **Slate C++** with translucent military HUD panels.
 - **3D Turntable Preview Actor**: Rotates 360° continuously around Yaw (12°/s, 24°/s, 45°/s, or paused) with the operator holding weapon in Aim-Down-Sights (ADS) posture with live breathing motion.
 - **Embedded Studio Lighting**: 3-point illumination (14,000 lm key spotlight, 9,000 lm cyan rim light, 4,500 lm fill light).
@@ -80,14 +89,21 @@
 
 ## Quick Launch
 
-### 1. Launch the Standalone Start Menu
+### 1. Launch the Rust Tactical Combat Arena
+Double-click [`Launch_CombatMap.bat`](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Launch_CombatMap.bat) or run:
+```powershell
+.\Launch_CombatMap.bat
+```
+*(Direct path: `Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode -windowed -ResX=1280 -ResY=720 -log`)*
+
+### 2. Launch the Standalone Start Menu & Customization
 Double-click [`Launch_Menu.bat`](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Launch_Menu.bat) or run:
 ```powershell
 .\Launch_Menu.bat
 ```
 *(Direct path: `Packaged\Windows\NobleFermi.exe -windowed -ResX=1280 -ResY=720 -log`)*
 
-### 2. Launch a Dedicated 128-Tick Server
+### 3. Launch a Dedicated 128-Tick Server
 Double-click [`Launch_DedicatedServer.bat`](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Launch_DedicatedServer.bat) or run:
 ```powershell
 .\Launch_DedicatedServer.bat
@@ -99,10 +115,11 @@ Double-click [`Launch_DedicatedServer.bat`](file:///C:/Users/Boris/Documents/ant
 
 ```
 noble-fermi/
-├── Config/                      # Engine, Game, and Packaging configuration (.ini)
+├── Config/                      # Engine, Game, Input and Packaging configuration (.ini)
 ├── Docs/                        # Technical guides & documentation
 │   ├── ARCHITECTURE_AND_MECHANICS_GUIDE.md  # Deep-dive architecture & physics reference
 │   └── GETTING_STARTED.md                   # Setup, launching, and dedicated hosting guide
+├── Launch_CombatMap.bat         # Direct jump into Rust Tactical combat arena
 ├── Launch_Menu.bat              # Instant 1280x720 windowed menu launcher
 ├── Launch_DedicatedServer.bat   # Headless 128-tick VPS dedicated server launcher
 ├── Packaged/Windows/            # Pre-cooked monolithic distribution (NobleFermi.exe)
@@ -111,6 +128,8 @@ noble-fermi/
     ├── Character/               # FPSCharacter pawn & FPSCharacterPreviewActor turntable
     ├── Combat/                  # Weapon ballistics, health, Level IV armor plates
     ├── Game/                    # Match game modes, menu diorama director, controllers
+    ├── Map/                     # FPSCombatArenaMapActor (Rust Tactical 60m x 60m procedural map)
+    ├── Multiplayer/             # 128-tick authoritative multiplayer game mode and game state
     └── UI/                      # Slate military start menu, HUD, and settings widgets
 ```
 
