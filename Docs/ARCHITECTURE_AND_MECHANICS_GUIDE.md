@@ -136,9 +136,58 @@ The user interface is built entirely in **Slate C++**, executing natively on the
 
 ---
 
-## 7. Why This Foundation Is an Exceptional Start
+## 7. Competitive Combat Map: "Rust Tactical" (60m x 60m)
+
+Noble Fermi features **Rust Tactical**, an intense, compact 60m x 60m (6000 x 6000 Unreal Units) competitive combat arena engineered in C++ (`AFPSCombatArenaMapActor`). Designed to capture the verticality, sightline control, and lethal pacing of classic MW2 arenas, the map requires zero manual editor placement and instantiates seamlessly in standalone clients and dedicated servers alike.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        RUST TACTICAL (60m x 60m)                       │
+│                                                                        │
+│   [OpFor Spawns - North Docks]         (Flag C: Bunker Trench)         │
+│   ┌──────────────────────────────────────────────────────────────┐     │
+│   │  [Container Yard]        [Oil Derrick Rig]     [Pipeline]    │     │
+│   │  Blue / Red / Olive      12m Tower Catwalks    Elevated 30m  │     │
+│   │  Shoot-thru Tunnel       Ramps & Sniper Nest   Concrete      │     │
+│   │  (Flag A)                (Flag B)              Bunker        │     │
+│   │                                                              │     │
+│   │         [Armored Wreck]       [Jersey Barriers]              │     │
+│   │         Center Chokepoints    Hard Cover Flanks              │     │
+│   └──────────────────────────────────────────────────────────────┘     │
+│   [Task Force 141 Spawns - South Revetments]                           │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 7.1. Three Tactical Lanes & Combat Zones
+1. **West Flank (Container Yard & Shoot-Through Tunnel)**:
+   - 4 industrial shipping containers (Blue, Red, Olive, and Sand) arranged in a tight CQB labyrinth.
+   - Central open-ended shoot-through tunnel allowing flanking runs while exposing players to ricochets and penetration fire.
+   - Houses **Domination Flag A**.
+2. **Central Lane (Oil Derrick Rig & Vehicle Wreck Chokepoint)**:
+   - 12-meter tall industrial derrick structure with structural steel corner pillars, diamond-plate catwalks, dual 25-degree access ramps, and an apex sniper crow's nest.
+   - Armored tactical vehicle wreck and 8 reinforced concrete Jersey barriers provide ground-level cover against cross-map sightlines.
+   - Houses **Domination Flag B** at the tower base.
+3. **East Flank (Pipeline Trench & Reinforced Bunker)**:
+   - 30-meter elevated heavy industrial oil pipeline with concrete support stanchions.
+   - Semi-submerged reinforced concrete bunker with narrow firing slits overlooking the central lane.
+   - Houses **Domination Flag C**.
+
+### 7.2. Anti-Spawn-Trap Tactical Player Starts
+The arena dynamically provisions 8 dedicated `APlayerStart` actors during `InitGame()`:
+- **4 Team Alpha Spawns (Task Force 141)**: Located in the South perimeter safe revetments at `X=-2400.0`, with protective barrier line-of-sight blocks preventing immediate sniper picks.
+- **4 Team Bravo Spawns (OpFor)**: Located in the North perimeter loading docks at `X=+2400.0`, oriented 180 degrees south toward center lane cover.
+
+### 7.3. Real-Time Atmospheric Lighting & Environmental FX
+- **Directional Sunlight**: 75,000 lux warm desert sun set at a 38-degree tactical golden-hour angle with volumetric shadow casting.
+- **Sky Atmosphere & Fog**: Physically based atmosphere model blended with warm exponential height fog (density `0.002`) simulating desert dust haze.
+- **Aviation Hazard Beacon**: Red strobe beacon atop the derrick tower dynamically pulsing via sine oscillation (`Intensity 3000 to 6000 lm`), providing visual landmark orientation.
+
+---
+
+## 8. Why This Foundation Is an Exceptional Start
 
 1. **Architecture Before Assets**: Most failed indie shooters import gigabytes of marketplace 3D meshes before having solid networking or ballistics. When multiplayer is retrofitted, the project collapses. Noble Fermi started with 128-tick networking, dedicated server targets, and modular C++ physics first.
-2. **Anatomical Authenticity**: By grounding hitboxes and damage models in real adult human male anthropometry (180 cm, 82 kg, 21 bones), combat feels visceral and predictable. Shots to the chest plate behave differently from shots to the lower abdomen or femoral artery.
-3. **Instant Standalone Execution**: The game compiles into a lean, self-contained standalone executable (`Packaged\Windows\NobleFermi.exe`) that boots in seconds without requiring the Unreal Editor.
-4. **Clean Codebase**: Written in modular C++ adhering to modern Unreal Engine standards, with complete separation between UI, combat simulation, body mechanics, and replication.
+2. **Procedural Level Generation**: Instead of being locked into proprietary binary map files that can only be built inside the editor GUI, Noble Fermi's competitive maps are fully specified in procedural C++. They boot instantaneously, test deterministically in headless CI/CD, and package without missing reference headaches.
+3. **Anatomical Authenticity**: By grounding hitboxes and damage models in real adult human male anthropometry (180 cm, 82 kg, 21 bones), combat feels visceral and predictable. Shots to the chest plate behave differently from shots to the lower abdomen or femoral artery.
+4. **Instant Standalone Execution**: The game compiles into a lean, self-contained standalone executable (`Packaged\Windows\NobleFermi.exe`) that boots in seconds without requiring the Unreal Editor.
+5. **Clean Codebase**: Written in modular C++ adhering to modern Unreal Engine standards, with complete separation between UI, combat simulation, body mechanics, and replication.

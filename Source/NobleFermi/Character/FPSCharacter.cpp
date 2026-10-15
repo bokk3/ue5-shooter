@@ -35,6 +35,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 
 	HealthComponent = CreateDefaultSubobject<UFPSHealthComponent>(TEXT("HealthComponent"));
 	InventoryComponent = CreateDefaultSubobject<UFPSInventoryComponent>(TEXT("InventoryComponent"));
+	InventoryComponent->DefaultPrimaryClass = AFPSWeaponBase::StaticClass();
 	EquipmentComponent = CreateDefaultSubobject<UFPSEquipmentComponent>(TEXT("EquipmentComponent"));
 	BodyMechanicsComponent = CreateDefaultSubobject<UFPSBodyMechanicsComponent>(TEXT("BodyMechanicsComponent"));
 }

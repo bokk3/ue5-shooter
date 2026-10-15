@@ -66,11 +66,13 @@ void UFPSInventoryComponent::EquipSlot(int32 SlotIndex)
 	ActiveWeapon = TargetWeapon;
 	ActiveWeapon->SetActorHiddenInGame(false);
 
-	// Attach weapon to character's first-person hand socket if available
+	// Attach weapon to character's hand socket if available
 	ACharacter* Char = Cast<ACharacter>(GetOwner());
 	if (Char && Char->GetMesh())
 	{
-		ActiveWeapon->AttachToComponent(Char->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("GripPoint"));
+		const bool bHasSocket = Char->GetMesh()->GetSkeletalMeshAsset() && Char->GetMesh()->DoesSocketExist(TEXT("GripPoint"));
+		const FName SocketName = bHasSocket ? FName(TEXT("GripPoint")) : NAME_None;
+		ActiveWeapon->AttachToComponent(Char->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
 	}
 
 	OnActiveWeaponChanged.Broadcast(ActiveWeapon);

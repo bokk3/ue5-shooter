@@ -1234,7 +1234,10 @@ void UMainMenuWidget::HostListenRoom()
 	APlayerController* PC = GetOwningPlayer();
 	if (PC)
 	{
-		PC->ClientTravel(TEXT("?listen"), TRAVEL_Absolute);
+		FInputModeGameOnly GameOnlyInput;
+		PC->SetInputMode(GameOnlyInput);
+		PC->bShowMouseCursor = false;
+		PC->ClientTravel(TEXT("?listen?game=/Script/NobleFermi.FPSMultiplayerGameMode"), TRAVEL_Absolute);
 	}
 }
 
@@ -1243,6 +1246,9 @@ void UMainMenuWidget::ConnectToDedicatedServer(const FString& ServerAddress)
 	APlayerController* PC = GetOwningPlayer();
 	if (PC)
 	{
+		FInputModeGameOnly GameOnlyInput;
+		PC->SetInputMode(GameOnlyInput);
+		PC->bShowMouseCursor = false;
 		PC->ClientTravel(ServerAddress, TRAVEL_Absolute);
 	}
 }

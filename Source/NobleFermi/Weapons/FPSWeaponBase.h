@@ -33,7 +33,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWeaponFiredSignature);
  * AAA FPS Weapon Base Class
  * Features procedural recoil curves, dynamic spread bloom, ADS alignment, and surface penetration traces.
  */
-UCLASS(Abstract, BlueprintType, Blueprintable)
+UCLASS(BlueprintType, Blueprintable)
 class NOBLEFERMI_API AFPSWeaponBase : public AActor
 {
 	GENERATED_BODY()

@@ -2,9 +2,11 @@
 #include "Multiplayer/FPSMultiplayerGameState.h"
 #include "Multiplayer/FPSPlayerState.h"
 #include "Character/FPSCharacter.h"
+#include "Map/FPSCombatArenaMapActor.h"
 #include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "Engine/World.h"
 
 AFPSMultiplayerGameMode::AFPSMultiplayerGameMode()
 {
@@ -13,6 +15,35 @@ AFPSMultiplayerGameMode::AFPSMultiplayerGameMode()
 	DefaultPawnClass = AFPSCharacter::StaticClass();
 	PlayerStateClass = AFPSPlayerState::StaticClass();
 	GameStateClass = AFPSMultiplayerGameState::StaticClass();
+}
+
+void AFPSMultiplayerGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] InitGame: Initializing 128-tick tactical multiplayer match..."));
+	EnsureCombatArenaExists();
+}
+
+void AFPSMultiplayerGameMode::EnsureCombatArenaExists()
+{
+	if (ActiveArena) return;
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	ActiveArena = Cast<AFPSCombatArenaMapActor>(UGameplayStatics::GetActorOfClass(this, AFPSCombatArenaMapActor::StaticClass()));
+	if (!ActiveArena)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		ActiveArena = World->SpawnActor<AFPSCombatArenaMapActor>(FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+		UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] EnsureCombatArenaExists: Procedurally spawned AFPSCombatArenaMapActor!"));
+	}
+
+	if (ActiveArena)
+	{
+		ActiveArena->SpawnTacticalPlayerStarts();
+	}
 }
 
 void AFPSMultiplayerGameMode::BeginPlay()
@@ -24,6 +55,9 @@ void AFPSMultiplayerGameMode::BeginPlay()
 	{
 		FPSGameState->SetMatchPhase(EFPSMatchPhase::InProgress);
 	}
+
+	EnsureCombatArenaExists();
+	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] BeginPlay: Match in progress on Rust Tactical. Arena: %s"), *GetNameSafe(ActiveArena));
 }
 
 void AFPSMultiplayerGameMode::Tick(float DeltaSeconds)
@@ -48,6 +82,38 @@ void AFPSMultiplayerGameMode::PostLogin(APlayerController* NewPlayer)
 		EFPSPlayerTeam AssignedTeam = (PlayerCounter++ % 2 == 0) ? EFPSPlayerTeam::Alpha : EFPSPlayerTeam::Bravo;
 		PS->SetPlayerTeam(AssignedTeam);
 	}
+}
+
+AActor* AFPSMultiplayerGameMode::ChoosePlayerStart_Implementation(AController* Player)
+{
+	EnsureCombatArenaExists();
+
+	AFPSPlayerState* PS = Player ? Player->GetPlayerState<AFPSPlayerState>() : nullptr;
+	const FName TargetTag = (PS && PS->GetPlayerTeam() == EFPSPlayerTeam::Bravo) ? FName("TeamBravo") : FName("TeamAlpha");
+
+	TArray<AActor*> FoundStarts;
+	UGameplayStatics::GetAllActorsOfClass(this, APlayerStart::StaticClass(), FoundStarts);
+
+	TArray<AActor*> ValidStarts;
+	for (AActor* StartActor : FoundStarts)
+	{
+		APlayerStart* Start = Cast<APlayerStart>(StartActor);
+		if (Start && (Start->PlayerStartTag == TargetTag || Start->Tags.Contains(TargetTag)))
+		{
+			ValidStarts.Add(Start);
+		}
+	}
+
+	if (ValidStarts.Num() > 0)
+	{
+		const int32 RandomIdx = FMath::RandRange(0, ValidStarts.Num() - 1);
+		AActor* SelectedStart = ValidStarts[RandomIdx];
+		UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] ChoosePlayerStart: Spawning player %s at %s (%s) at %s"),
+			*GetNameSafe(Player), *GetNameSafe(SelectedStart), *TargetTag.ToString(), *SelectedStart->GetActorLocation().ToString());
+		return SelectedStart;
+	}
+
+	return Super::ChoosePlayerStart_Implementation(Player);
 }
 
 void AFPSMultiplayerGameMode::NotifyPlayerKilled(AController* Killer, AController* Victim, const FString& WeaponName, bool bIsHeadshot)
