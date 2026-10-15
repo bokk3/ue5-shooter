@@ -1,0 +1,127 @@
+# NOBLE FERMI // MODERN MILITARY TACTICAL WARFARE
+
+[![Engine](https://img.shields.io/badge/Unreal%20Engine-5.8-blue.svg)](https://www.unrealengine.com/)
+[![Language](https://img.shields.io/badge/Language-C%2B%2B20-orange.svg)](https://en.cppreference.com/w/cpp/20)
+[![Tickrate](https://img.shields.io/badge/Tickrate-128%20Hz-brightgreen.svg)]()
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20VPS-lightgrey.svg)]()
+[![Build](https://img.shields.io/badge/Build-Standalone%20Monolithic-success.svg)]()
+
+> **Noble Fermi** is a competitive tactical first-person shooter built from the ground up in Unreal Engine 5.8 C++. It blends the lethal, high-tempo gunplay of golden-era tactical multiplayer (*Call of Duty: Modern Warfare 2*) with authoritative **128-tick dedicated server networking**, an **anatomically accurate human male skeletal mechanics system** (180 cm / 82 kg anthropometry), and a **hardware-accelerated Slate C++ start menu featuring real-time 3D character customization**.
+
+---
+
+## Key Pillars & Engineering Features
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                              NOBLE FERMI                               │
+│                Tactical Military Warfare FPS Architecture              │
+└────────────────────────────────────────────────────────────────────────┘
+          │                                              │
+          ▼                                              ▼
+┌──────────────────────────────┐        ┌──────────────────────────────┐
+│     Multiplayer Network      │        │       Combat & Anatomy       │
+├──────────────────────────────┤        ├──────────────────────────────┤
+│ • 128 Hz Authoritative Tick  │        │ • 21 Human Male Bones (180cm)│
+│ • Dedicated VPS Server Binary│        │ • Level IV Ceramic Plates    │
+│ • Client Listen Room (?listen)│       │ • 2nd-Order Spring Aim Punch │
+│ • Direct IP Connect (7777)   │        │ • 5 Iconic MW2 Archetypes    │
+└──────────────────────────────┘        └──────────────────────────────┘
+          │                                              │
+          └──────────────────────┬───────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   Interactive Start Menu & 3D Diorama                  │
+├────────────────────────────────────────────────────────────────────────┤
+│ • Pure Slate C++ Military HUD (Zero webview/heavy UMG overhead)        │
+│ • 360° Rotating Turntable with Live ADS Aiming Operator                │
+│ • Procedural Idle Breathing Motion & 3-Point Studio Lighting           │
+│ • Real-time Camo (Urban/Woodland/Desert/Blackout) & Gear Customization │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1. 128-Tick Authoritative Networking & Dual-Host Model
+- **VPS Dedicated Server**: Headless, low-overhead binary runnable on any standard Windows or Linux VPS (`-server -nullrhi -log -PORT=7777 -TickRate=128 -MaxPlayers=18`).
+- **Client Listen Room**: Peer-hosted rooms (`?listen`) launched directly from the main menu for instant matches with friends.
+- **Direct Connect**: Direct IP and port entry (`127.0.0.1:7777` or remote public IP) in the in-game server browser.
+- **High-Fidelity Replication**: Sub-millisecond hit registration, lag compensation, client prediction, and reconciliation.
+
+### 2. Anatomical Human Male Skeletal Mechanics
+- **Adult Male Proportions**: Rigged to a standard 180 cm standing height and 82.0 kg mass distribution based on military anthropometry.
+- **21-Bone Skeletal Registry**: Full hierarchy (`root`, `pelvis`, `spine_01` lumbar, `spine_02` mid-thoracic, `spine_03` upper chest, `neck_01`, `head`, `clavicles`, `arms`, `hands`, `thighs`, `calves`, `feet`).
+- **Ballistic Zoning & Armor Absorption**:
+  - Head (2.5x critical lethal), Neck (2.0x), Upper Torso (1.25x), Pelvis (1.0x), Extremities (0.75-0.85x).
+  - **Level IV Ceramic Armor Plates**: Absorbs kinetic energy on chest and mid-torso vitals.
+- **Second-Order Spring Aim Punch**: Damped harmonic oscillator equation models realistic flinch dynamics and reticle recovery upon kinetic impact.
+- **Procedural Foot IK & Limb Trauma**: Terrain-conforming feet with pelvis drop; arm trauma amplifies weapon sway, and leg trauma halts tactical sprint.
+
+### 3. Classic MW2-Inspired Combat & Archetypes
+- **Five Iconic Archetypes**:
+  1. **Assault (M4A1)**: Red-dot optic, compensator, 40-round mag, 210 ms ADS.
+  2. **Spec Ops Stealth (MP5SD)**: Integrated suppressor, subsonic 9mm, zero radar ping, 150 ms ADS.
+  3. **Heavy Gunner (L86 LSW)**: 100-round continuous drum suppression, fluted barrel, 380 ms ADS.
+  4. **Recon Sniper (Intervention .50)**: High-caliber one-shot torso/head lethality (1150 m/s velocity).
+  5. **Run & Gun Rusher (Vector .45 ACP)**: 1200 RPM extreme fire rate, 120 ms ADS speed.
+- **Tactical Ballistics**: Deterministic recoil climb, procedural breathing sway, and wall-mount stabilization.
+
+### 4. Hardware-Accelerated Slate Menu & Real-Time 3D Customization
+- Built entirely in native **Slate C++** with translucent military HUD panels.
+- **3D Turntable Preview Actor**: Rotates 360° continuously around Yaw (12°/s, 24°/s, 45°/s, or paused) with the operator holding weapon in Aim-Down-Sights (ADS) posture with live breathing motion.
+- **Embedded Studio Lighting**: 3-point illumination (14,000 lm key spotlight, 9,000 lm cyan rim light, 4,500 lm fill light).
+- **Live Customization Controls**:
+  - **Camo Patterns**: Urban Digital, Woodland Tactical, Desert Spec Ops, Stealth Blackout.
+  - **Tactical Headgear**: FAST Ballistic Helmet, GPNVG-18 Quad-Nods (with phosphor green glow), Spec Ops Balaclava, Tactical Cap & Headset.
+  - **Armor Vests**: Level IV Heavy Carrier, Lightweight JPC, Recon Tactical Rig.
+  - **Stance Switching**: High-Ready ADS vs. Low-Ready Patrol.
+
+---
+
+## Quick Launch
+
+### 1. Launch the Standalone Start Menu
+Double-click [`Launch_Menu.bat`](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Launch_Menu.bat) or run:
+```powershell
+.\Launch_Menu.bat
+```
+*(Direct path: `Packaged\Windows\NobleFermi.exe -windowed -ResX=1280 -ResY=720 -log`)*
+
+### 2. Launch a Dedicated 128-Tick Server
+Double-click [`Launch_DedicatedServer.bat`](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Launch_DedicatedServer.bat) or run:
+```powershell
+.\Launch_DedicatedServer.bat
+```
+
+---
+
+## Project Structure
+
+```
+noble-fermi/
+├── Config/                      # Engine, Game, and Packaging configuration (.ini)
+├── Docs/                        # Technical guides & documentation
+│   ├── ARCHITECTURE_AND_MECHANICS_GUIDE.md  # Deep-dive architecture & physics reference
+│   └── GETTING_STARTED.md                   # Setup, launching, and dedicated hosting guide
+├── Launch_Menu.bat              # Instant 1280x720 windowed menu launcher
+├── Launch_DedicatedServer.bat   # Headless 128-tick VPS dedicated server launcher
+├── Packaged/Windows/            # Pre-cooked monolithic distribution (NobleFermi.exe)
+└── Source/NobleFermi/           # Modular C++20 engine source
+    ├── BodyMechanics/           # 21-bone anatomy, spring aim punch, foot IK
+    ├── Character/               # FPSCharacter pawn & FPSCharacterPreviewActor turntable
+    ├── Combat/                  # Weapon ballistics, health, Level IV armor plates
+    ├── Game/                    # Match game modes, menu diorama director, controllers
+    └── UI/                      # Slate military start menu, HUD, and settings widgets
+```
+
+---
+
+## Detailed Documentation
+
+- [**Architecture & Mechanics Guide**](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Docs/ARCHITECTURE_AND_MECHANICS_GUIDE.md): Mathematical formulations for spring aim punch, skeletal bone dimensions, damage tables, and networking pipeline.
+- [**Getting Started Guide**](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Docs/GETTING_STARTED.md): Step-by-step instructions for launching, customization controls, VPS server configuration, and source compilation.
+
+---
+
+## License
+
+All rights reserved © 2026 Noble Fermi Studio.
