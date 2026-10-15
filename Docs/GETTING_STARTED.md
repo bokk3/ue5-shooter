@@ -62,21 +62,31 @@ Everything is launchable directly from the main menu without needing separate sc
 2. The game transitions directly into the **Rust Tactical** combat arena (`FPSMultiplayerGameMode`).
 3. You will spawn at one of the tactical team spawn points with weapon in hand, standing on the desert arena grounds.
 
-### 3.1. Tactical Controls & Locomotion
+### 3.1. Tactical Controls & Ballistics
 
 | Input | Action | Tactical Details |
 | :--- | :--- | :--- |
 | **W, A, S, D** | Move Forward / Strafe | Standard 450 cm/s tactical combat movement. |
 | **Mouse X / Y** | Look & Aim | Raw input mouse look with sub-millisecond precision. |
-| **Left Click** | Fire Weapon | Full-auto / semi-auto ballistic projectile emission. |
-| **Right Click** | Aim Down Sights (ADS) | Smooth zoom alignment with dynamic crosshair hide. |
+| **Left Click** | Fire Weapon | Full-auto 750 RPM with procedural gun kick and dynamic cone bloom. |
+| **Right Click** | Aim Down Sights (ADS) | Smooth zoom (95° &rarr; 68°), 0.65x sensitivity scaling, dead-center red dot alignment. |
 | **Left Shift** | Tactical Sprint | Weapon raised, sprint velocity boosted to 720 cm/s. |
 | **Space** | Jump | Physical impulse vaulting over cover. |
 | **C / Left Ctrl** | Crouch | Lowered stance for cover behind Jersey barriers and containers. |
-| **R** | Reload | Tactical magazine swap with ammo count reset. |
+| **R** | Tactical / Empty Reload | 4-phase procedural reload animation (cant & dip, mag drop, fresh insert & palm slap). |
 | **Q / G** | Tactical / Lethal | Concussion flashbangs and fragmentation grenades. |
 
-### 3.2. Pure Dynamic Lighting (Lumen) & Exposure
+### 3.2. Aiming Mechanics & 3D Weapon Optics
+- **Pixel-Perfect ADS Alignment**: Pressing Right Mouse Button smoothly moves the carbine from hipfire (`X=26, Y=14, Z=-13`) to ADS center (`X=20, Y=0, Z=-6.8`).
+- **3D Glowing Reflex Reticle**: The optic red dot sits precisely at camera eye level (`Y=0, Z=0`), blooming with emissive radiance. Co-witnessed tritium front sight is visible in the lower third.
+- **Dynamic Crosshair Hide**: The 2D HUD crosshair collapses during ADS, giving the operator an unobstructed view through the 3D reflex optic.
+- **Procedural 4-Phase Reload**:
+  1. *Cant & Tilt (0-20%)*: Weapon cants 22° outward, presenting the magwell into clear view.
+  2. *Mag Ejection (20-42%)*: Empty magazine slides out and drops downward.
+  3. *Mag Insertion & Slap (42-76%)*: Fresh magazine slides up into the magwell with a tactile palm-slap impulse shake.
+  4. *Bolt Release & Ready (76-100%)*: Empty reload trips the bolt release snap before returning smoothly to active high-ready.
+
+### 3.3. Pure Dynamic Lighting (Lumen) & Exposure
 - **Zero Lightmass Baking**: Static lighting has been permanently disabled in `DefaultEngine.ini` (`r.AllowStaticLighting=False`), guaranteeing zero "Lighting needs to be rebuilt" warnings.
 - **Exposure Lock**: Manual camera exposure is locked across both the preview actor and player pawn, eliminating auto-exposure eye-adaptation screen whiteout.
 - **Golden-Hour Sun & Volumetric Dust**: Directional sun at 10.0 lux with real-time dynamic shadows, sky atmosphere, warm height fog dust haze, and a pulsating aviation hazard beacon atop the 12m central derrick.

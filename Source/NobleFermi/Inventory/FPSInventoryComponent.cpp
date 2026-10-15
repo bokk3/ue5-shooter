@@ -1,5 +1,7 @@
 #include "Inventory/FPSInventoryComponent.h"
 #include "Weapons/FPSWeaponBase.h"
+#include "Character/FPSCharacter.h"
+#include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
 
@@ -66,13 +68,23 @@ void UFPSInventoryComponent::EquipSlot(int32 SlotIndex)
 	ActiveWeapon = TargetWeapon;
 	ActiveWeapon->SetActorHiddenInGame(false);
 
-	// Attach weapon to character's hand socket if available
-	ACharacter* Char = Cast<ACharacter>(GetOwner());
-	if (Char && Char->GetMesh())
+	// Attach weapon to first person camera if AFPSCharacter, otherwise fallback to character mesh
+	AFPSCharacter* FPSChar = Cast<AFPSCharacter>(GetOwner());
+	if (FPSChar && FPSChar->FirstPersonCamera)
 	{
-		const bool bHasSocket = Char->GetMesh()->GetSkeletalMeshAsset() && Char->GetMesh()->DoesSocketExist(TEXT("GripPoint"));
-		const FName SocketName = bHasSocket ? FName(TEXT("GripPoint")) : NAME_None;
-		ActiveWeapon->AttachToComponent(Char->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+		ActiveWeapon->AttachToComponent(FPSChar->FirstPersonCamera, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		ActiveWeapon->SetActorRelativeLocation(ActiveWeapon->GetHipfireLocation());
+		ActiveWeapon->SetActorRelativeRotation(ActiveWeapon->GetHipfireRotation());
+	}
+	else
+	{
+		ACharacter* Char = Cast<ACharacter>(GetOwner());
+		if (Char && Char->GetMesh())
+		{
+			const bool bHasSocket = Char->GetMesh()->GetSkeletalMeshAsset() && Char->GetMesh()->DoesSocketExist(TEXT("GripPoint"));
+			const FName SocketName = bHasSocket ? FName(TEXT("GripPoint")) : NAME_None;
+			ActiveWeapon->AttachToComponent(Char->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+		}
 	}
 
 	OnActiveWeaponChanged.Broadcast(ActiveWeapon);

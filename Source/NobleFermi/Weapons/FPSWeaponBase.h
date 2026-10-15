@@ -5,6 +5,8 @@
 #include "FPSWeaponBase.generated.h"
 
 class USkeletalMeshComponent;
+class UStaticMeshComponent;
+class USceneComponent;
 class USoundBase;
 class UParticleSystem;
 class UCurveFloat;
@@ -46,6 +48,52 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Components")
 	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
 
+	// Procedural 3D Weapon Model Components
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> ReceiverMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> TopRailMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> HandguardMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> BarrelMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> MuzzleCompMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> GripMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> StockMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> BufferTubeMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<USceneComponent> MagazineRoot;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> MagazineMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> SightBaseMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> SightHoodMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> ReticleDotMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> FrontSightPostMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> FrontSightDotMesh;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Components")
 	TObjectPtr<class UFPSGunsmithComponent> GunsmithComponent;
 
@@ -83,6 +131,40 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
 	bool IsAimingDownSights() const { return bIsAimingDownSights; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
+	bool IsReloading() const { return CurrentState == EFPSWeaponState::Reloading; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
+	float GetADSAlpha() const { return CurrentADSAlpha; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FVector GetHipfireLocation() const { return HipfireRelativeLocation; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FRotator GetHipfireRotation() const { return HipfireRelativeRotation; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FVector GetADSLocation() const { return ADSRelativeLocation; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FRotator GetADSRotation() const { return ADSRelativeRotation; }
+
+	// Weapon Transforms
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
+	FVector HipfireRelativeLocation = FVector(26.0f, 14.0f, -13.0f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
+	FRotator HipfireRelativeRotation = FRotator(0.5f, -1.0f, -1.5f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
+	FVector ADSRelativeLocation = FVector(20.0f, 0.0f, -6.8f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
+	FRotator ADSRelativeRotation = FRotator(0.0f, 0.0f, 0.0f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
+	float ADSSpeed = 16.0f;
 
 	// Weapon Attributes
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Identity")
@@ -169,6 +251,18 @@ protected:
 	int32 ShotsFiredInBurst = 0;
 	FTimerHandle FireTimerHandle;
 	FTimerHandle ReloadTimerHandle;
+
+	// Procedural Animation State
+	float CurrentADSAlpha = 0.0f;
+	FVector RecoilOffsetLoc = FVector::ZeroVector;
+	FRotator RecoilOffsetRot = FRotator::ZeroRotator;
+	FRotator CurrentSwayRot = FRotator::ZeroRotator;
+	FRotator LastControlRot = FRotator::ZeroRotator;
+
+	bool bIsEmptyReload = false;
+	float ReloadDuration = 2.4f;
+	float ReloadElapsedTime = 0.0f;
+	FVector MagazineBaseLoc = FVector(8.0f, 0.0f, -2.8f);
 
 private:
 	void FinishReload();

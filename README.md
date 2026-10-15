@@ -75,7 +75,26 @@
 - **Pure Real-Time Dynamic Lighting (Lumen)**: Zero static lightmass baking required (`r.AllowStaticLighting=False`), calibrated 10.0 lux desert directional sunlight, real-time sky atmosphere, volumetric dust haze, manual exposure lock to prevent whiteout, and a pulsing red aviation hazard beacon atop the derrick tower.
 - **Domination Objectives & Tactical Spawning**: 3 holographic flag bases (A: Container Yard, B: Derrick Base, C: Bunker Trench) and 8 anti-spawn-trap PlayerStarts (4 Task Force 141 Alpha, 4 OpFor Bravo).
 
-### 5. Hardware-Accelerated Slate Menu & Real-Time 3D Customization
+### 5. Procedural 3D Weaponry, ADS Alignment & 4-Phase Tactical Reload
+- **Procedural 3D Tactical Carbine Model (`AFPSWeaponBase`)**:
+  - 11 modular components: Receiver, Picatinny top rail, blued steel barrel, M-LOK handguard, muzzle brake compensator, pistol grip, buffer tube, buttstock, independent magazine assembly, reflex optic sight hood, and co-witnessed front iron sight post.
+  - Authentic military finishes: Charcoal matte gunmetal, parkerized steel, textured tactical polymer, and a glowing green tritium front sight pip.
+- **Pixel-Perfect Aim-Down-Sights (ADS)**:
+  - Right Mouse Button smoothly interpolates weapon from hipfire (`X=26, Y=14, Z=-13`) to ADS center (`X=20, Y=0, Z=-6.8`).
+  - High-luminance emissive red dot reticle (`FLinearColor(15, 0.02, 0.02)`) centers precisely on the camera center eye line (`Y=0, Z=0`) with zero parallax error.
+  - Smooth camera FOV magnification (95° &rarr; 68° in 180 ms).
+  - Dynamic mouse sensitivity scaling (0.65x) during ADS for sniper-precise micro-corrections.
+  - 2D HUD crosshair collapses during ADS to prioritize the physical 3D reflex optic.
+- **4-Phase Procedural Reload Sequence**:
+  - **Phase 1 (Cant & Dip, 0-20%)**: Carbine rolls 22° outward and tilts up 6°, presenting the magwell into the operator's direct field of view.
+  - **Phase 2 (Mag Ejection, 20-42%)**: Magazine root translates downward (-28 cm) and rotates out of the receiver.
+  - **Phase 3 (Fresh Mag Insert & Palm Slap, 42-76%)**: Fresh magazine slides smoothly up into the magwell, ending in a tactile palm-slap bump impulse.
+  - **Phase 4 (Bolt Rack & Return, 76-100%)**: Empty reloads execute a mechanical bolt catch release snap, followed by a smooth return glide to active ready.
+- **Physical Recoil & Inertia Sway**:
+  - Procedural weapon kickback and muzzle climb on each round fired, with rapid recovery.
+  - Mouse look sway inertia lag in hipfire, dampened by 85% during ADS for rock-solid stability.
+
+### 6. Hardware-Accelerated Slate Menu & Real-Time 3D Customization
 - Built entirely in native **Slate C++** with translucent military HUD panels.
 - **3D Turntable Preview Actor**: Rotates 360° continuously around Yaw (12°/s, 24°/s, 45°/s, or paused) with the operator holding weapon in Aim-Down-Sights (ADS) posture with live breathing motion.
 - **Embedded Studio Lighting**: 3-point dynamic illumination (key spotlight, cyan rim light, fill light) with manual exposure locking.

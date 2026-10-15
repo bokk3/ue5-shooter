@@ -53,6 +53,7 @@ void AFPSCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	DefaultCameraPos = FirstPersonCamera->GetRelativeLocation();
+	FirstPersonCamera->SetFieldOfView(95.0f);
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC && HUDWidgetClass)
@@ -72,13 +73,20 @@ void AFPSCharacter::Tick(float DeltaTime)
 	UpdateProceduralCameraBob(DeltaTime);
 	UpdateWeaponSway(DeltaTime);
 
+	// Smooth FOV interpolation for ADS tactical zoom
+	const bool bIsAiming = (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights());
+	const float TargetFOV = bIsAiming ? 68.0f : 95.0f;
+	FirstPersonCamera->SetFieldOfView(FMath::FInterpTo(FirstPersonCamera->FieldOfView, TargetFOV, DeltaTime, 16.0f));
+
 	// Update HUD Crosshair with current weapon spread
 	if (ActiveHUDWidget && InventoryComponent)
 	{
 		AFPSWeaponBase* Weapon = InventoryComponent->GetActiveWeapon();
 		if (Weapon)
 		{
-			ActiveHUDWidget->UpdateCrosshairSpread(Weapon->GetCurrentSpread());
+			// In ADS, crosshair collapses so operator aims via 3D reflex optic dot
+			const float Spread = bIsAiming ? 0.0f : Weapon->GetCurrentSpread();
+			ActiveHUDWidget->UpdateCrosshairSpread(Spread);
 		}
 	}
 }
@@ -181,12 +189,22 @@ void AFPSCharacter::MoveRight(float Value)
 
 void AFPSCharacter::Turn(float Rate)
 {
-	AddControllerYawInput(Rate);
+	float SensMod = 1.0f;
+	if (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights())
+	{
+		SensMod = 0.65f;
+	}
+	AddControllerYawInput(Rate * SensMod);
 }
 
 void AFPSCharacter::LookUp(float Rate)
 {
-	AddControllerPitchInput(Rate);
+	float SensMod = 1.0f;
+	if (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights())
+	{
+		SensMod = 0.65f;
+	}
+	AddControllerPitchInput(Rate * SensMod);
 }
 
 void AFPSCharacter::StartFire()
@@ -210,7 +228,6 @@ void AFPSCharacter::StartADS()
 	if (InventoryComponent && InventoryComponent->GetActiveWeapon())
 	{
 		InventoryComponent->GetActiveWeapon()->SetADS(true);
-		FirstPersonCamera->SetFieldOfView(80.0f); // Zoom in
 	}
 }
 
@@ -219,7 +236,6 @@ void AFPSCharacter::StopADS()
 	if (InventoryComponent && InventoryComponent->GetActiveWeapon())
 	{
 		InventoryComponent->GetActiveWeapon()->SetADS(false);
-		FirstPersonCamera->SetFieldOfView(103.0f); // Default FOV
 	}
 }
 

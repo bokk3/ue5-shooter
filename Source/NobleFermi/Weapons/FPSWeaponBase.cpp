@@ -8,6 +8,11 @@
 #include "Radar/FPSRadarSubsystem.h"
 #include "Multiplayer/FPSPlayerState.h"
 #include "Weapons/FPSGunsmithComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "UObject/ConstructorHelpers.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 AFPSWeaponBase::AFPSWeaponBase()
 {
@@ -18,11 +23,115 @@ AFPSWeaponBase::AFPSWeaponBase()
 	WeaponMesh->SetCollisionProfileName(TEXT("NoCollision"));
 
 	GunsmithComponent = CreateDefaultSubobject<UFPSGunsmithComponent>(TEXT("GunsmithComponent"));
+
+	// Find standard basic shape assets for procedural 3D model
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereFinder(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseMatFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+
+	UStaticMesh* CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object : nullptr;
+	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object : nullptr;
+	UStaticMesh* SphereMesh = SphereFinder.Succeeded() ? SphereFinder.Object : nullptr;
+	UMaterialInterface* BaseMat = BaseMatFinder.Succeeded() ? BaseMatFinder.Object : nullptr;
+
+	auto SetupMeshComp = [this, BaseMat](TObjectPtr<UStaticMeshComponent>& Comp, const TCHAR* Name, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale)
+	{
+		Comp = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		Comp->SetupAttachment(WeaponMesh);
+		Comp->SetMobility(EComponentMobility::Movable);
+		if (Mesh) Comp->SetStaticMesh(Mesh);
+		if (BaseMat) Comp->SetMaterial(0, BaseMat);
+		Comp->SetRelativeLocation(Loc);
+		Comp->SetRelativeRotation(Rot);
+		Comp->SetRelativeScale3D(Scale);
+		Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Comp->SetCastShadow(true);
+	};
+
+	// 1. Lower & Upper Receiver (22cm x 3.8cm x 5.6cm)
+	SetupMeshComp(ReceiverMesh, TEXT("ReceiverMesh"), CubeMesh, FVector(4.0f, 0.0f, 0.0f), FRotator::ZeroRotator, FVector(0.22f, 0.038f, 0.056f));
+
+	// 2. Picatinny Top Rail (36cm x 2.4cm x 0.8cm)
+	SetupMeshComp(TopRailMesh, TEXT("TopRailMesh"), CubeMesh, FVector(10.0f, 0.0f, 3.2f), FRotator::ZeroRotator, FVector(0.36f, 0.024f, 0.008f));
+
+	// 3. Handguard (20cm x 4.2cm x 4.6cm)
+	SetupMeshComp(HandguardMesh, TEXT("HandguardMesh"), CubeMesh, FVector(25.0f, 0.0f, 0.2f), FRotator::ZeroRotator, FVector(0.20f, 0.042f, 0.046f));
+
+	// 4. Barrel (38cm long, cylinder aligned along X axis)
+	SetupMeshComp(BarrelMesh, TEXT("BarrelMesh"), CylinderMesh, FVector(28.0f, 0.0f, 0.3f), FRotator(90.0f, 0.0f, 0.0f), FVector(0.016f, 0.016f, 0.38f));
+
+	// 5. Muzzle Compensator / Birdcage Flash Hider (4cm long, 2.4cm diameter)
+	SetupMeshComp(MuzzleCompMesh, TEXT("MuzzleCompMesh"), CylinderMesh, FVector(48.5f, 0.0f, 0.3f), FRotator(90.0f, 0.0f, 0.0f), FVector(0.024f, 0.024f, 0.04f));
+
+	// 6. Pistol Grip (Angled back 18 deg)
+	SetupMeshComp(GripMesh, TEXT("GripMesh"), CubeMesh, FVector(-1.5f, 0.0f, -8.0f), FRotator(-18.0f, 0.0f, 0.0f), FVector(0.042f, 0.032f, 0.12f));
+
+	// 7. Buffer Tube & Buttstock
+	SetupMeshComp(BufferTubeMesh, TEXT("BufferTubeMesh"), CylinderMesh, FVector(-15.0f, 0.0f, 0.8f), FRotator(90.0f, 0.0f, 0.0f), FVector(0.026f, 0.026f, 0.16f));
+	SetupMeshComp(StockMesh, TEXT("StockMesh"), CubeMesh, FVector(-20.0f, 0.0f, -1.0f), FRotator(-4.0f, 0.0f, 0.0f), FVector(0.12f, 0.036f, 0.13f));
+
+	// 8. Magazine Assembly (Root scene component + Mesh for procedural reload translation)
+	MagazineBaseLoc = FVector(8.0f, 0.0f, -2.8f);
+	MagazineRoot = CreateDefaultSubobject<USceneComponent>(TEXT("MagazineRoot"));
+	MagazineRoot->SetupAttachment(WeaponMesh);
+	MagazineRoot->SetRelativeLocation(MagazineBaseLoc);
+
+	MagazineMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MagazineMesh"));
+	MagazineMesh->SetupAttachment(MagazineRoot);
+	MagazineMesh->SetMobility(EComponentMobility::Movable);
+	if (CubeMesh) MagazineMesh->SetStaticMesh(CubeMesh);
+	if (BaseMat) MagazineMesh->SetMaterial(0, BaseMat);
+	MagazineMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -7.5f));
+	MagazineMesh->SetRelativeRotation(FRotator(8.0f, 0.0f, 0.0f));
+	MagazineMesh->SetRelativeScale3D(FVector(0.065f, 0.025f, 0.16f));
+	MagazineMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MagazineMesh->SetCastShadow(true);
+
+	// 9. Reflex Optic Sight (Mount + Frame Hood + Glowing Reticle Dot at Z = +6.8cm)
+	SetupMeshComp(SightBaseMesh, TEXT("SightBaseMesh"), CubeMesh, FVector(5.0f, 0.0f, 4.2f), FRotator::ZeroRotator, FVector(0.07f, 0.026f, 0.012f));
+	SetupMeshComp(SightHoodMesh, TEXT("SightHoodMesh"), CubeMesh, FVector(5.0f, 0.0f, 8.8f), FRotator::ZeroRotator, FVector(0.05f, 0.036f, 0.008f));
+	SetupMeshComp(ReticleDotMesh, TEXT("ReticleDotMesh"), SphereMesh, FVector(5.0f, 0.0f, 6.8f), FRotator::ZeroRotator, FVector(0.007f, 0.007f, 0.007f));
+
+	// 10. Front Iron Sight Post & Tritium Pip (Co-witnessed at Z = +6.2cm)
+	SetupMeshComp(FrontSightPostMesh, TEXT("FrontSightPostMesh"), CubeMesh, FVector(33.0f, 0.0f, 4.6f), FRotator::ZeroRotator, FVector(0.015f, 0.012f, 0.030f));
+	SetupMeshComp(FrontSightDotMesh, TEXT("FrontSightDotMesh"), SphereMesh, FVector(33.0f, 0.0f, 6.2f), FRotator::ZeroRotator, FVector(0.005f, 0.005f, 0.005f));
 }
 
 void AFPSWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Initialize tactical dynamic material finishes
+	auto ApplyCompColor = [](UStaticMeshComponent* Comp, const FLinearColor& Color)
+	{
+		if (Comp)
+		{
+			UMaterialInstanceDynamic* MID = Comp->CreateDynamicMaterialInstance(0);
+			if (MID)
+			{
+				MID->SetVectorParameterValue(TEXT("Color"), Color);
+			}
+		}
+	};
+
+	ApplyCompColor(ReceiverMesh, FLinearColor(0.06f, 0.065f, 0.075f));
+	ApplyCompColor(TopRailMesh, FLinearColor(0.035f, 0.035f, 0.04f));
+	ApplyCompColor(BufferTubeMesh, FLinearColor(0.035f, 0.035f, 0.04f));
+	ApplyCompColor(BarrelMesh, FLinearColor(0.03f, 0.03f, 0.035f));
+	ApplyCompColor(MuzzleCompMesh, FLinearColor(0.025f, 0.025f, 0.03f));
+	ApplyCompColor(HandguardMesh, FLinearColor(0.05f, 0.052f, 0.055f));
+	ApplyCompColor(GripMesh, FLinearColor(0.04f, 0.04f, 0.045f));
+	ApplyCompColor(StockMesh, FLinearColor(0.045f, 0.045f, 0.05f));
+	ApplyCompColor(MagazineMesh, FLinearColor(0.035f, 0.035f, 0.038f));
+	ApplyCompColor(SightBaseMesh, FLinearColor(0.03f, 0.03f, 0.035f));
+	ApplyCompColor(SightHoodMesh, FLinearColor(0.03f, 0.03f, 0.035f));
+	ApplyCompColor(FrontSightPostMesh, FLinearColor(0.035f, 0.035f, 0.04f));
+
+	// High-intensity emissive reflex red dot reticle (creates vibrant optic bloom)
+	ApplyCompColor(ReticleDotMesh, FLinearColor(15.0f, 0.02f, 0.02f));
+	// Glowing green tritium night-sight pip
+	ApplyCompColor(FrontSightDotMesh, FLinearColor(0.1f, 12.0f, 0.1f));
 
 	if (GunsmithComponent)
 	{
@@ -36,15 +145,130 @@ void AFPSWeaponBase::BeginPlay()
 	ReserveAmmo = MaxReserveAmmo;
 	CurrentSpread = HipfireMinSpread;
 	CurrentState = EFPSWeaponState::Idle;
+	CurrentADSAlpha = 0.0f;
+
+	APawn* PawnOwner = Cast<APawn>(GetOwner());
+	if (PawnOwner)
+	{
+		LastControlRot = PawnOwner->GetControlRotation();
+	}
 }
 
 void AFPSWeaponBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Spread recovery over time towards target min spread
-	float TargetSpread = bIsAimingDownSights ? ADSMinSpread : HipfireMinSpread;
+	// 1. Dynamic spread recovery towards target min spread
+	const float TargetSpread = bIsAimingDownSights ? ADSMinSpread : HipfireMinSpread;
 	CurrentSpread = FMath::FInterpTo(CurrentSpread, TargetSpread, DeltaTime, RecoilRecoverySpeed);
+
+	// 2. Smooth ADS Alpha interpolation
+	const float TargetADSAlpha = bIsAimingDownSights ? 1.0f : 0.0f;
+	CurrentADSAlpha = FMath::FInterpTo(CurrentADSAlpha, TargetADSAlpha, DeltaTime, ADSSpeed);
+
+	// 3. Physical recoil kick recovery
+	RecoilOffsetLoc = FMath::VInterpTo(RecoilOffsetLoc, FVector::ZeroVector, DeltaTime, 22.0f);
+	RecoilOffsetRot = FMath::RInterpTo(RecoilOffsetRot, FRotator::ZeroRotator, DeltaTime, 22.0f);
+
+	// 4. Mouse look sway inertia
+	APawn* PawnOwner = Cast<APawn>(GetOwner());
+	if (PawnOwner)
+	{
+		const FRotator CurrentControlRot = PawnOwner->GetControlRotation();
+		FRotator DeltaRot = CurrentControlRot - LastControlRot;
+		DeltaRot.Normalize();
+		LastControlRot = CurrentControlRot;
+
+		// Dampen weapon sway by 85% when aiming down sights
+		const float SwayDampener = FMath::Lerp(1.0f, 0.15f, CurrentADSAlpha);
+		const FRotator TargetSway = FRotator(-DeltaRot.Pitch * 0.7f * SwayDampener, DeltaRot.Yaw * 0.7f * SwayDampener, DeltaRot.Yaw * 0.4f * SwayDampener);
+		CurrentSwayRot = FMath::RInterpTo(CurrentSwayRot, TargetSway, DeltaTime, 12.0f);
+	}
+
+	// 5. Multi-Phase Procedural Reload Animation
+	FVector ReloadOffsetLoc = FVector::ZeroVector;
+	FRotator ReloadOffsetRot = FRotator::ZeroRotator;
+
+	if (CurrentState == EFPSWeaponState::Reloading)
+	{
+		ReloadElapsedTime += DeltaTime;
+		const float Alpha = FMath::Clamp(ReloadElapsedTime / ReloadDuration, 0.0f, 1.0f);
+
+		// Weapon Cant & Tilt (Rolls 22 deg outward so magwell faces operator)
+		const FVector CantLoc = FVector(-3.5f, 2.0f, -3.0f);
+		const FRotator CantRot = FRotator(6.0f, -4.0f, 22.0f);
+
+		float CantWeight = 0.0f;
+		if (Alpha < 0.20f)
+		{
+			CantWeight = FMath::SmoothStep(0.0f, 0.20f, Alpha);
+		}
+		else if (Alpha <= 0.78f)
+		{
+			CantWeight = 1.0f;
+		}
+		else
+		{
+			CantWeight = 1.0f - FMath::SmoothStep(0.78f, 1.0f, Alpha);
+		}
+		ReloadOffsetLoc = CantLoc * CantWeight;
+		ReloadOffsetRot = CantRot * CantWeight;
+
+		// Magazine Movement
+		if (MagazineRoot)
+		{
+			FVector MagOffset = FVector::ZeroVector;
+			FRotator MagRot = FRotator::ZeroRotator;
+
+			if (Alpha >= 0.20f && Alpha < 0.42f)
+			{
+				// Phase 2: Mag Drop (ejects downward out of magwell)
+				const float DropT = (Alpha - 0.20f) / (0.42f - 0.20f);
+				MagOffset = FVector(-DropT * 2.0f, 0.0f, -DropT * 28.0f);
+				MagRot = FRotator(DropT * 18.0f, 0.0f, 0.0f);
+			}
+			else if (Alpha >= 0.42f && Alpha < 0.70f)
+			{
+				// Phase 3: Fresh Mag Slide-In (slides up into magwell)
+				const float InsertT = (Alpha - 0.42f) / (0.70f - 0.42f);
+				MagOffset = FVector(-(1.0f - InsertT) * 1.5f, 0.0f, -(1.0f - InsertT) * 24.0f);
+				MagRot = FRotator((1.0f - InsertT) * 12.0f, 0.0f, 0.0f);
+			}
+			else if (Alpha >= 0.70f && Alpha < 0.76f)
+			{
+				// Palm Slap Bump
+				const float SlapT = (Alpha - 0.70f) / 0.06f;
+				MagOffset = FVector(0.0f, 0.0f, FMath::Sin(SlapT * PI) * 0.6f);
+			}
+
+			MagazineRoot->SetRelativeLocation(MagazineBaseLoc + MagOffset);
+			MagazineRoot->SetRelativeRotation(MagRot);
+		}
+
+		// Phase 4: Bolt Rack Snap (if empty reload)
+		if (bIsEmptyReload && Alpha >= 0.77f && Alpha <= 0.86f)
+		{
+			const float BoltT = (Alpha - 0.77f) / 0.09f;
+			const float BoltPulse = FMath::Sin(BoltT * PI);
+			ReloadOffsetLoc += FVector(-1.2f, 0.0f, -0.4f) * BoltPulse;
+			ReloadOffsetRot += FRotator(1.8f, 0.0f, -1.2f) * BoltPulse;
+		}
+
+		if (ReloadElapsedTime >= ReloadDuration)
+		{
+			FinishReload();
+		}
+	}
+
+	// 6. Blend Final Weapon Relative Transform (Hipfire <-> ADS + Recoil + Reload + Sway)
+	const FVector BaseLoc = FMath::Lerp(HipfireRelativeLocation, ADSRelativeLocation, CurrentADSAlpha);
+	const FRotator BaseRot = FMath::Lerp(HipfireRelativeRotation, ADSRelativeRotation, CurrentADSAlpha);
+
+	const FVector FinalLoc = BaseLoc + RecoilOffsetLoc + ReloadOffsetLoc;
+	const FRotator FinalRot = BaseRot + RecoilOffsetRot + ReloadOffsetRot + CurrentSwayRot;
+
+	SetActorRelativeLocation(FinalLoc);
+	SetActorRelativeRotation(FinalRot);
 }
 
 void AFPSWeaponBase::StartFire()
@@ -111,7 +335,7 @@ void AFPSWeaponBase::FireShot()
 			FVector CameraLoc = PC->PlayerCameraManager->GetCameraLocation();
 			FRotator CameraRot = PC->PlayerCameraManager->GetCameraRotation();
 
-			// Add dynamic spread bloom
+			// Dynamic spread bloom
 			CurrentSpread = FMath::Min(MaxSpread, CurrentSpread + SpreadPerShot);
 			float SpreadHalfAngleRad = FMath::DegreesToRadians(CurrentSpread * 0.5f);
 			FVector ShotDirection = FMath::VRandCone(CameraRot.Vector(), SpreadHalfAngleRad);
@@ -159,6 +383,11 @@ void AFPSWeaponBase::FireShot()
 			float YawKick = FMath::RandRange(-RecoilYawSpread, RecoilYawSpread) * RecoilMod;
 			PC->AddPitchInput(PitchKick);
 			PC->AddYawInput(YawKick);
+
+			// Procedural physical weapon recoil kick
+			const float ADSRecoilDamp = bIsAimingDownSights ? 0.6f : 1.0f;
+			RecoilOffsetLoc += FVector(-2.0f * ADSRecoilDamp * RecoilMod, FMath::RandRange(-0.15f, 0.15f) * RecoilMod, 0.5f * ADSRecoilDamp * RecoilMod);
+			RecoilOffsetRot += FRotator(FMath::RandRange(1.8f, 2.8f) * ADSRecoilDamp * RecoilMod, FMath::RandRange(-0.6f, 0.6f) * RecoilMod, FMath::RandRange(-0.8f, 0.8f) * RecoilMod);
 		}
 	}
 
@@ -176,14 +405,16 @@ void AFPSWeaponBase::Reload()
 
 	CurrentState = EFPSWeaponState::Reloading;
 	StopFire();
+	bIsAimingDownSights = false; // Drop ADS when reloading
+
+	bIsEmptyReload = (CurrentAmmo == 0);
+	ReloadDuration = bIsEmptyReload ? EmptyReloadDuration : TacticalReloadDuration;
+	ReloadElapsedTime = 0.0f;
 
 	if (ReloadSound)
 	{
 		UGameplayStatics::PlaySound2D(this, ReloadSound);
 	}
-
-	float Duration = (CurrentAmmo == 0) ? EmptyReloadDuration : TacticalReloadDuration;
-	GetWorldTimerManager().SetTimer(ReloadTimerHandle, this, &AFPSWeaponBase::FinishReload, Duration, false);
 }
 
 void AFPSWeaponBase::FinishReload()
@@ -195,10 +426,20 @@ void AFPSWeaponBase::FinishReload()
 	ReserveAmmo -= AmmoToLoad;
 
 	CurrentState = EFPSWeaponState::Idle;
+	if (MagazineRoot)
+	{
+		MagazineRoot->SetRelativeLocation(MagazineBaseLoc);
+		MagazineRoot->SetRelativeRotation(FRotator::ZeroRotator);
+	}
+
 	OnAmmoChanged.Broadcast(CurrentAmmo, ReserveAmmo);
 }
 
 void AFPSWeaponBase::SetADS(bool bInADS)
 {
+	if (bInADS && CurrentState == EFPSWeaponState::Reloading)
+	{
+		return;
+	}
 	bIsAimingDownSights = bInADS;
 }
