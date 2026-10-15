@@ -236,17 +236,24 @@
 
       <div class="bg-black/80 border border-slate-800 p-6 rounded-lg shadow-2xl font-mono text-xs space-y-4">
         <div>
-          <span class="text-slate-400">1. Instant Start Menu Launcher:</span>
+          <span class="text-slate-400">1. Instant Rust Tactical Combat Map Launcher:</span>
+          <pre class="bg-slate-900 p-3 rounded mt-1 text-emerald-400 overflow-x-auto">.\Launch_CombatMap.bat
+# or direct executable with GameMode override:
+Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode -windowed -ResX=1280 -ResY=720 -log</pre>
+        </div>
+
+        <div>
+          <span class="text-slate-400">2. Instant Start Menu Launcher & 3D Customization:</span>
           <pre class="bg-slate-900 p-3 rounded mt-1 text-cyan-400 overflow-x-auto">.\Launch_Menu.bat
 # or direct executable:
 Packaged\Windows\NobleFermi.exe -windowed -ResX=1280 -ResY=720 -log</pre>
         </div>
 
         <div>
-          <span class="text-slate-400">2. Launch 128-Tick Dedicated VPS Server:</span>
+          <span class="text-slate-400">3. Launch 128-Tick Dedicated VPS Server (Rust Tactical):</span>
           <pre class="bg-slate-900 p-3 rounded mt-1 text-amber-400 overflow-x-auto">.\Launch_DedicatedServer.bat
 # Headless command for Linux/Windows VPS:
-Packaged\Windows\NobleFermi.exe -server -nullrhi -log -PORT=7777 -TickRate=128 -MaxPlayers=18</pre>
+Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode -server -nullrhi -log -PORT=7777 -TickRate=128 -MaxPlayers=18</pre>
         </div>
 
         <div class="pt-2 flex flex-wrap items-center justify-between gap-4 text-slate-400 border-t border-slate-800">
