@@ -44,6 +44,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<class UFPSEquipmentComponent> EquipmentComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<class UFPSBodyMechanicsComponent> BodyMechanicsComponent;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UFPSHUDWidget> HUDWidgetClass;
 

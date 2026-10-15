@@ -1,0 +1,458 @@
+#include "Character/FPSCharacterPreviewActor.h"
+#include "Components/StaticMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/SpotLightComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Camera/CameraComponent.h"
+#include "UObject/ConstructorHelpers.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
+
+AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
+{
+	PrimaryActorTick.bCanEverTick = true;
+
+	// 1. Root Scene
+	RootScene = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
+	RootComponent = RootScene;
+
+	// 2. Camera: Positioned in front-left looking directly at operator's torso/chest
+	PreviewCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("PreviewCamera"));
+	PreviewCamera->SetupAttachment(RootComponent);
+	PreviewCamera->SetRelativeLocation(FVector(250.0f, -40.0f, 120.0f));
+	PreviewCamera->SetRelativeRotation(FRotator(-3.4f, 171.0f, 0.0f));
+	PreviewCamera->FieldOfView = 52.0f;
+
+	// 3. Studio Lighting: 3-point tactical lighting
+	StudioKeyLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioKeyLight"));
+	StudioKeyLight->SetupAttachment(RootComponent);
+	StudioKeyLight->SetRelativeLocation(FVector(190.0f, -130.0f, 220.0f));
+	StudioKeyLight->SetRelativeRotation(FRotator(-40.0f, 145.0f, 0.0f));
+	StudioKeyLight->SetIntensity(14000.0f);
+	StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.96f, 0.90f));
+	StudioKeyLight->SetAttenuationRadius(600.0f);
+	StudioKeyLight->SetInnerConeAngle(25.0f);
+	StudioKeyLight->SetOuterConeAngle(50.0f);
+
+	StudioRimLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioRimLight"));
+	StudioRimLight->SetupAttachment(RootComponent);
+	StudioRimLight->SetRelativeLocation(FVector(-150.0f, 110.0f, 170.0f));
+	StudioRimLight->SetRelativeRotation(FRotator(-25.0f, -35.0f, 0.0f));
+	StudioRimLight->SetIntensity(9000.0f);
+	StudioRimLight->SetLightColor(FLinearColor(0.25f, 0.55f, 1.0f)); // Tactical cyan-blue rim
+	StudioRimLight->SetAttenuationRadius(500.0f);
+
+	StudioFillLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("StudioFillLight"));
+	StudioFillLight->SetupAttachment(RootComponent);
+	StudioFillLight->SetRelativeLocation(FVector(160.0f, 140.0f, 90.0f));
+	StudioFillLight->SetIntensity(4500.0f);
+	StudioFillLight->SetLightColor(FLinearColor(0.70f, 0.75f, 0.85f));
+	StudioFillLight->SetAttenuationRadius(450.0f);
+
+	// 4. Turntable Root (Rotates in Tick)
+	TurntableRoot = CreateDefaultSubobject<USceneComponent>(TEXT("TurntableRoot"));
+	TurntableRoot->SetupAttachment(RootComponent);
+	TurntableRoot->SetRelativeLocation(FVector::ZeroVector);
+
+	// 5. Basic Shape Resources
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereFinder(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseMatFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+
+	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object : nullptr;
+	UStaticMesh* CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object : nullptr;
+	UStaticMesh* SphereMesh = SphereFinder.Succeeded() ? SphereFinder.Object : nullptr;
+	UMaterialInterface* BaseMat = BaseMatFinder.Succeeded() ? BaseMatFinder.Object : nullptr;
+
+	auto SetupMeshComp = [this, BaseMat](TObjectPtr<UStaticMeshComponent>& Comp, const TCHAR* Name, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale)
+	{
+		Comp = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		Comp->SetupAttachment(TurntableRoot);
+		if (Mesh) Comp->SetStaticMesh(Mesh);
+		if (BaseMat) Comp->SetMaterial(0, BaseMat);
+		Comp->SetRelativeLocation(Loc);
+		Comp->SetRelativeRotation(Rot);
+		Comp->SetRelativeScale3D(Scale);
+		Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Comp->SetCastShadow(true);
+	};
+
+	// 6. Turntable Pedestal
+	SetupMeshComp(PedestalMesh, TEXT("PedestalMesh"), CylinderMesh, FVector(0.0f, 0.0f, -2.0f), FRotator::ZeroRotator, FVector(0.9f, 0.9f, 0.04f));
+
+	// 7. Human Male Anatomical Skeleton (180 cm anthropometry)
+	// Pelvis (96cm above ground)
+	SetupMeshComp(PelvisMesh, TEXT("PelvisMesh"), CubeMesh, FVector(0.0f, 0.0f, 96.0f), FRotator::ZeroRotator, FVector(0.24f, 0.32f, 0.16f));
+
+	// Spine Lumbar (110cm) & Mid-Thoracic (124cm)
+	SetupMeshComp(SpineLowerMesh, TEXT("SpineLowerMesh"), CylinderMesh, FVector(0.0f, 0.0f, 110.0f), FRotator::ZeroRotator, FVector(0.22f, 0.26f, 0.14f));
+	SetupMeshComp(SpineUpperMesh, TEXT("SpineUpperMesh"), CylinderMesh, FVector(0.0f, 0.0f, 124.0f), FRotator::ZeroRotator, FVector(0.24f, 0.28f, 0.14f));
+
+	// Upper Thoracic Chest & Tactical Vest
+	SetupMeshComp(ChestMesh, TEXT("ChestMesh"), CubeMesh, FVector(0.0f, 0.0f, 138.0f), FRotator::ZeroRotator, FVector(0.26f, 0.38f, 0.16f));
+	SetupMeshComp(VestMesh, TEXT("VestMesh"), CubeMesh, FVector(1.0f, 0.0f, 132.0f), FRotator::ZeroRotator, FVector(0.30f, 0.36f, 0.26f));
+
+	// Neck (148cm) & Cranium (164cm)
+	SetupMeshComp(NeckMesh, TEXT("NeckMesh"), CylinderMesh, FVector(0.0f, 0.0f, 148.0f), FRotator::ZeroRotator, FVector(0.12f, 0.12f, 0.10f));
+	SetupMeshComp(HeadMesh, TEXT("HeadMesh"), SphereMesh, FVector(0.0f, 0.0f, 164.0f), FRotator::ZeroRotator, FVector(0.20f, 0.18f, 0.22f));
+
+	// Headgear Variants
+	SetupMeshComp(HelmetMesh, TEXT("HelmetMesh"), SphereMesh, FVector(0.0f, 0.0f, 167.0f), FRotator::ZeroRotator, FVector(0.23f, 0.21f, 0.20f));
+	SetupMeshComp(NVGMesh, TEXT("NVGMesh"), CubeMesh, FVector(12.0f, 0.0f, 166.0f), FRotator::ZeroRotator, FVector(0.12f, 0.16f, 0.06f));
+	SetupMeshComp(BalaclavaMesh, TEXT("BalaclavaMesh"), CylinderMesh, FVector(1.0f, 0.0f, 161.0f), FRotator::ZeroRotator, FVector(0.20f, 0.18f, 0.12f));
+	SetupMeshComp(CapMesh, TEXT("CapMesh"), SphereMesh, FVector(0.0f, 0.0f, 168.0f), FRotator::ZeroRotator, FVector(0.21f, 0.20f, 0.12f));
+
+	// Arms & Hands (Two-handed ADS Aiming Stance)
+	// Right Arm (Trigger hand, stock against shoulder)
+	SetupMeshComp(RightClavicleMesh, TEXT("RightClavicleMesh"), CylinderMesh, FVector(-2.0f, 16.0f, 142.0f), FRotator(0.0f, 0.0f, 30.0f), FVector(0.10f, 0.10f, 0.12f));
+	SetupMeshComp(RightUpperArmMesh, TEXT("RightUpperArmMesh"), CylinderMesh, FVector(6.0f, 20.0f, 136.0f), FRotator(-35.0f, 15.0f, 0.0f), FVector(0.12f, 0.12f, 0.28f));
+	SetupMeshComp(RightForearmMesh, TEXT("RightForearmMesh"), CylinderMesh, FVector(26.0f, 16.0f, 137.0f), FRotator(15.0f, -25.0f, 0.0f), FVector(0.11f, 0.11f, 0.26f));
+	SetupMeshComp(RightHandMesh, TEXT("RightHandMesh"), SphereMesh, FVector(44.0f, 11.0f, 137.0f), FRotator::ZeroRotator, FVector(0.09f, 0.08f, 0.09f));
+
+	// Left Arm (Support hand gripping rifle handguard)
+	SetupMeshComp(LeftClavicleMesh, TEXT("LeftClavicleMesh"), CylinderMesh, FVector(-2.0f, -16.0f, 142.0f), FRotator(0.0f, 0.0f, -30.0f), FVector(0.10f, 0.10f, 0.12f));
+	SetupMeshComp(LeftUpperArmMesh, TEXT("LeftUpperArmMesh"), CylinderMesh, FVector(14.0f, -14.0f, 134.0f), FRotator(-20.0f, -35.0f, 0.0f), FVector(0.12f, 0.12f, 0.28f));
+	SetupMeshComp(LeftForearmMesh, TEXT("LeftForearmMesh"), CylinderMesh, FVector(40.0f, -4.0f, 138.0f), FRotator(15.0f, 45.0f, 0.0f), FVector(0.11f, 0.11f, 0.32f));
+	SetupMeshComp(LeftHandMesh, TEXT("LeftHandMesh"), SphereMesh, FVector(62.0f, 5.0f, 140.0f), FRotator::ZeroRotator, FVector(0.09f, 0.08f, 0.09f));
+
+	// Legs & Footwear
+	SetupMeshComp(LeftThighMesh, TEXT("LeftThighMesh"), CylinderMesh, FVector(0.0f, -11.0f, 74.0f), FRotator::ZeroRotator, FVector(0.16f, 0.16f, 0.42f));
+	SetupMeshComp(LeftCalfMesh, TEXT("LeftCalfMesh"), CylinderMesh, FVector(0.0f, -11.0f, 32.0f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 0.42f));
+	SetupMeshComp(LeftBootMesh, TEXT("LeftBootMesh"), CubeMesh, FVector(4.0f, -11.0f, 5.0f), FRotator::ZeroRotator, FVector(0.24f, 0.12f, 0.10f));
+
+	SetupMeshComp(RightThighMesh, TEXT("RightThighMesh"), CylinderMesh, FVector(0.0f, 11.0f, 74.0f), FRotator::ZeroRotator, FVector(0.16f, 0.16f, 0.42f));
+	SetupMeshComp(RightCalfMesh, TEXT("RightCalfMesh"), CylinderMesh, FVector(0.0f, 11.0f, 32.0f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 0.42f));
+	SetupMeshComp(RightBootMesh, TEXT("RightBootMesh"), CubeMesh, FVector(4.0f, 11.0f, 5.0f), FRotator::ZeroRotator, FVector(0.24f, 0.12f, 0.10f));
+
+	// 8. Tactical Weapon Subsystem
+	WeaponRoot = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponRoot"));
+	WeaponRoot->SetupAttachment(TurntableRoot);
+	WeaponRoot->SetRelativeLocation(BaseWeaponLoc);
+	WeaponRoot->SetRelativeRotation(BaseWeaponRot);
+
+	auto SetupWeaponPart = [this, BaseMat](TObjectPtr<UStaticMeshComponent>& Comp, const TCHAR* Name, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale)
+	{
+		Comp = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		Comp->SetupAttachment(WeaponRoot);
+		if (Mesh) Comp->SetStaticMesh(Mesh);
+		if (BaseMat) Comp->SetMaterial(0, BaseMat);
+		Comp->SetRelativeLocation(Loc);
+		Comp->SetRelativeRotation(Rot);
+		Comp->SetRelativeScale3D(Scale);
+		Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Comp->SetCastShadow(true);
+	};
+
+	SetupWeaponPart(WeaponReceiverMesh, TEXT("WeaponReceiverMesh"), CubeMesh, FVector(0.0f, 0.0f, 0.0f), FRotator::ZeroRotator, FVector(0.26f, 0.06f, 0.09f));
+	SetupWeaponPart(WeaponBarrelMesh, TEXT("WeaponBarrelMesh"), CylinderMesh, FVector(24.0f, 0.0f, 1.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(0.03f, 0.03f, 0.36f));
+	SetupWeaponPart(WeaponOpticMesh, TEXT("WeaponOpticMesh"), CubeMesh, FVector(-2.0f, 0.0f, 7.0f), FRotator::ZeroRotator, FVector(0.09f, 0.05f, 0.05f));
+	SetupWeaponPart(WeaponMagMesh, TEXT("WeaponMagMesh"), CubeMesh, FVector(3.0f, 0.0f, -9.0f), FRotator(0.0f, 12.0f, 0.0f), FVector(0.08f, 0.04f, 0.18f));
+	SetupWeaponPart(WeaponStockMesh, TEXT("WeaponStockMesh"), CubeMesh, FVector(-18.0f, 0.0f, -1.0f), FRotator::ZeroRotator, FVector(0.16f, 0.05f, 0.08f));
+
+	// Optional external skeletal meshes
+	BodyMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BodyMesh"));
+	BodyMesh->SetupAttachment(TurntableRoot);
+	BodyMesh->SetVisibility(false);
+
+	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(TurntableRoot);
+	WeaponMesh->SetVisibility(false);
+}
+
+void AFPSCharacterPreviewActor::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Create dynamic material instances for all visual components
+	auto RegisterUniform = [this](UStaticMeshComponent* Comp)
+	{
+		if (Comp)
+		{
+			UMaterialInstanceDynamic* MID = Comp->CreateDynamicMaterialInstance(0);
+			if (MID) UniformMaterials.Add(MID);
+		}
+	};
+
+	auto RegisterArmor = [this](UStaticMeshComponent* Comp)
+	{
+		if (Comp)
+		{
+			UMaterialInstanceDynamic* MID = Comp->CreateDynamicMaterialInstance(0);
+			if (MID) ArmorMaterials.Add(MID);
+		}
+	};
+
+	auto RegisterWeapon = [this](UStaticMeshComponent* Comp)
+	{
+		if (Comp)
+		{
+			UMaterialInstanceDynamic* MID = Comp->CreateDynamicMaterialInstance(0);
+			if (MID) WeaponMaterials.Add(MID);
+		}
+	};
+
+	// Uniform meshes
+	RegisterUniform(PelvisMesh);
+	RegisterUniform(SpineLowerMesh);
+	RegisterUniform(SpineUpperMesh);
+	RegisterUniform(ChestMesh);
+	RegisterUniform(NeckMesh);
+	RegisterUniform(HeadMesh);
+	RegisterUniform(RightClavicleMesh);
+	RegisterUniform(RightUpperArmMesh);
+	RegisterUniform(RightForearmMesh);
+	RegisterUniform(RightHandMesh);
+	RegisterUniform(LeftClavicleMesh);
+	RegisterUniform(LeftUpperArmMesh);
+	RegisterUniform(LeftForearmMesh);
+	RegisterUniform(LeftHandMesh);
+	RegisterUniform(LeftThighMesh);
+	RegisterUniform(LeftCalfMesh);
+	RegisterUniform(RightThighMesh);
+	RegisterUniform(RightCalfMesh);
+
+	// Armor & Gear
+	RegisterArmor(VestMesh);
+	RegisterArmor(HelmetMesh);
+	RegisterArmor(NVGMesh);
+	RegisterArmor(BalaclavaMesh);
+	RegisterArmor(CapMesh);
+	RegisterArmor(LeftBootMesh);
+	RegisterArmor(RightBootMesh);
+
+	// Weapon
+	RegisterWeapon(WeaponReceiverMesh);
+	RegisterWeapon(WeaponBarrelMesh);
+	RegisterWeapon(WeaponOpticMesh);
+	RegisterWeapon(WeaponMagMesh);
+	RegisterWeapon(WeaponStockMesh);
+
+	// Pedestal dark metallic material
+	if (PedestalMesh)
+	{
+		UMaterialInstanceDynamic* PedestalMID = PedestalMesh->CreateDynamicMaterialInstance(0);
+		if (PedestalMID)
+		{
+			PedestalMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.04f, 0.05f, 0.07f));
+		}
+	}
+
+	ApplyCamoColors();
+	ApplyHeadgearVisibility();
+	ApplyVestConfiguration();
+}
+
+void AFPSCharacterPreviewActor::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// 1. Turntable 360-degree continuous rotation
+	if (bIsRotating && TurntableRoot)
+	{
+		TurntableRoot->AddLocalRotation(FRotator(0.0f, RotationSpeed * DeltaTime, 0.0f));
+	}
+
+	// 2. Procedural idle breathing and ADS aim motion
+	UpdateAimingPose(DeltaTime);
+}
+
+void AFPSCharacterPreviewActor::UpdateAimingPose(float DeltaTime)
+{
+	AimBreathTimer += DeltaTime;
+
+	// Procedural subtle breathing sway for tactical soldier holding ADS
+	const float BreathFreq = 1.6f;
+	const float BreathZ = FMath::Sin(AimBreathTimer * BreathFreq) * 0.40f;
+	const float BreathPitch = FMath::Sin(AimBreathTimer * BreathFreq) * 0.35f;
+
+	if (WeaponRoot)
+	{
+		if (bIsAiming)
+		{
+			WeaponRoot->SetRelativeLocation(BaseWeaponLoc + FVector(0.0f, 0.0f, BreathZ));
+			WeaponRoot->SetRelativeRotation(BaseWeaponRot + FRotator(BreathPitch, 0.0f, 0.0f));
+		}
+		else
+		{
+			// Low-ready lowered stance
+			WeaponRoot->SetRelativeLocation(BaseWeaponLoc + FVector(-8.0f, 2.0f, -22.0f + BreathZ * 0.5f));
+			WeaponRoot->SetRelativeRotation(FRotator(-22.0f + BreathPitch, 0.0f, 0.0f));
+		}
+	}
+
+	if (ChestMesh)
+	{
+		const float Expansion = 1.0f + 0.015f * FMath::Sin(AimBreathTimer * BreathFreq);
+		ChestMesh->SetRelativeScale3D(FVector(0.26f * Expansion, 0.38f * Expansion, 0.16f));
+	}
+}
+
+void AFPSCharacterPreviewActor::SetCamo(EOperatorCamo NewCamo)
+{
+	CurrentCamo = NewCamo;
+	ApplyCamoColors();
+}
+
+void AFPSCharacterPreviewActor::SetHeadgear(EOperatorHeadgear NewHeadgear)
+{
+	CurrentHeadgear = NewHeadgear;
+	ApplyHeadgearVisibility();
+}
+
+void AFPSCharacterPreviewActor::SetArmorVest(EOperatorArmorVest NewVest)
+{
+	CurrentVest = NewVest;
+	ApplyVestConfiguration();
+}
+
+void AFPSCharacterPreviewActor::SetAimingStance(bool bInAiming)
+{
+	bIsAiming = bInAiming;
+
+	if (RightForearmMesh && LeftForearmMesh)
+	{
+		if (bIsAiming)
+		{
+			RightForearmMesh->SetRelativeRotation(FRotator(15.0f, -25.0f, 0.0f));
+			LeftForearmMesh->SetRelativeRotation(FRotator(15.0f, 45.0f, 0.0f));
+			HeadMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 164.0f));
+		}
+		else
+		{
+			// Lower arms in low ready
+			RightForearmMesh->SetRelativeRotation(FRotator(-15.0f, -15.0f, 0.0f));
+			LeftForearmMesh->SetRelativeRotation(FRotator(-10.0f, 30.0f, 0.0f));
+			HeadMesh->SetRelativeLocation(FVector(-2.0f, 0.0f, 165.0f));
+		}
+	}
+}
+
+void AFPSCharacterPreviewActor::ResetFacing()
+{
+	if (TurntableRoot)
+	{
+		TurntableRoot->SetRelativeRotation(FRotator::ZeroRotator);
+	}
+}
+
+void AFPSCharacterPreviewActor::ApplyCamoColors()
+{
+	FLinearColor UniformColor = FLinearColor(0.22f, 0.25f, 0.30f);
+	FLinearColor ArmorColor = FLinearColor(0.12f, 0.14f, 0.18f);
+	FLinearColor WeaponColor = FLinearColor(0.06f, 0.07f, 0.08f);
+
+	switch (CurrentCamo)
+	{
+	case EOperatorCamo::UrbanDigital:
+		UniformColor = FLinearColor(0.22f, 0.25f, 0.30f); // Slate gray
+		ArmorColor = FLinearColor(0.12f, 0.14f, 0.18f);   // Dark charcoal
+		WeaponColor = FLinearColor(0.06f, 0.07f, 0.08f);  // Matte tactical black
+		break;
+
+	case EOperatorCamo::WoodlandTactical:
+		UniformColor = FLinearColor(0.18f, 0.24f, 0.15f); // Olive drab
+		ArmorColor = FLinearColor(0.24f, 0.22f, 0.16f);   // Ranger khaki
+		WeaponColor = FLinearColor(0.11f, 0.10f, 0.09f);  // Anodized dark bronze
+		break;
+
+	case EOperatorCamo::DesertSpecOps:
+		UniformColor = FLinearColor(0.48f, 0.42f, 0.32f); // Coyote tan
+		ArmorColor = FLinearColor(0.55f, 0.49f, 0.38f);   // Desert khaki
+		WeaponColor = FLinearColor(0.38f, 0.34f, 0.26f);  // FDE (Flat Dark Earth)
+		break;
+
+	case EOperatorCamo::StealthBlackout:
+		UniformColor = FLinearColor(0.04f, 0.04f, 0.05f); // Midnight black
+		ArmorColor = FLinearColor(0.07f, 0.07f, 0.08f);   // Carbon kevlar
+		WeaponColor = FLinearColor(0.03f, 0.03f, 0.04f);  // Stealth gunmetal
+		break;
+	}
+
+	for (UMaterialInstanceDynamic* MID : UniformMaterials)
+	{
+		if (MID)
+		{
+			MID->SetVectorParameterValue(TEXT("Color"), UniformColor);
+			MID->SetVectorParameterValue(TEXT("BaseColor"), UniformColor);
+		}
+	}
+
+	for (UMaterialInstanceDynamic* MID : ArmorMaterials)
+	{
+		if (MID)
+		{
+			MID->SetVectorParameterValue(TEXT("Color"), ArmorColor);
+			MID->SetVectorParameterValue(TEXT("BaseColor"), ArmorColor);
+		}
+	}
+
+	for (UMaterialInstanceDynamic* MID : WeaponMaterials)
+	{
+		if (MID)
+		{
+			MID->SetVectorParameterValue(TEXT("Color"), WeaponColor);
+			MID->SetVectorParameterValue(TEXT("BaseColor"), WeaponColor);
+		}
+	}
+
+	// Glowing optic reticle
+	if (WeaponOpticMesh)
+	{
+		UMaterialInstanceDynamic* OpticMID = WeaponOpticMesh->CreateDynamicMaterialInstance(0);
+		if (OpticMID)
+		{
+			OpticMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.0f, 0.2f, 0.05f)); // Amber/Red Holo Reticle
+		}
+	}
+}
+
+void AFPSCharacterPreviewActor::ApplyHeadgearVisibility()
+{
+	const bool bHelmet = (CurrentHeadgear == EOperatorHeadgear::BallisticHelmet || CurrentHeadgear == EOperatorHeadgear::NightVisionGoggles);
+	const bool bNVG = (CurrentHeadgear == EOperatorHeadgear::NightVisionGoggles);
+	const bool bBalaclava = (CurrentHeadgear == EOperatorHeadgear::SpecOpsBalaclava);
+	const bool bCap = (CurrentHeadgear == EOperatorHeadgear::CommCap);
+
+	if (HelmetMesh) HelmetMesh->SetVisibility(bHelmet);
+	if (NVGMesh)
+	{
+		NVGMesh->SetVisibility(bNVG);
+		if (bNVG)
+		{
+			UMaterialInstanceDynamic* NVGMID = NVGMesh->CreateDynamicMaterialInstance(0);
+			if (NVGMID)
+			{
+				NVGMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.1f, 0.9f, 0.3f)); // Phosphor green lens glow
+			}
+		}
+	}
+	if (BalaclavaMesh) BalaclavaMesh->SetVisibility(bBalaclava);
+	if (CapMesh) CapMesh->SetVisibility(bCap);
+}
+
+void AFPSCharacterPreviewActor::ApplyVestConfiguration()
+{
+	if (!VestMesh) return;
+
+	switch (CurrentVest)
+	{
+	case EOperatorArmorVest::HeavyPlateCarrier:
+		// Bulkier Level IV plate carrier with side plates
+		VestMesh->SetRelativeScale3D(FVector(0.32f, 0.38f, 0.28f));
+		VestMesh->SetVisibility(true);
+		break;
+
+	case EOperatorArmorVest::LightweightJPC:
+		// Minimalist jumpable plate carrier
+		VestMesh->SetRelativeScale3D(FVector(0.28f, 0.33f, 0.24f));
+		VestMesh->SetVisibility(true);
+		break;
+
+	case EOperatorArmorVest::ReconChestRig:
+		// Lightweight ammo rig
+		VestMesh->SetRelativeScale3D(FVector(0.26f, 0.32f, 0.18f));
+		VestMesh->SetVisibility(true);
+		break;
+	}
+}
