@@ -86,6 +86,11 @@ print(f"Created material: {material.get_path_name()}")
 
 # Configure Material Properties
 material.set_editor_property("two_sided", False)
+try:
+    material.set_editor_property("used_with_skeletal_mesh", True)
+except Exception as e:
+    print(f"used_with_skeletal_mesh setting note: {e}")
+
 # Set Shading Model to Subsurface Profile or Subsurface
 try:
     material.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_SUBSURFACE)
@@ -205,17 +210,14 @@ unreal.MaterialEditingLibrary.connect_material_expressions(samp_mask, "A", lerp_
 unreal.MaterialEditingLibrary.connect_material_property(lerp_zone_gear, "", unreal.MaterialProperty.MP_BASE_COLOR)
 
 # 7. Normal Map: Mask out normal map on skin areas so face/hands remain smooth organic skin
-one_minus_skin = add_expr(unreal.MaterialExpressionOneMinus, -400, 200)
-unreal.MaterialEditingLibrary.connect_material_expressions(samp_mask, "B", one_minus_skin, "Input")
-
 # Flat normal vector (0, 0, 1)
 flat_normal = add_expr(unreal.MaterialExpressionConstant3Vector, -400, 350)
 flat_normal.set_editor_property("constant", unreal.LinearColor(0.0, 0.0, 1.0, 1.0))
 
 lerp_normal = add_expr(unreal.MaterialExpressionLinearInterpolate, -200, 200)
-unreal.MaterialEditingLibrary.connect_material_expressions(flat_normal, "", lerp_normal, "A")
-unreal.MaterialEditingLibrary.connect_material_expressions(samp_normal, "", lerp_normal, "B")
-unreal.MaterialEditingLibrary.connect_material_expressions(one_minus_skin, "", lerp_normal, "Alpha")
+unreal.MaterialEditingLibrary.connect_material_expressions(samp_normal, "", lerp_normal, "A")
+unreal.MaterialEditingLibrary.connect_material_expressions(flat_normal, "", lerp_normal, "B")
+unreal.MaterialEditingLibrary.connect_material_expressions(samp_mask, "B", lerp_normal, "Alpha")
 
 unreal.MaterialEditingLibrary.connect_material_property(lerp_normal, "", unreal.MaterialProperty.MP_NORMAL)
 

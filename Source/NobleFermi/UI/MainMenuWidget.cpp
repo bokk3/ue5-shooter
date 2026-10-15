@@ -16,6 +16,7 @@
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Styling/AppStyle.h"
 #include "Styling/CoreStyle.h"
+#include "Misc/CommandLine.h"
 
 UMainMenuWidget::UMainMenuWidget()
 {
@@ -123,7 +124,7 @@ TSharedRef<SWidget> UMainMenuWidget::RebuildWidget()
 				.FillWidth(1.0f)
 				[
 					SAssignNew(ContentSwitcher, SWidgetSwitcher)
-					.WidgetIndex(0)
+					.WidgetIndex(FParse::Param(FCommandLine::Get(), TEXT("Customization")) ? 1 : 0)
 					+ SWidgetSwitcher::Slot() [ BuildHomeView() ]           // 0: Home & Matchmaking
 					+ SWidgetSwitcher::Slot() [ BuildCustomizationView() ]  // 1: Operator Customization
 					+ SWidgetSwitcher::Slot() [ BuildGunsmithView() ]       // 2: Gunsmith & Loadouts

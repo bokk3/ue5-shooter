@@ -4,6 +4,9 @@
 #include "UI/MainMenuWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/CommandLine.h"
+#include "TimerManager.h"
+#include "Engine/Engine.h"
 
 AFPSMenuGameMode::AFPSMenuGameMode()
 {
@@ -57,5 +60,19 @@ void AFPSMenuGameMode::BeginPlay()
 				ActiveMenuWidget->AddToViewport(0);
 			}
 		}
+	}
+
+	// Auto screenshot verification if -TakeMenuShot is passed on command line
+	if (FParse::Param(FCommandLine::Get(), TEXT("TakeMenuShot")))
+	{
+		FTimerHandle ScreenshotTimerHandle;
+		GetWorldTimerManager().SetTimer(ScreenshotTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
+		{
+			if (GEngine && GetWorld())
+			{
+				GEngine->Exec(GetWorld(), TEXT("Shot"));
+				UE_LOG(LogTemp, Warning, TEXT("[SCREENSHOT] Automatic menu loaded screenshot triggered!"));
+			}
+		}), 3.0f, false);
 	}
 }

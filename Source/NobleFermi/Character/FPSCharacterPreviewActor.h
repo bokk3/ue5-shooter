@@ -70,6 +70,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Lighting")
 	TObjectPtr<UPointLightComponent> StudioFillLight;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Lighting")
+	TObjectPtr<UPointLightComponent> StudioAmbientLight;
+
 	// Turntable Pivot Root (rotates the character and platform)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Turntable")
 	TObjectPtr<USceneComponent> TurntableRoot;

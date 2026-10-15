@@ -13,6 +13,7 @@
 AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bTickEvenWhenPaused = true;
 
 	// 1. Root Scene
 	RootScene = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
@@ -30,37 +31,52 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	PreviewCamera->PostProcessSettings.AutoExposureBias = 0.0f;
 	PreviewCamera->PostProcessSettings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
 	PreviewCamera->PostProcessSettings.AutoExposureApplyPhysicalCameraExposure = 0;
+	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMinBrightness = true;
+	PreviewCamera->PostProcessSettings.AutoExposureMinBrightness = 1.0f;
+	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMaxBrightness = true;
+	PreviewCamera->PostProcessSettings.AutoExposureMaxBrightness = 1.0f;
 	PreviewCamera->PostProcessSettings.bOverride_BloomIntensity = true;
 	PreviewCamera->PostProcessSettings.BloomIntensity = 0.1f;
 
-	// 3. Studio Lighting: 3-point tactical dynamic lighting (Movable, calibrated intensity)
+	// 3. Studio Lighting: 3-point tactical dynamic lighting (Movable, calibrated high-output studio lumens)
 	StudioKeyLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioKeyLight"));
 	StudioKeyLight->SetupAttachment(RootComponent);
 	StudioKeyLight->SetMobility(EComponentMobility::Movable);
 	StudioKeyLight->SetRelativeLocation(FVector(190.0f, -130.0f, 220.0f));
 	StudioKeyLight->SetRelativeRotation(FRotator(-40.0f, 145.0f, 0.0f));
-	StudioKeyLight->SetIntensity(30.0f);
+	StudioKeyLight->SetIntensity(16000.0f);
 	StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.96f, 0.90f));
-	StudioKeyLight->SetAttenuationRadius(600.0f);
+	StudioKeyLight->SetAttenuationRadius(700.0f);
 	StudioKeyLight->SetInnerConeAngle(25.0f);
-	StudioKeyLight->SetOuterConeAngle(50.0f);
+	StudioKeyLight->SetOuterConeAngle(55.0f);
 
 	StudioRimLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioRimLight"));
 	StudioRimLight->SetupAttachment(RootComponent);
 	StudioRimLight->SetMobility(EComponentMobility::Movable);
 	StudioRimLight->SetRelativeLocation(FVector(-150.0f, 110.0f, 170.0f));
 	StudioRimLight->SetRelativeRotation(FRotator(-25.0f, -35.0f, 0.0f));
-	StudioRimLight->SetIntensity(20.0f);
+	StudioRimLight->SetIntensity(10000.0f);
 	StudioRimLight->SetLightColor(FLinearColor(0.25f, 0.55f, 1.0f)); // Tactical cyan-blue rim
-	StudioRimLight->SetAttenuationRadius(500.0f);
+	StudioRimLight->SetAttenuationRadius(600.0f);
+	StudioRimLight->SetInnerConeAngle(30.0f);
+	StudioRimLight->SetOuterConeAngle(65.0f);
 
 	StudioFillLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("StudioFillLight"));
 	StudioFillLight->SetupAttachment(RootComponent);
 	StudioFillLight->SetMobility(EComponentMobility::Movable);
 	StudioFillLight->SetRelativeLocation(FVector(160.0f, 140.0f, 90.0f));
-	StudioFillLight->SetIntensity(10.0f);
+	StudioFillLight->SetIntensity(6000.0f);
 	StudioFillLight->SetLightColor(FLinearColor(0.70f, 0.75f, 0.85f));
-	StudioFillLight->SetAttenuationRadius(450.0f);
+	StudioFillLight->SetAttenuationRadius(550.0f);
+
+	StudioAmbientLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("StudioAmbientLight"));
+	StudioAmbientLight->SetupAttachment(RootComponent);
+	StudioAmbientLight->SetMobility(EComponentMobility::Movable);
+	StudioAmbientLight->SetRelativeLocation(FVector(0.0f, 0.0f, 150.0f));
+	StudioAmbientLight->SetIntensity(2500.0f);
+	StudioAmbientLight->SetLightColor(FLinearColor(0.65f, 0.70f, 0.80f));
+	StudioAmbientLight->SetAttenuationRadius(650.0f);
+	StudioAmbientLight->SetCastShadows(false);
 
 	// 4. Turntable Root (Rotates in Tick)
 	TurntableRoot = CreateDefaultSubobject<USceneComponent>(TEXT("TurntableRoot"));
@@ -104,6 +120,11 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	if (BaseMaleFinder.Succeeded())
 	{
 		BodyMesh->SetSkeletalMesh(BaseMaleFinder.Object);
+		UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] Constructor: BaseMaleFinder succeeded: %s"), *BaseMaleFinder.Object->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PREVIEW_ACTOR] Constructor: BaseMaleFinder FAILED"));
 	}
 
 	static ConstructorHelpers::FObjectFinder<UPhysicsAsset> BaseMalePhysFinder(TEXT("/Game/Characters/BaseMale/SK_BaseMale_PhysicsAsset.SK_BaseMale_PhysicsAsset"));
@@ -118,6 +139,22 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 		BodyMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		BodyMesh->SetAnimation(IdleAnimFinder.Object);
 		BodyMesh->Play(true);
+		UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] Constructor: IdleAnimFinder succeeded: %s"), *IdleAnimFinder.Object->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PREVIEW_ACTOR] Constructor: IdleAnimFinder FAILED"));
+	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseBodyMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
+	if (BaseBodyMatFinder.Succeeded())
+	{
+		BodyMesh->SetMaterial(0, BaseBodyMatFinder.Object);
+		UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] Constructor: BaseBodyMatFinder succeeded: %s"), *BaseBodyMatFinder.Object->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PREVIEW_ACTOR] Constructor: BaseBodyMatFinder FAILED"));
 	}
 
 	// 6. Turntable Pedestal
@@ -231,6 +268,43 @@ void AFPSCharacterPreviewActor::BeginPlay()
 	};
 
 	// Master Anatomical Player Body or Primitive Fallback
+	if (BodyMesh && !BodyMesh->GetSkeletalMeshAsset())
+	{
+		USkeletalMesh* LoadedMesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Characters/BaseMale/SK_BaseMale.SK_BaseMale"));
+		if (LoadedMesh)
+		{
+			BodyMesh->SetSkeletalMesh(LoadedMesh);
+			UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: Loaded SK_BaseMale via LoadObject fallback!"));
+		}
+	}
+
+	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset() && !BodyMesh->GetAnimInstance())
+	{
+		UAnimSequence* LoadedAnim = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
+		if (LoadedAnim)
+		{
+			BodyMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+			BodyMesh->SetAnimation(LoadedAnim);
+			BodyMesh->Play(true);
+			UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: Loaded Anim_BaseMale_Idle_ADS via LoadObject fallback!"));
+		}
+	}
+
+	if (BodyMesh && !BodyMesh->GetMaterial(0))
+	{
+		UMaterialInterface* LoadedMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
+		if (LoadedMat)
+		{
+			BodyMesh->SetMaterial(0, LoadedMat);
+			UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: Loaded M_Operator_BaseBody via LoadObject fallback!"));
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: BodyMesh Valid=%d, SkeletalMeshAsset=%s, Visible=%d"),
+		BodyMesh != nullptr,
+		(BodyMesh && BodyMesh->GetSkeletalMeshAsset()) ? *BodyMesh->GetSkeletalMeshAsset()->GetName() : TEXT("None"),
+		BodyMesh ? (int32)BodyMesh->IsVisible() : -1);
+
 	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset())
 	{
 		// Hide primitive blocks when the true connected body is present
