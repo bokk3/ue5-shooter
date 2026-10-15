@@ -24,6 +24,14 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	FirstPersonCamera->SetupAttachment(GetCapsuleComponent());
 	FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
 	FirstPersonCamera->bUsePawnControlRotation = true;
+	FirstPersonCamera->PostProcessSettings.bOverride_AutoExposureMethod = true;
+	FirstPersonCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+	FirstPersonCamera->PostProcessSettings.bOverride_AutoExposureBias = true;
+	FirstPersonCamera->PostProcessSettings.AutoExposureBias = 0.0f;
+	FirstPersonCamera->PostProcessSettings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
+	FirstPersonCamera->PostProcessSettings.AutoExposureApplyPhysicalCameraExposure = 0;
+	FirstPersonCamera->PostProcessSettings.bOverride_BloomIntensity = true;
+	FirstPersonCamera->PostProcessSettings.BloomIntensity = 0.1f;
 
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh1P"));
 	Mesh1P->SetupAttachment(FirstPersonCamera);
