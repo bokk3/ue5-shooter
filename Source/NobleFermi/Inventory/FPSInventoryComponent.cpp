@@ -68,22 +68,24 @@ void UFPSInventoryComponent::EquipSlot(int32 SlotIndex)
 	ActiveWeapon = TargetWeapon;
 	ActiveWeapon->SetActorHiddenInGame(false);
 
-	// Attach weapon to first person camera if AFPSCharacter, otherwise fallback to character mesh
-	AFPSCharacter* FPSChar = Cast<AFPSCharacter>(GetOwner());
-	if (FPSChar && FPSChar->FirstPersonCamera)
+	// Primary 3rd-person tactical weapon attachment: socket to character mesh right hand
+	ACharacter* Char = Cast<ACharacter>(GetOwner());
+	if (Char && Char->GetMesh())
 	{
-		ActiveWeapon->AttachToComponent(FPSChar->FirstPersonCamera, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-		ActiveWeapon->SetActorRelativeLocation(ActiveWeapon->GetHipfireLocation());
-		ActiveWeapon->SetActorRelativeRotation(ActiveWeapon->GetHipfireRotation());
+		const bool bHasGripSocket = Char->GetMesh()->GetSkeletalMeshAsset() && Char->GetMesh()->DoesSocketExist(TEXT("GripPoint"));
+		const FName SocketName = bHasGripSocket ? FName(TEXT("GripPoint")) : FName(TEXT("hand_r"));
+		ActiveWeapon->AttachToComponent(Char->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+		ActiveWeapon->SetActorRelativeLocation(ActiveWeapon->GetThirdPersonLocation());
+		ActiveWeapon->SetActorRelativeRotation(ActiveWeapon->GetThirdPersonRotation());
 	}
 	else
 	{
-		ACharacter* Char = Cast<ACharacter>(GetOwner());
-		if (Char && Char->GetMesh())
+		AFPSCharacter* FPSChar = Cast<AFPSCharacter>(GetOwner());
+		if (FPSChar && FPSChar->FirstPersonCamera)
 		{
-			const bool bHasSocket = Char->GetMesh()->GetSkeletalMeshAsset() && Char->GetMesh()->DoesSocketExist(TEXT("GripPoint"));
-			const FName SocketName = bHasSocket ? FName(TEXT("GripPoint")) : NAME_None;
-			ActiveWeapon->AttachToComponent(Char->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+			ActiveWeapon->AttachToComponent(FPSChar->FirstPersonCamera, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+			ActiveWeapon->SetActorRelativeLocation(ActiveWeapon->GetHipfireLocation());
+			ActiveWeapon->SetActorRelativeRotation(ActiveWeapon->GetHipfireRotation());
 		}
 	}
 

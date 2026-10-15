@@ -7,7 +7,7 @@
 [![Build](https://img.shields.io/badge/Build-Standalone%20Monolithic-success.svg)]()
 [![Website](https://img.shields.io/badge/Live%20Website-noble--fermi.pages.dev-cyan.svg)](https://noble-fermi.pages.dev/)
 
-> **Noble Fermi** is a competitive tactical first-person shooter built from the ground up in Unreal Engine 5.8 C++. It blends the lethal, high-tempo gunplay of golden-era tactical multiplayer (*Call of Duty: Modern Warfare 2*) with authoritative **128-tick dedicated server networking**, an **anatomically accurate human male skeletal mechanics system** (180 cm / 82 kg anthropometry), and a **hardware-accelerated Slate C++ start menu featuring real-time 3D character customization**.
+> **Noble Fermi** is a competitive tactical shooter built from the ground up in Unreal Engine 5.8 C++, engineered with a primary focus on an authoritative **tactical 3rd-person over-the-shoulder perspective**. It blends the lethal, high-tempo combat of golden-era tactical multiplayer with authoritative **128-tick dedicated server networking**, an **anatomically accurate human male operator model** (180 cm / 82 kg anthropometry, 21-bone skeletal hierarchy, PBR ripstop uniform with skin SSS), dynamic **over-the-shoulder camera mechanics** (shoulder swapping, smooth ADS zoom, collision probe protection, camera lag), and a **hardware-accelerated Slate C++ start menu featuring real-time 3D character customization**.
 
 ---
 
@@ -24,9 +24,9 @@
 │     Multiplayer Network      │        │       Combat & Anatomy       │
 ├──────────────────────────────┤        ├──────────────────────────────┤
 │ • 128 Hz Authoritative Tick  │        │ • 21 Human Male Bones (180cm)│
-│ • Dedicated VPS Server Binary│        │ • Level IV Ceramic Plates    │
-│ • Client Listen Room (?listen)│       │ • 2nd-Order Spring Aim Punch │
-│ • Direct IP Connect (7777)   │        │ • 5 Iconic MW2 Archetypes    │
+│ • Dedicated VPS Server Binary│        │ • Over-the-Shoulder 3rd-P Cam│
+│ • Client Listen Room (?listen)│       │ • Level IV Ceramic Plates    │
+│ • Direct IP Connect (7777)   │        │ • Ragdoll Physics on Death   │
 └──────────────────────────────┘        └──────────────────────────────┘
           │                                              │
           └──────────────────────┬───────────────────────┘
@@ -42,22 +42,34 @@
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1. 128-Tick Authoritative Networking & Dual-Host Model
+### 1. Primary Tactical 3rd-Person Over-the-Shoulder Camera System
+- **Over-the-Shoulder Framing (`CameraBoom` + `FollowCamera`)**:
+  - **Hipfire & Traversal**: Camera sits 175 cm back with a `(0, 48, 25)` cm right-shoulder offset, framing the operator and combat space cleanly.
+  - **Dynamic ADS Zoom**: Smoothly contracts arm length from 175 cm to 110 cm, tightens socket offset to `(10, 38, 18)` cm, narrows FOV from 90° to 68°, and applies 0.65x mouse sensitivity scaling for pinpoint aiming.
+  - **Tactical Shoulder Swapping**: Instantaneous toggle between right shoulder (+48 cm Y) and left shoulder (-48 cm Y) via key `V` or mouse thumb button for corner peeking.
+  - **Collision Probe Protection**: 12 cm probe radius ensures camera never clips through shipping containers, catwalks, or bunker walls.
+  - **Visceral Camera Lag**: Responsive 16.0f positional and 24.0f rotational lag convey genuine physical weight and momentum during combat maneuvers.
+  - **Lumen Dynamic Anti-Whiteout Exposure**: Strict manual exposure lock (`AEM_Manual`, bias 0.0, bloom 0.1) guarantees anti-blinding compliance under real-time Lumen illumination.
+
+### 2. 128-Tick Authoritative Networking & Dual-Host Model
 - **VPS Dedicated Server**: Headless, low-overhead binary runnable on any standard Windows or Linux VPS (`-server -nullrhi -log -PORT=7777 -TickRate=128 -MaxPlayers=18`).
 - **Client Listen Room**: Peer-hosted rooms (`?listen`) launched directly from the main menu for instant matches with friends.
 - **Direct Connect**: Direct IP and port entry (`127.0.0.1:7777` or remote public IP) in the in-game server browser.
 - **High-Fidelity Replication**: Sub-millisecond hit registration, lag compensation, client prediction, and reconciliation.
 
-### 2. Anatomical Human Male Skeletal Mechanics
-- **Adult Male Proportions**: Rigged to a standard 180 cm standing height and 82.0 kg mass distribution based on military anthropometry.
+### 3. Anatomical Human Male Skeletal Mechanics & Ragdoll Physics
+- **Adult Male Proportions**: Rigged to a standard 180 cm standing height and 82.0 kg mass distribution based on military anthropometry (`SK_BaseMale`).
 - **21-Bone Skeletal Registry**: Full hierarchy (`root`, `pelvis`, `spine_01` lumbar, `spine_02` mid-thoracic, `spine_03` upper chest, `neck_01`, `head`, `clavicles`, `arms`, `hands`, `thighs`, `calves`, `feet`).
+- **Locomotion Pipeline**: 4 distinct motion sequences with dynamic stride matching: high-ready ADS idle with natural thoracic breathing, tactical walk, combat run, and tactical sprint.
+- **PBR Micro-Ripstop Materials**: 2048x2048 seamless micro-weave normal/roughness, skin subsurface scattering (SSS), and 4 multi-zone camos (Urban Digital, Woodland Tactical, Desert Spec Ops, Stealth Blackout).
+- **Authoritative Ragdoll Death Transition**: On zero health, character capsule collision uncouples instantly, all 21 rigid bodies simulate physics with ballistic momentum transfer, and camera boom seamlessly tracks the falling pelvis without snapping.
 - **Ballistic Zoning & Armor Absorption**:
   - Head (2.5x critical lethal), Neck (2.0x), Upper Torso (1.25x), Pelvis (1.0x), Extremities (0.75-0.85x).
   - **Level IV Ceramic Armor Plates**: Absorbs kinetic energy on chest and mid-torso vitals.
 - **Second-Order Spring Aim Punch**: Damped harmonic oscillator equation models realistic flinch dynamics and reticle recovery upon kinetic impact.
 - **Procedural Foot IK & Limb Trauma**: Terrain-conforming feet with pelvis drop; arm trauma amplifies weapon sway, and leg trauma halts tactical sprint.
 
-### 3. Classic MW2-Inspired Combat & Archetypes
+### 4. Classic MW2-Inspired Combat & Archetypes
 - **Five Iconic Archetypes**:
   1. **Assault (M4A1)**: Red-dot optic, compensator, 40-round mag, 210 ms ADS.
   2. **Spec Ops Stealth (MP5SD)**: Integrated suppressor, subsonic 9mm, zero radar ping, 150 ms ADS.
@@ -66,7 +78,7 @@
   5. **Run & Gun Rusher (Vector .45 ACP)**: 1200 RPM extreme fire rate, 120 ms ADS speed.
 - **Tactical Ballistics**: Deterministic recoil climb, procedural breathing sway, and wall-mount stabilization.
 
-### 4. Competitive Combat Map: "Rust Tactical" (60m x 60m)
+### 5. Competitive Combat Map: "Rust Tactical" (60m x 60m)
 - **Procedural C++ Map Architecture (`AFPSCombatArenaMapActor`)**: Automatically assembled with zero editor GUI dependency, compiling directly into standalone and dedicated server builds.
 - **3 Tactical Lanes**:
   1. **West Flank (Container Yard)**: 4 multi-colored industrial shipping containers with an open shoot-through interior tunnel.
@@ -75,15 +87,15 @@
 - **Pure Real-Time Dynamic Lighting (Lumen)**: Zero static lightmass baking required (`r.AllowStaticLighting=False`), calibrated 10.0 lux desert directional sunlight, real-time sky atmosphere, volumetric dust haze, manual exposure lock to prevent whiteout, and a pulsing red aviation hazard beacon atop the derrick tower.
 - **Domination Objectives & Tactical Spawning**: 3 holographic flag bases (A: Container Yard, B: Derrick Base, C: Bunker Trench) and 8 anti-spawn-trap PlayerStarts (4 Task Force 141 Alpha, 4 OpFor Bravo).
 
-### 5. Procedural 3D Weaponry, ADS Alignment & 4-Phase Tactical Reload
+### 6. Procedural 3D Weaponry, ADS Alignment & 4-Phase Tactical Reload
 - **Procedural 3D Tactical Carbine Model (`AFPSWeaponBase`)**:
   - 11 modular components: Receiver, Picatinny top rail, blued steel barrel, M-LOK handguard, muzzle brake compensator, pistol grip, buffer tube, buttstock, independent magazine assembly, reflex optic sight hood, and co-witnessed front iron sight post.
   - Authentic military finishes: Charcoal matte gunmetal, parkerized steel, textured tactical polymer, and a glowing green tritium front sight pip.
-- **Pixel-Perfect Aim-Down-Sights (ADS)**:
-  - Right Mouse Button smoothly interpolates weapon from hipfire (`X=26, Y=14, Z=-13`) to ADS center (`X=20, Y=0, Z=-6.8`).
-  - High-luminance emissive red dot reticle (`FLinearColor(15, 0.02, 0.02)`) centers precisely on the camera center eye line (`Y=0, Z=0`) with zero parallax error.
-  - Smooth camera FOV magnification (95° &rarr; 68° in 180 ms).
-  - Dynamic mouse sensitivity scaling (0.65x) during ADS for sniper-precise micro-corrections.
+- **Hand Socketing & ADS Alignment**:
+  - Socketed directly to the operator's right hand (`hand_r`), seated in a natural two-handed high-ready shooting pocket.
+  - Smooth camera translation from hipfire to ADS center over the shoulder.
+  - High-luminance emissive red dot reticle (`FLinearColor(15, 0.02, 0.02)`) provides clear target acquisition.
+  - Smooth camera FOV magnification (90° &rarr; 68° in 180 ms) and dynamic mouse sensitivity scaling (0.65x).
   - 2D HUD crosshair collapses during ADS to prioritize the physical 3D reflex optic.
 - **4-Phase Procedural Reload Sequence**:
   - **Phase 1 (Cant & Dip, 0-20%)**: Carbine rolls 22° outward and tilts up 6°, presenting the magwell into the operator's direct field of view.
@@ -94,7 +106,7 @@
   - Procedural weapon kickback and muzzle climb on each round fired, with rapid recovery.
   - Mouse look sway inertia lag in hipfire, dampened by 85% during ADS for rock-solid stability.
 
-### 6. Hardware-Accelerated Slate Menu & Real-Time 3D Customization
+### 7. Hardware-Accelerated Slate Menu & Real-Time 3D Customization
 - Built entirely in native **Slate C++** with translucent military HUD panels.
 - **3D Turntable Preview Actor**: Rotates 360° continuously around Yaw (12°/s, 24°/s, 45°/s, or paused) with the operator holding weapon in Aim-Down-Sights (ADS) posture with live breathing motion.
 - **Embedded Studio Lighting**: 3-point dynamic illumination (key spotlight, cyan rim light, fill light) with manual exposure locking.
@@ -104,7 +116,7 @@
   - **Armor Vests**: Level IV Heavy Carrier, Lightweight JPC, Recon Tactical Rig.
   - **Stance Switching**: High-Ready ADS vs. Low-Ready Patrol.
 
-### 7. Slate Tactical In-Game HUD & Telemetry
+### 8. Slate Tactical In-Game HUD & Telemetry
 - **Top-Left Acoustic Minimap**:
   - 180x180 px circular radar display with 25m and 50m range rings and 120°/s rotating phosphor radar sweep.
   - Authoritative player forward chevron indicator and Domination flags A, B, and C with team color badges.

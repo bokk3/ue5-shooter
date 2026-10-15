@@ -150,6 +150,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
 	FRotator GetADSRotation() const { return ADSRelativeRotation; }
 
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FVector GetThirdPersonLocation() const { return ThirdPersonRelativeLocation; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FRotator GetThirdPersonRotation() const { return ThirdPersonRelativeRotation; }
+
 	// Weapon Transforms
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
 	FVector HipfireRelativeLocation = FVector(26.0f, 14.0f, -13.0f);
@@ -162,6 +168,13 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
 	FRotator ADSRelativeRotation = FRotator(0.0f, 0.0f, 0.0f);
+
+	// 3rd Person Tactical Mesh Attachment Transforms (relative to hand_r / GripPoint)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
+	FVector ThirdPersonRelativeLocation = FVector(2.0f, -1.0f, 4.0f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
+	FRotator ThirdPersonRelativeRotation = FRotator(0.0f, 0.0f, 0.0f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
 	float ADSSpeed = 16.0f;

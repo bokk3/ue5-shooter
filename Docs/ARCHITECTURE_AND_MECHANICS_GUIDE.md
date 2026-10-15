@@ -78,6 +78,27 @@ This yields a realistic, sharp flinch followed by an organic, springy recovery r
 - **Arm Trauma**: High-velocity impacts to `upperarm` or `lowerarm` induce neuromuscular tremors, significantly increasing weapon sway amplitude.
 - **Leg Trauma**: Impacts to `thigh` or `calf` cause acute motor inhibition, automatically canceling and preventing tactical sprint until healed.
 
+### 3.5. Tactical 3rd-Person Over-the-Shoulder Camera & Ragdoll Mechanics
+Noble Fermi's core perspective is prioritized around a high-precision, tactical 3rd-person over-the-shoulder system:
+- **Kinematic Boom Configuration (`CameraBoom`)**:
+  - Arm length: $\ell_{hip} = 175.0\text{ cm}$ (hipfire/traversal) interpolating to $\ell_{ads} = 110.0\text{ cm}$ during ADS via $\text{FInterpTo}(\text{Speed}=14.0)$.
+  - Base eye-level anchor at $(0, 0, 65.0)\text{ cm}$ above capsule center.
+  - Tactical shoulder offset: $\mathbf{O}_{right} = (0.0, 48.0, 25.0)\text{ cm}$ (right peek), $\mathbf{O}_{left} = (0.0, -48.0, 25.0)\text{ cm}$ (left peek).
+  - ADS tightened offset: $\mathbf{O}_{ads,right} = (10.0, 38.0, 18.0)\text{ cm}$, $\mathbf{O}_{ads,left} = (10.0, -38.0, 18.0)\text{ cm}$.
+  - Tactically switchable shoulder peek bound to key `V` (`ToggleShoulderSwap()`).
+  - Spatial Collision Probe: Sphere trace probe radius $r = 12.0\text{ cm}$ prevents camera penetration through Rust Tactical containers, catwalks, and bunkers.
+  - Visceral Lag Dynamics: Positional lag speed $k_{pos} = 16.0\text{ s}^{-1}$ and rotation lag speed $k_{rot} = 24.0\text{ s}^{-1}$ provide organic operator inertia.
+- **Weapon Hand Socketing & Ballistic Tracing**:
+  - Primary weapon actor attaches directly to `hand_r` on `SK_BaseMale` with high-ready grip alignment.
+  - Recoil impulse kicks and 4-phase reload animations are applied relative to hand space without disturbing third-person body kinematics.
+  - Weapon firing line traces originate from the camera center through the crosshair with player character self-ignored, guaranteeing true WYSIWYG hitscan registration.
+- **Authoritative Ragdoll Death Transition**:
+  - Upon health depletion ($HP \le 0$), character capsule collision is completely disabled (`ECollisionEnabled::NoCollision`).
+  - All 21 anatomical rigid bodies simulate physics simultaneously (`SetAllBodiesSimulatePhysics(true)`).
+  - Ballistic momentum from the fatal projectile is applied directly to the impact bone:
+    $$\mathbf{J}_{death} = \mathbf{d}_{shot} \cdot (Damage + 25.0) \cdot 15.0$$
+  - `CameraBoom` smoothly transfers attachment to the `pelvis` bone with camera lag enabled, framing the falling ragdoll without abrupt camera cuts.
+
 ---
 
 ## 4. Multiplayer & Dedicated Server Architecture

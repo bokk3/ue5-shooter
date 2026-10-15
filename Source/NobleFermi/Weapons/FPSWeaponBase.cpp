@@ -263,11 +263,25 @@ void AFPSWeaponBase::Tick(float DeltaTime)
 	}
 
 	// 6. Blend Final Weapon Relative Transform (Hipfire <-> ADS + Recoil + Reload + Sway)
-	const FVector BaseLoc = FMath::Lerp(HipfireRelativeLocation, ADSRelativeLocation, CurrentADSAlpha);
-	const FRotator BaseRot = FMath::Lerp(HipfireRelativeRotation, ADSRelativeRotation, CurrentADSAlpha);
+	USceneComponent* AttachParentComp = GetRootComponent() ? GetRootComponent()->GetAttachParent() : nullptr;
+	const bool bIsAttachedToMesh = (AttachParentComp && AttachParentComp->IsA<USkeletalMeshComponent>());
+
+	FVector BaseLoc;
+	FRotator BaseRot;
+
+	if (bIsAttachedToMesh)
+	{
+		BaseLoc = ThirdPersonRelativeLocation;
+		BaseRot = ThirdPersonRelativeRotation;
+	}
+	else
+	{
+		BaseLoc = FMath::Lerp(HipfireRelativeLocation, ADSRelativeLocation, CurrentADSAlpha);
+		BaseRot = FMath::Lerp(HipfireRelativeRotation, ADSRelativeRotation, CurrentADSAlpha);
+	}
 
 	const FVector FinalLoc = BaseLoc + RecoilOffsetLoc + ReloadOffsetLoc;
-	const FRotator FinalRot = BaseRot + RecoilOffsetRot + ReloadOffsetRot + CurrentSwayRot;
+	const FRotator FinalRot = BaseRot + RecoilOffsetRot + ReloadOffsetRot + (bIsAttachedToMesh ? FRotator::ZeroRotator : CurrentSwayRot);
 
 	SetActorRelativeLocation(FinalLoc);
 	SetActorRelativeRotation(FinalRot);

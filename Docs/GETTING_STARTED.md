@@ -66,20 +66,22 @@ Everything is launchable directly from the main menu without needing separate sc
 
 | Input | Action | Tactical Details |
 | :--- | :--- | :--- |
-| **W, A, S, D** | Move Forward / Strafe | Standard 450 cm/s tactical combat movement. |
+| **W, A, S, D** | Move Forward / Strafe | Standard 450 cm/s tactical combat movement with stride-matched gait cycles. |
 | **Mouse X / Y** | Look & Aim | Raw input mouse look with sub-millisecond precision. |
 | **Left Click** | Fire Weapon | Full-auto 750 RPM with procedural gun kick and dynamic cone bloom. |
-| **Right Click** | Aim Down Sights (ADS) | Smooth zoom (95° &rarr; 68°), 0.65x sensitivity scaling, dead-center red dot alignment. |
-| **Left Shift** | Tactical Sprint | Weapon raised, sprint velocity boosted to 720 cm/s. |
+| **Right Click** | Aim Down Sights (ADS) | Smooth over-the-shoulder zoom (90° &rarr; 68° FOV, 175cm &rarr; 110cm boom), 0.65x sensitivity scaling. |
+| **V / Thumb Mouse**| Shoulder Swap | Toggles tactical over-the-shoulder peek between Right (+48cm Y) and Left (-48cm Y). |
+| **Left Shift** | Tactical Sprint | High-speed forward sprint (720 cm/s) with weapon held in high-ready sprint posture. |
 | **Space** | Jump | Physical impulse vaulting over cover. |
 | **C / Left Ctrl** | Crouch | Lowered stance for cover behind Jersey barriers and containers. |
 | **R** | Tactical / Empty Reload | 4-phase procedural reload animation (cant & dip, mag drop, fresh insert & palm slap). |
 | **Q / G** | Tactical / Lethal | Concussion flashbangs and fragmentation grenades. |
 
-### 3.2. Aiming Mechanics & 3D Weapon Optics
-- **Pixel-Perfect ADS Alignment**: Pressing Right Mouse Button smoothly moves the carbine from hipfire (`X=26, Y=14, Z=-13`) to ADS center (`X=20, Y=0, Z=-6.8`).
-- **3D Glowing Reflex Reticle**: The optic red dot sits precisely at camera eye level (`Y=0, Z=0`), blooming with emissive radiance. Co-witnessed tritium front sight is visible in the lower third.
-- **Dynamic Crosshair Hide**: The 2D HUD crosshair collapses during ADS, giving the operator an unobstructed view through the 3D reflex optic.
+### 3.2. Tactical 3rd-Person Perspective & Weapon Socketing
+- **Over-the-Shoulder Camera (`CameraBoom` + `FollowCamera`)**: Primary tactical 3rd-person view with 175cm arm length, 12cm collision probe radius, and camera lag for visceral movement weight.
+- **Dynamic ADS Over-the-Shoulder Zoom**: Right-clicking contracts arm length to 110cm and narrows FOV to 68°, framing the operator's right shoulder closely for pinpoint combat focus.
+- **Direct Right-Hand Weapon Attachment**: The NF-98 Carbine is socketed directly into the operator's right hand (`hand_r`), reacting with physical recoil impulse kick and procedural 4-phase reload animations.
+- **Authoritative Ragdoll Death**: Upon zero health, the character capsule uncouples and all 21 anatomical bones enter full physical ragdoll simulation with momentum transfer, while the camera smoothly frames the falling body from its current vantage point.
 - **Procedural 4-Phase Reload**:
   1. *Cant & Tilt (0-20%)*: Weapon cants 22° outward, presenting the magwell into clear view.
   2. *Mag Ejection (20-42%)*: Empty magazine slides out and drops downward.

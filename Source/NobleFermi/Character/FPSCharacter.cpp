@@ -7,6 +7,7 @@
 #include "Weapons/FPSWeaponBase.h"
 #include "UI/FPSHUDWidget.h"
 #include "Camera/CameraComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "PhysicsEngine/PhysicsAsset.h"
@@ -23,26 +24,60 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 
 	GetCapsuleComponent()->InitCapsuleSize(40.0f, 96.0f);
 
+	// Primary 3rd-Person Tactical Camera Boom
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	CameraBoom->SetupAttachment(GetCapsuleComponent());
+	CameraBoom->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
+	CameraBoom->TargetArmLength = DefaultArmLength;
+	CameraBoom->SocketOffset = RightShoulderOffset;
+	CameraBoom->bUsePawnControlRotation = true;
+	CameraBoom->bInheritPitch = true;
+	CameraBoom->bInheritYaw = true;
+	CameraBoom->bInheritRoll = false;
+	CameraBoom->bDoCollisionTest = true;
+	CameraBoom->ProbeSize = 12.0f;
+	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->CameraLagSpeed = 16.0f;
+	CameraBoom->bEnableCameraRotationLag = true;
+	CameraBoom->CameraRotationLagSpeed = 24.0f;
+
+	// Primary 3rd-Person Tactical Follow Camera
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	FollowCamera->bUsePawnControlRotation = false;
+	FollowCamera->SetFieldOfView(DefaultFOV);
+	FollowCamera->PostProcessSettings.bOverride_AutoExposureMethod = true;
+	FollowCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+	FollowCamera->PostProcessSettings.bOverride_AutoExposureBias = true;
+	FollowCamera->PostProcessSettings.AutoExposureBias = 0.0f;
+	FollowCamera->PostProcessSettings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
+	FollowCamera->PostProcessSettings.AutoExposureApplyPhysicalCameraExposure = 0;
+	FollowCamera->PostProcessSettings.bOverride_BloomIntensity = true;
+	FollowCamera->PostProcessSettings.BloomIntensity = 0.1f;
+	FollowCamera->SetActive(true);
+
+	// First-Person Camera (Inactive fallback)
 	FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCamera->SetupAttachment(GetCapsuleComponent());
 	FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
-	FirstPersonCamera->bUsePawnControlRotation = true;
-	FirstPersonCamera->PostProcessSettings.bOverride_AutoExposureMethod = true;
-	FirstPersonCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
-	FirstPersonCamera->PostProcessSettings.bOverride_AutoExposureBias = true;
-	FirstPersonCamera->PostProcessSettings.AutoExposureBias = 0.0f;
-	FirstPersonCamera->PostProcessSettings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
-	FirstPersonCamera->PostProcessSettings.AutoExposureApplyPhysicalCameraExposure = 0;
-	FirstPersonCamera->PostProcessSettings.bOverride_BloomIntensity = true;
-	FirstPersonCamera->PostProcessSettings.BloomIntensity = 0.1f;
+	FirstPersonCamera->bUsePawnControlRotation = false;
+	FirstPersonCamera->SetActive(false);
 
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh1P"));
 	Mesh1P->SetupAttachment(FirstPersonCamera);
 	Mesh1P->SetCastShadow(false);
 	Mesh1P->bCastDynamicShadow = false;
-	Mesh1P->SetOnlyOwnerSee(true);
+	Mesh1P->SetVisibility(false);
+	Mesh1P->SetOwnerNoSee(true);
+	Mesh1P->SetComponentTickEnabled(false);
 
-	GetMesh()->SetOwnerNoSee(true);
+	// Tactical 3rd Person Character Controls: Orient character to controller yaw
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = true;
+	bUseControllerRotationRoll = false;
+
+	// Full tactical operator mesh: visible to local owner
+	GetMesh()->SetOwnerNoSee(false);
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -96.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 	GetMesh()->SetCastShadow(true);
@@ -113,8 +148,16 @@ void AFPSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	DefaultCameraPos = FirstPersonCamera->GetRelativeLocation();
-	FirstPersonCamera->SetFieldOfView(95.0f);
+	DefaultCameraPos = FVector(0.0f, 0.0f, 65.0f);
+	if (FollowCamera)
+	{
+		FollowCamera->SetFieldOfView(DefaultFOV);
+	}
+
+	if (HealthComponent)
+	{
+		HealthComponent->OnDeath.AddDynamic(this, &AFPSCharacter::HandleOnDeath);
+	}
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
@@ -152,16 +195,11 @@ void AFPSCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UpdateProceduralCameraBob(DeltaTime);
-	UpdateWeaponSway(DeltaTime);
+	UpdateThirdPersonCamera(DeltaTime);
 	UpdateLocomotionAnimation(DeltaTime);
 
-	// Smooth FOV interpolation for ADS tactical zoom
-	const bool bIsAiming = (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights());
-	const float TargetFOV = bIsAiming ? 68.0f : 95.0f;
-	FirstPersonCamera->SetFieldOfView(FMath::FInterpTo(FirstPersonCamera->FieldOfView, TargetFOV, DeltaTime, 16.0f));
-
 	// Update HUD Crosshair with current weapon spread
+	const bool bIsAiming = (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights());
 	if (ActiveHUDWidget && InventoryComponent)
 	{
 		AFPSWeaponBase* Weapon = InventoryComponent->GetActiveWeapon();
@@ -174,17 +212,91 @@ void AFPSCharacter::Tick(float DeltaTime)
 	}
 }
 
+void AFPSCharacter::UpdateThirdPersonCamera(float DeltaTime)
+{
+	if (!FollowCamera || !CameraBoom || bIsDead)
+	{
+		return;
+	}
+
+	const bool bIsAiming = (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights());
+
+	// Over-the-shoulder framing & smooth ADS zoom
+	const float TargetArmLength = bIsAiming ? ADSArmLength : DefaultArmLength;
+	const float TargetFOV = bIsAiming ? ADSFOV : DefaultFOV;
+	const FVector TargetSocketOffset = bIsRightShoulder ?
+		(bIsAiming ? ADSRightShoulderOffset : RightShoulderOffset) :
+		(bIsAiming ? ADSLeftShoulderOffset : LeftShoulderOffset);
+
+	CameraBoom->TargetArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, TargetArmLength, DeltaTime, 14.0f);
+	CameraBoom->SocketOffset = FMath::VInterpTo(CameraBoom->SocketOffset, TargetSocketOffset, DeltaTime, 14.0f);
+	FollowCamera->SetFieldOfView(FMath::FInterpTo(FollowCamera->FieldOfView, TargetFOV, DeltaTime, 16.0f));
+}
+
+void AFPSCharacter::ToggleShoulderSwap()
+{
+	bIsRightShoulder = !bIsRightShoulder;
+}
+
+void AFPSCharacter::HandleOnDeath(AActor* KillerActor)
+{
+	if (bIsDead)
+	{
+		return;
+	}
+	bIsDead = true;
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		DisableInput(PC);
+	}
+
+	if (FPSMovementComponent)
+	{
+		FPSMovementComponent->DisableMovement();
+		FPSMovementComponent->StopMovementImmediately();
+	}
+
+	// Smoothly attach CameraBoom to pelvis to track ragdoll death without jarring snap
+	if (CameraBoom && GetMesh())
+	{
+		CameraBoom->bEnableCameraLag = true;
+		CameraBoom->CameraLagSpeed = 6.0f;
+		CameraBoom->TargetArmLength = 240.0f;
+		CameraBoom->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform, TEXT("pelvis"));
+	}
+
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (GetMesh())
+	{
+		GetMesh()->SetOwnerNoSee(false);
+		GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+		GetMesh()->SetAllBodiesSimulatePhysics(true);
+		GetMesh()->SetSimulatePhysics(true);
+		GetMesh()->WakeAllRigidBodies();
+		GetMesh()->bBlendPhysics = true;
+	}
+}
+
 void AFPSCharacter::UpdateProceduralCameraBob(float DeltaTime)
 {
 	if (!FPSMovementComponent || !FPSMovementComponent->IsMovingOnGround())
 	{
-		// Smoothly return to default camera position
-		FirstPersonCamera->SetRelativeLocation(FMath::VInterpTo(FirstPersonCamera->GetRelativeLocation(), DefaultCameraPos, DeltaTime, 8.0f));
+		if (FirstPersonCamera)
+		{
+			FirstPersonCamera->SetRelativeLocation(FMath::VInterpTo(FirstPersonCamera->GetRelativeLocation(), DefaultCameraPos, DeltaTime, 8.0f));
+		}
 		return;
 	}
 
 	float Speed = GetVelocity().Size2D();
-	if (Speed > 10.0f)
+	if (Speed > 10.0f && FirstPersonCamera)
 	{
 		float Frequency = (FPSMovementComponent->IsTacticalSprinting() ? 12.0f : 8.0f);
 		float AmplitudeZ = (FPSMovementComponent->IsTacticalSprinting() ? 3.5f : 1.8f);
@@ -197,7 +309,7 @@ void AFPSCharacter::UpdateProceduralCameraBob(float DeltaTime)
 		FVector TargetPos = DefaultCameraPos + FVector(0.0f, BobY, BobZ);
 		FirstPersonCamera->SetRelativeLocation(FMath::VInterpTo(FirstPersonCamera->GetRelativeLocation(), TargetPos, DeltaTime, 12.0f));
 	}
-	else
+	else if (FirstPersonCamera)
 	{
 		FirstPersonCamera->SetRelativeLocation(FMath::VInterpTo(FirstPersonCamera->GetRelativeLocation(), DefaultCameraPos, DeltaTime, 8.0f));
 	}
@@ -297,6 +409,8 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	PlayerInputComponent->BindAction(TEXT("Crouch"), IE_Pressed, this, &AFPSCharacter::StartCrouchOrSlide);
 	PlayerInputComponent->BindAction(TEXT("Crouch"), IE_Released, this, &AFPSCharacter::StopCrouchOrSlide);
+
+	PlayerInputComponent->BindAction(TEXT("ShoulderSwap"), IE_Pressed, this, &AFPSCharacter::ToggleShoulderSwap);
 }
 
 void AFPSCharacter::MoveForward(float Value)

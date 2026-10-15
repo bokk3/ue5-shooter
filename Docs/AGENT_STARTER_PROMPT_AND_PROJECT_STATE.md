@@ -129,6 +129,24 @@ Any engineer or AI agent working on this codebase must adhere strictly to these 
   - Spread-responsive 4-pip reticle that collapses during ADS for unobstructed sightlines.
   - Direct confirmed projectile impact diagonal `X` hitmarkers wired to `FPSWeaponBase.cpp`.
 
+### Phase 8: Tactical 3rd-Person Operator Camera & Anatomical Body Pipeline (branch: `body-v1`)
+- **Step 1: Centered Base Male Mesh & Ragdoll Physics (`SK_BaseMale`)**:
+  - Authored and centered the 180cm / 82kg adult human male anatomical mesh at world origin `(0,0,0)` with clean outward-facing normals.
+  - Configured 21-bone skeletal hierarchy with authoritative collision capsules (`SK_BaseMale_PhysicsAsset.uasset`) for physics and ragdoll.
+- **Step 2: Locomotion Pipeline & AnimInstance (`UFPSAnimInstance`)**:
+  - Authored 4 distinct locomotion animations: high-ready ADS idle with natural breathing (`Anim_BaseMale_Idle_ADS`), tactical walk (`Anim_BaseMale_Walk`), combat run (`Anim_BaseMale_Run`), and sprint (`Anim_BaseMale_Sprint`).
+  - Implemented dynamic stride matching and velocity scaling in `AFPSCharacter`.
+- **Step 3: PBR Ripstop Master Material & Multi-Zone Camouflage (`M_Operator_BaseBody`)**:
+  - 2048x2048 seamless micro-ripstop normal & roughness maps, skin subsurface scattering (SSS), and 4 procedural camouflage patterns (Urban Digital, Woodland Tactical, Desert Spec Ops, Stealth Blackout).
+- **Step 4: Primary Tactical 3rd-Person Over-the-Shoulder Camera System**:
+  - Transitioned primary gameplay perspective to tactical 3rd-person over-the-shoulder view (`CameraBoom` + `FollowCamera`).
+  - Spring arm configured with 175cm arm length, 12cm collision probe radius, and 16.0f/24.0f camera & rotation lag for smooth, visceral operator movement.
+  - Anti-whiteout manual exposure lock (`AEM_Manual`) for Lumen dynamic lighting compliance.
+  - Dynamic ADS zoom: arm length compresses to 110cm, socket offset tightens, FOV narrows from 90° to 68°, and mouse sensitivity scales to 0.65x.
+  - Tactical shoulder swapping: Instant toggle between right shoulder (+48cm Y) and left shoulder (-48cm Y) via key `V` and mouse thumb button.
+  - Weapon hand socketing: NF-98 Carbine attached directly to operator right hand (`hand_r`) with procedural recoil and 4-phase reload retained.
+  - Authoritative death ragdoll: Disables movement and capsule collision, wakes all 21 physics bodies, and smoothly attaches camera boom to pelvis without jarring cuts.
+
 ---
 
 ## 4. Codebase Architecture & File Inventory
@@ -220,15 +238,17 @@ You are an expert Unreal Engine 5.8 C++ systems engineer working on **Noble Ferm
 - **Dedicated Server**: `Launch_DedicatedServer.bat` (runs headless on port 7777 at 128 Hz tickrate).
 
 ### Core Architectural Principles
-1. **Authoritative 128-Tick Networking**: High-frequency physics, lag compensation rewind, and client prediction across both headless dedicated VPS servers and client listen rooms (`?listen`).
-2. **Human Male Anatomical Mechanics**: 21-bone hierarchy (`FPSHumanBones.h`), 180 cm / 82 kg anthropometry, Level IV ceramic plates covering `spine_02`/`spine_03`, and 2nd-order spring aim punch flinch equations (`FPSBodyMechanicsComponent.h`).
-3. **Hardware-Accelerated Slate C++ UI**: Pure C++ Slate rendering (`MainMenuWidget.h`, `FPSHUDWidget.h` / `SFPSHUDWidget`). Zero webview or heavy UMG overhead. All HUD elements (minimap, compass tape, stamina, vitals, ammo) use `FSlateDrawElement`.
-4. **Procedural C++ Construction**: The combat map (`AFPSCombatArenaMapActor` - Rust Tactical 60m x 60m) and weapon geometry (`AFPSWeaponBase` - NF-98 Tactical Carbine) are generated procedurally in C++, requiring zero editor GUI dependency.
-5. **Pure Dynamic Lumen Lighting & Locked Exposure**: Static lightmass baking is permanently disabled (`r.AllowStaticLighting=False`). Camera exposure is strictly locked to prevent whiteout.
+1. **Primary Tactical 3rd-Person Perspective**: Visceral over-the-shoulder framing (`CameraBoom` + `FollowCamera`), 12cm collision probe radius, smooth camera lag, shoulder swapping (key `V`), tight ADS zoom, and full anatomical body visibility (`SK_BaseMale`).
+2. **Authoritative 128-Tick Networking**: High-frequency physics, lag compensation rewind, and client prediction across both headless dedicated VPS servers and client listen rooms (`?listen`).
+3. **Human Male Anatomical Mechanics**: 21-bone hierarchy (`FPSHumanBones.h`), 180 cm / 82 kg anthropometry, Level IV ceramic plates covering `spine_02`/`spine_03`, and 2nd-order spring aim punch flinch equations (`FPSBodyMechanicsComponent.h`).
+4. **Hardware-Accelerated Slate C++ UI**: Pure C++ Slate rendering (`MainMenuWidget.h`, `FPSHUDWidget.h` / `SFPSHUDWidget`). Zero webview or heavy UMG overhead. All HUD elements (minimap, compass tape, stamina, vitals, ammo) use `FSlateDrawElement`.
+5. **Procedural C++ Construction**: The combat map (`AFPSCombatArenaMapActor` - Rust Tactical 60m x 60m) and weapon geometry (`AFPSWeaponBase` - NF-98 Tactical Carbine) are generated procedurally in C++, requiring zero editor GUI dependency.
+6. **Pure Dynamic Lumen Lighting & Locked Exposure**: Static lightmass baking is permanently disabled (`r.AllowStaticLighting=False`). Camera exposure is strictly locked to prevent whiteout.
 
 ### Current Implemented State
-- **Character**: Male operator model with 360° rotating ADS turntable preview in start menu, real-time camo switching (Urban/Woodland/Desert/Blackout), headgear, and armor vests.
-- **Weaponry**: NF-98 Carbine with pixel-perfect ADS centering (glowing emissive red dot on camera center eye-line), procedural recoil kick, inertia sway, and a deterministic 4-phase reload timeline (cant & dip, mag drop, fresh insert & palm slap, bolt release).
+- **Perspective**: Tactical over-the-shoulder 3rd-person camera with camera lag, shoulder swap (`V`), ADS tight zoom (110cm arm length, 68° FOV), and direct right-hand weapon socketing (`hand_r`).
+- **Character**: 180cm / 82kg adult male model (`SK_BaseMale`) with 21-bone skeletal hierarchy, authoritative ragdoll physics asset, 4 locomotion animations with stride matching, and PBR ripstop multi-zone camouflage.
+- **Weaponry**: NF-98 Carbine attached directly to right hand (`hand_r`) with procedural recoil kick, inertia sway, and a deterministic 4-phase reload timeline (cant & dip, mag drop, fresh insert & palm slap, bolt release).
 - **Arena**: "Rust Tactical" 60m x 60m arena with 3 tactical lanes (Container Yard shoot-thru tunnel, 12m Oil Derrick tower catwalks & sniper nest, Pipeline trench & bunker), 8 anti-spawn-trap spawns, and Domination flags A/B/C.
 - **Tactical HUD**: Circular minimap with 25m/50m range rings and 120°/s rotating radar sweep; 90° FOV horizontal radar compass tape with cardinal points and digital heading ticker; operator vitals with Level IV ceramic shield, health, and tactical stamina sprint meter (18/s drain, 28/s regen, exhaustion lock); digital ammo counter with reserve and reload status; dynamic reticle and kinetic hitmarkers.
 
