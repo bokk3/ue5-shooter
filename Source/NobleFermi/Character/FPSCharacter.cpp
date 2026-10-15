@@ -11,6 +11,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Animation/AnimSequence.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/PlayerController.h"
 
 AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
@@ -124,6 +125,25 @@ void AFPSCharacter::BeginPlay()
 		{
 			ActiveHUDWidget->SetOwningCharacter(this);
 			ActiveHUDWidget->AddToViewport(0);
+		}
+	}
+
+	// Tactical Operator Material Configuration (Multi-zone Camo & Ripstop PBR)
+	if (GetMesh())
+	{
+		UMaterialInstanceDynamic* BodyMID = GetMesh()->CreateDynamicMaterialInstance(0);
+		if (BodyMID)
+		{
+			BodyMID->SetVectorParameterValue(TEXT("CamoColorPrimary"), FLinearColor(0.25f, 0.28f, 0.32f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("CamoColorSecondary"), FLinearColor(0.12f, 0.14f, 0.17f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("CamoColorTertiary"), FLinearColor(0.42f, 0.44f, 0.46f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("TorsoColor"), FLinearColor(0.18f, 0.20f, 0.23f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("SkinTone"), FLinearColor(0.82f, 0.62f, 0.50f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("GearColor"), FLinearColor(0.05f, 0.06f, 0.07f, 1.0f));
+			BodyMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.75f);
+			BodyMID->SetScalarParameterValue(TEXT("SubsurfaceIntensity"), 0.40f);
+			BodyMID->SetScalarParameterValue(TEXT("CamoTiling"), 6.0f);
+			BodyMID->SetScalarParameterValue(TEXT("RipstopTiling"), 24.0f);
 		}
 	}
 }

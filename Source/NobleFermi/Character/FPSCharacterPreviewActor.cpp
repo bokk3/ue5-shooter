@@ -415,30 +415,70 @@ void AFPSCharacterPreviewActor::ApplyCamoColors()
 	FLinearColor ArmorColor = FLinearColor(0.12f, 0.14f, 0.18f);
 	FLinearColor WeaponColor = FLinearColor(0.06f, 0.07f, 0.08f);
 
+	// Multi-zone Tactical Camo & Body Parameters
+	FLinearColor CamoPrimary = FLinearColor(0.25f, 0.28f, 0.32f, 1.0f);
+	FLinearColor CamoSecondary = FLinearColor(0.12f, 0.14f, 0.17f, 1.0f);
+	FLinearColor CamoTertiary = FLinearColor(0.42f, 0.44f, 0.46f, 1.0f);
+	FLinearColor TorsoColor = FLinearColor(0.18f, 0.20f, 0.23f, 1.0f);
+	FLinearColor SkinTone = FLinearColor(0.82f, 0.62f, 0.50f, 1.0f);
+	FLinearColor GearColor = FLinearColor(0.05f, 0.06f, 0.07f, 1.0f);
+	float RoughnessBase = 0.75f;
+	float SubsurfaceIntensity = 0.40f;
+	float CamoTiling = 6.0f;
+	float RipstopTiling = 24.0f;
+
 	switch (CurrentCamo)
 	{
 	case EOperatorCamo::UrbanDigital:
 		UniformColor = FLinearColor(0.22f, 0.25f, 0.30f); // Slate gray
 		ArmorColor = FLinearColor(0.12f, 0.14f, 0.18f);   // Dark charcoal
 		WeaponColor = FLinearColor(0.06f, 0.07f, 0.08f);  // Matte tactical black
+
+		CamoPrimary = FLinearColor(0.25f, 0.28f, 0.32f, 1.0f);
+		CamoSecondary = FLinearColor(0.12f, 0.14f, 0.17f, 1.0f);
+		CamoTertiary = FLinearColor(0.42f, 0.44f, 0.46f, 1.0f);
+		TorsoColor = FLinearColor(0.18f, 0.20f, 0.23f, 1.0f);
+		GearColor = FLinearColor(0.05f, 0.06f, 0.07f, 1.0f);
+		RoughnessBase = 0.76f;
 		break;
 
 	case EOperatorCamo::WoodlandTactical:
 		UniformColor = FLinearColor(0.18f, 0.24f, 0.15f); // Olive drab
 		ArmorColor = FLinearColor(0.24f, 0.22f, 0.16f);   // Ranger khaki
 		WeaponColor = FLinearColor(0.11f, 0.10f, 0.09f);  // Anodized dark bronze
+
+		CamoPrimary = FLinearColor(0.18f, 0.24f, 0.15f, 1.0f);
+		CamoSecondary = FLinearColor(0.09f, 0.13f, 0.08f, 1.0f);
+		CamoTertiary = FLinearColor(0.30f, 0.27f, 0.18f, 1.0f);
+		TorsoColor = FLinearColor(0.16f, 0.21f, 0.14f, 1.0f);
+		GearColor = FLinearColor(0.12f, 0.11f, 0.10f, 1.0f);
+		RoughnessBase = 0.78f;
 		break;
 
 	case EOperatorCamo::DesertSpecOps:
 		UniformColor = FLinearColor(0.48f, 0.42f, 0.32f); // Coyote tan
 		ArmorColor = FLinearColor(0.55f, 0.49f, 0.38f);   // Desert khaki
 		WeaponColor = FLinearColor(0.38f, 0.34f, 0.26f);  // FDE (Flat Dark Earth)
+
+		CamoPrimary = FLinearColor(0.48f, 0.42f, 0.32f, 1.0f);
+		CamoSecondary = FLinearColor(0.34f, 0.29f, 0.22f, 1.0f);
+		CamoTertiary = FLinearColor(0.58f, 0.53f, 0.42f, 1.0f);
+		TorsoColor = FLinearColor(0.40f, 0.35f, 0.27f, 1.0f);
+		GearColor = FLinearColor(0.25f, 0.22f, 0.18f, 1.0f);
+		RoughnessBase = 0.82f;
 		break;
 
 	case EOperatorCamo::StealthBlackout:
 		UniformColor = FLinearColor(0.04f, 0.04f, 0.05f); // Midnight black
 		ArmorColor = FLinearColor(0.07f, 0.07f, 0.08f);   // Carbon kevlar
 		WeaponColor = FLinearColor(0.03f, 0.03f, 0.04f);  // Stealth gunmetal
+
+		CamoPrimary = FLinearColor(0.04f, 0.04f, 0.05f, 1.0f);
+		CamoSecondary = FLinearColor(0.07f, 0.07f, 0.08f, 1.0f);
+		CamoTertiary = FLinearColor(0.09f, 0.09f, 0.11f, 1.0f);
+		TorsoColor = FLinearColor(0.03f, 0.03f, 0.04f, 1.0f);
+		GearColor = FLinearColor(0.02f, 0.02f, 0.03f, 1.0f);
+		RoughnessBase = 0.72f;
 		break;
 	}
 
@@ -446,8 +486,21 @@ void AFPSCharacterPreviewActor::ApplyCamoColors()
 	{
 		if (MID)
 		{
+			// Flat fallback parameters
 			MID->SetVectorParameterValue(TEXT("Color"), UniformColor);
 			MID->SetVectorParameterValue(TEXT("BaseColor"), UniformColor);
+
+			// Master Operator PBR Multi-Zone & Ripstop Parameters
+			MID->SetVectorParameterValue(TEXT("CamoColorPrimary"), CamoPrimary);
+			MID->SetVectorParameterValue(TEXT("CamoColorSecondary"), CamoSecondary);
+			MID->SetVectorParameterValue(TEXT("CamoColorTertiary"), CamoTertiary);
+			MID->SetVectorParameterValue(TEXT("TorsoColor"), TorsoColor);
+			MID->SetVectorParameterValue(TEXT("SkinTone"), SkinTone);
+			MID->SetVectorParameterValue(TEXT("GearColor"), GearColor);
+			MID->SetScalarParameterValue(TEXT("RoughnessBase"), RoughnessBase);
+			MID->SetScalarParameterValue(TEXT("SubsurfaceIntensity"), SubsurfaceIntensity);
+			MID->SetScalarParameterValue(TEXT("CamoTiling"), CamoTiling);
+			MID->SetScalarParameterValue(TEXT("RipstopTiling"), RipstopTiling);
 		}
 	}
 
