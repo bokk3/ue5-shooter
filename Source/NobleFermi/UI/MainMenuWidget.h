@@ -6,13 +6,17 @@
 
 class USettingsMenuWidget;
 class USoundBase;
+class SWidgetSwitcher;
+class SEditableTextBox;
+class STextBlock;
 
 UENUM(BlueprintType)
 enum class EFPSMenuSection : uint8
 {
 	Home UMETA(DisplayName = "Home"),
 	Play UMETA(DisplayName = "Play & Matchmaking"),
-	Loadout UMETA(DisplayName = "Weapons & Loadout"),
+	Loadout UMETA(DisplayName = "Weapons & Gunsmith"),
+	ServerBrowser UMETA(DisplayName = "Server Browser & Host"),
 	Settings UMETA(DisplayName = "Settings"),
 	Career UMETA(DisplayName = "Career & Stats")
 };
@@ -21,9 +25,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMenuSectionChangedSignature, EFPS
 
 /**
  * AAA FPS Primary Main Menu Widget
- * Acts as the central hub for navigation, screen stacking, and 3D background camera blending.
+ * Slate-implemented, full-screen interactive military HUD start menu.
  */
-UCLASS(Abstract, BlueprintType, Blueprintable)
+UCLASS(BlueprintType, Blueprintable)
 class NOBLEFERMI_API UMainMenuWidget : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
@@ -50,6 +54,12 @@ public:
 	void StartMatchmaking();
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Menu")
+	void HostListenRoom();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Menu")
+	void ConnectToDedicatedServer(const FString& ServerAddress);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Menu")
 	void OpenSettings();
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Menu")
@@ -63,8 +73,28 @@ public:
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 private:
-	UPROPERTY()
 	EFPSMenuSection CurrentSection = EFPSMenuSection::Home;
+
+	TSharedPtr<SWidgetSwitcher> ContentSwitcher;
+	TSharedPtr<SEditableTextBox> DirectConnectInput;
+	TSharedPtr<STextBlock> SelectedLoadoutDetails;
+	TSharedPtr<STextBlock> NetworkStatusText;
+
+	TSharedRef<SWidget> BuildHeader();
+	TSharedRef<SWidget> BuildLeftNavBar();
+	TSharedRef<SWidget> BuildHomeView();
+	TSharedRef<SWidget> BuildGunsmithView();
+	TSharedRef<SWidget> BuildServerBrowserView();
+	TSharedRef<SWidget> BuildSettingsView();
+	TSharedRef<SWidget> BuildFooter();
+
+	FReply HandleTabClicked(EFPSMenuSection Section);
+	FReply HandleQuickplayClicked();
+	FReply HandleHostListenClicked();
+	FReply HandleDirectConnectClicked();
+	FReply HandleQuitClicked();
+	FReply HandleSelectArchetype(int32 ArchetypeIndex);
 };
