@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noble Fermi - Human Male Body Mechanics & Operator Customization</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .glow-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); }
+    .glow-cyan-text { text-shadow: 0 0 10px rgba(6, 182, 212, 0.7); }
+    .glow-gold-text { text-shadow: 0 0 10px rgba(245, 158, 11, 0.7); }
+    .hud-border {
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      background: linear-gradient(135deg, rgba(8, 20, 32, 0.90) 0%, rgba(5, 12, 22, 0.95) 100%);
+    }
+    .hud-corner {
+      position: relative;
+    }
+    .hud-corner::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      width: 8px;
+      height: 8px;
+      border-top: 2px solid #06b6d4;
+      border-left: 2px solid #06b6d4;
+    }
+    .hud-corner::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 8px;
+      height: 8px;
+      border-bottom: 2px solid #06b6d4;
+      border-right: 2px solid #06b6d4;
+    }
+  </style>
+</head>
+<body class="bg-[#030712] text-slate-100 font-sans select-none overflow-x-hidden m-0 p-0 min-h-screen flex flex-col justify-between">
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-950/90 border-b border-cyan-900/40 backdrop-blur-md px-6 py-3 sticky top-0 z-50 flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+      <a href="index.html" class="flex items-center space-x-2 text-cyan-400 hover:text-cyan-300 font-mono text-sm uppercase tracking-wider">
+        <span class="text-amber-400 font-bold">&larr; PORTAL HOME</span>
+      </a>
+      <span class="text-slate-600">|</span>
+      <div>
+        <h1 class="text-lg font-black tracking-wider text-amber-400 font-mono">NOBLE FERMI // OPERATOR ANATOMY</h1>
+        <p class="text-[10px] text-cyan-400/80 font-mono">180CM HUMAN MALE SKELETAL MECHANICS & 3D TURNTABLE</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3 text-xs font-mono">
+      <span class="px-2 py-1 bg-emerald-950/80 border border-emerald-600/60 text-emerald-400 rounded">21 BONES LOADED</span>
+      <span class="px-2 py-1 bg-amber-950/80 border border-amber-600/60 text-amber-400 rounded">LEVEL IV CERAMIC ACTIVE</span>
+      <span class="px-2 py-1 bg-cyan-950/80 border border-cyan-600/60 text-cyan-400 rounded">128-HZ NET READY</span>
+    </div>
+  </header>
+
+  <!-- Main Workspace: Split 3D Viewport & Customization Decks -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- LEFT COLUMN: Gear, Camo, & Headgear Customization (4 Cols) -->
+    <div class="lg:col-span-4 space-y-4">
+      <!-- Camouflage Pattern Deck -->
+      <div class="hud-border hud-corner p-4 rounded-lg shadow-xl">
+        <div class="flex items-center justify-between border-b border-cyan-900/50 pb-2 mb-3">
+          <span class="text-xs font-mono font-bold text-amber-400">/// OPERATOR CAMOUFLAGE</span>
+          <span id="camo-badge" class="text-[10px] font-mono text-cyan-400">URBAN DIGITAL</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+          <button onclick="setCamo('urban')" class="camo-btn p-2 rounded border border-cyan-500/50 bg-slate-900/80 hover:bg-cyan-950/60 text-left flex items-center space-x-2 transition">
+            <span class="w-3 h-3 rounded-full bg-slate-400 border border-slate-200"></span>
+            <span>URBAN DIGITAL</span>
+          </button>
+          <button onclick="setCamo('woodland')" class="camo-btn p-2 rounded border border-slate-700 bg-slate-900/80 hover:bg-emerald-950/60 text-left flex items-center space-x-2 transition">
+            <span class="w-3 h-3 rounded-full bg-emerald-700 border border-emerald-500"></span>
+            <span>WOODLAND</span>
+          </button>
+          <button onclick="setCamo('desert')" class="camo-btn p-2 rounded border border-slate-700 bg-slate-900/80 hover:bg-amber-950/60 text-left flex items-center space-x-2 transition">
+            <span class="w-3 h-3 rounded-full bg-amber-600 border border-amber-400"></span>
+            <span>DESERT SPEC OPS</span>
+          </button>
+          <button onclick="setCamo('blackout')" class="camo-btn p-2 rounded border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-left flex items-center space-x-2 transition">
+            <span class="w-3 h-3 rounded-full bg-neutral-900 border border-neutral-600"></span>
+            <span>STEALTH BLACKOUT</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tactical Headgear Deck -->
+      <div class="hud-border hud-corner p-4 rounded-lg shadow-xl">
+        <div class="flex items-center justify-between border-b border-cyan-900/50 pb-2 mb-3">
+          <span class="text-xs font-mono font-bold text-amber-400">/// TACTICAL HEADGEAR</span>
+          <span id="headgear-badge" class="text-[10px] font-mono text-cyan-400">BALLISTIC HELMET</span>
+        </div>
+        <div class="space-y-2 text-xs font-mono">
+          <button onclick="setHeadgear('helmet')" class="headgear-btn w-full p-2 rounded border border-cyan-500/50 bg-slate-900/80 hover:bg-cyan-950/60 text-left flex justify-between items-center transition">
+            <span>FAST BALLISTIC HELMET (HIGH CUT)</span>
+            <span class="text-[10px] text-slate-400">KEVLAR</span>
+          </button>
+          <button onclick="setHeadgear('nvg')" class="headgear-btn w-full p-2 rounded border border-slate-700 bg-slate-900/80 hover:bg-emerald-950/60 text-left flex justify-between items-center transition">
+            <span>GPNVG-18 QUAD-NODS (PHOSPHOR GLOW)</span>
+            <span class="text-[10px] text-emerald-400 animate-pulse">NIGHT VISION</span>
+          </button>
+          <button onclick="setHeadgear('balaclava')" class="headgear-btn w-full p-2 rounded border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-left flex justify-between items-center transition">
+            <span>SPEC OPS BALACLAVA (FIRE RESISTANT)</span>
+            <span class="text-[10px] text-slate-400">STEALTH</span>
+          </button>
+          <button onclick="setHeadgear('cap')" class="headgear-btn w-full p-2 rounded border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-left flex justify-between items-center transition">
+            <span>TACTICAL CAP & PELTOR HEADSET</span>
+            <span class="text-[10px] text-slate-400">COMMS</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Armor Protection Vest Deck -->
+      <div class="hud-border hud-corner p-4 rounded-lg shadow-xl">
+        <div class="flex items-center justify-between border-b border-cyan-900/50 pb-2 mb-3">
+          <span class="text-xs font-mono font-bold text-amber-400">/// BALLISTIC BODY ARMOR</span>
+          <span id="vest-badge" class="text-[10px] font-mono text-cyan-400">LEVEL IV CARRIER</span>
+        </div>
+        <div class="space-y-2 text-xs font-mono">
+          <button onclick="setVest('heavy')" class="vest-btn w-full p-2 rounded border border-cyan-500/50 bg-slate-900/80 hover:bg-cyan-950/60 text-left flex justify-between items-center transition">
+            <span>LEVEL IV HEAVY CARRIER (CERAMIC)</span>
+            <span class="text-[10px] text-amber-400">MAX DEFENSE</span>
+          </button>
+          <button onclick="setVest('jpc')" class="vest-btn w-full p-2 rounded border border-slate-700 bg-slate-900/80 hover:bg-cyan-950/60 text-left flex justify-between items-center transition">
+            <span>LIGHTWEIGHT JPC VEST (AGILITY)</span>
+            <span class="text-[10px] text-sky-400">+15% SPRINT</span>
+          </button>
+          <button onclick="setVest('recon')" class="vest-btn w-full p-2 rounded border border-slate-700 bg-slate-900/80 hover:bg-cyan-950/60 text-left flex justify-between items-center transition">
+            <span>RECON TACTICAL RIG (MINIMALIST)</span>
+            <span class="text-[10px] text-emerald-400">FAST ADS</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER COLUMN: Interactive 3D Turntable Viewport (5 Cols) -->
+    <div class="lg:col-span-5 flex flex-col items-center">
+      <div class="relative w-full aspect-[4/5] max-h-[640px] hud-border hud-corner rounded-lg overflow-hidden flex flex-col justify-between p-3 bg-gradient-to-b from-[#081420] to-[#040810] shadow-2xl">
+        <!-- Overlay HUD Indicators -->
+        <div class="flex justify-between items-center z-10 font-mono text-[10px] text-cyan-400">
+          <span class="flex items-center space-x-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>LIVE 3D TURNTABLE // 360°</span>
+          </span>
+          <span id="stance-label" class="text-amber-400 font-bold">STANCE: HIGH-READY ADS</span>
+          <span id="yaw-readout">YAW: 0.0°</span>
+        </div>
+
+        <!-- 3D Canvas Projection -->
+        <canvas id="turntableCanvas" class="w-full h-full cursor-grab active:cursor-grabbing z-0"></canvas>
+
+        <!-- Turntable Bottom Controls Bar -->
+        <div class="z-10 flex items-center justify-between bg-black/75 border border-cyan-900/40 rounded p-2 text-xs font-mono">
+          <button onclick="toggleRotation()" id="btn-rotation" class="px-3 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/50 rounded text-cyan-300">
+            PAUSE
+          </button>
+          <div class="flex items-center space-x-1">
+            <button onclick="setSpeed(12)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px]">12°/s</button>
+            <button onclick="setSpeed(24)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px]">24°/s</button>
+            <button onclick="setSpeed(45)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px]">45°/s</button>
+          </div>
+          <button onclick="resetFacing()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-[10px]">
+            RESET FRONT
+          </button>
+          <button onclick="toggleStance()" class="px-3 py-1 bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 rounded text-amber-300 text-[10px]">
+            TOGGLE ADS
+          </button>
+        </div>
+      </div>
+      <p class="text-[11px] font-mono text-slate-500 mt-2 text-center">
+        CLICK & DRAG TO MANUAL ROTATE // SCROLL TO ZOOM // PROCEDURAL ADS BREATHING ACTIVE
+      </p>
+    </div>
+
+    <!-- RIGHT COLUMN: Skeletal Anatomy & Ballistic Aim Punch Physics (3 Cols) -->
+    <div class="lg:col-span-3 space-y-4">
+      <!-- Anthropometric Biometrics Card -->
+      <div class="hud-border hud-corner p-4 rounded-lg shadow-xl font-mono text-xs">
+        <div class="flex items-center justify-between border-b border-cyan-900/50 pb-2 mb-3">
+          <span class="font-bold text-amber-400">/// SKELETAL ANATOMY</span>
+          <span class="text-emerald-400 text-[10px]">ADULT MALE</span>
+        </div>
+        <div class="space-y-1.5 text-[11px] text-slate-300">
+          <div class="flex justify-between border-b border-slate-800/80 pb-1">
+            <span class="text-slate-400">Standing Height:</span>
+            <span class="font-bold text-white">180.0 cm</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-800/80 pb-1">
+            <span class="text-slate-400">Total Body Mass:</span>
+            <span class="font-bold text-white">82.0 kg</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-800/80 pb-1">
+            <span class="text-slate-400">Bone Nodes:</span>
+            <span class="font-bold text-cyan-400">21 Hierarchical</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-800/80 pb-1">
+            <span class="text-slate-400">Head Multiplier:</span>
+            <span class="font-bold text-rose-400">2.5x Lethal</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-800/80 pb-1">
+            <span class="text-slate-400">Neck Multiplier:</span>
+            <span class="font-bold text-amber-400">2.0x Vulnerable</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-800/80 pb-1">
+            <span class="text-slate-400">Upper Chest:</span>
+            <span class="font-bold text-sky-400">1.25x (Level IV)</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-800/80 pb-1">
+            <span class="text-slate-400">Limb Extremities:</span>
+            <span class="font-bold text-emerald-400">0.75x - 0.85x</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spring Aim Punch & Flinch Physics -->
+      <div class="hud-border hud-corner p-4 rounded-lg shadow-xl font-mono text-xs">
+        <div class="flex items-center justify-between border-b border-cyan-900/50 pb-2 mb-2">
+          <span class="font-bold text-amber-400">/// AIM PUNCH OSCILLATOR</span>
+          <span class="text-cyan-400 text-[10px]">2ND-ORDER SPRING</span>
+        </div>
+        <p class="text-[10px] text-slate-400 mb-3">
+          F = -k&theta; - c&omega; + &tau;<sub>impact</sub>. Incoming kinetic energy displaces aim reticle with physical spring recovery.
+        </p>
+
+        <!-- Oscillation Waveform Canvas -->
+        <canvas id="recoilCanvas" class="w-full h-24 bg-slate-950 border border-cyan-900/40 rounded mb-3"></canvas>
+
+        <button onclick="triggerImpact()" class="w-full py-2 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/60 rounded text-rose-300 font-bold uppercase tracking-wider text-xs transition">
+          SIMULATE BULLET IMPACT
+        </button>
+        <div id="impact-readout" class="mt-2 text-[10px] text-center text-slate-400">
+          STATUS: READY FOR KINETIC IMPULSE
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Global Navigation Bar -->
+  <footer class="bg-slate-950/95 border-t border-cyan-900/40 px-6 py-3 font-mono text-xs flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center space-x-4">
+      <span class="text-slate-500">QUICK NAV:</span>
+      <a href="index.html" class="text-cyan-400 hover:text-cyan-300">PORTAL</a>
+      <a href="multiplayer.html" class="text-slate-400 hover:text-cyan-300">MW2 MULTIPLAYER</a>
+      <a href="gunsmith.html" class="text-slate-400 hover:text-cyan-300">GUNSMITH</a>
+      <a href="combat.html" class="text-slate-400 hover:text-cyan-300">BALLISTICS</a>
+      <a href="radar.html" class="text-slate-400 hover:text-cyan-300">ACOUSTIC RADAR</a>
+      <a href="server_browser.html" class="text-slate-400 hover:text-cyan-300">SERVER BROWSER</a>
+    </div>
+    <div class="text-slate-500 text-[10px]">
+      NOBLE FERMI STANDALONE C++ ENGINE // UE 5.8 // 128 TICK AUTHORITATIVE
+    </div>
+  </footer>
+
+  <!-- 3D Turntable & Canvas Script -->
+  <script>
+    const canvas = document.getElementById('turntableCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let currentCamo = 'urban';
+    let currentHeadgear = 'helmet';
+    let currentVest = 'heavy';
+    let bIsAiming = true;
+    let bIsRotating = true;
+    let rotationSpeed = 20.0; // deg per sec
+    let currentYaw = 0.0;
+    let breathTime = 0.0;
+    let isDragging = false;
+    let lastMouseX = 0;
+
+    // Resize canvas
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
+      canvas.height = canvas.parentElement.clientHeight * window.devicePixelRatio;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Mouse drag interaction
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      lastMouseX = e.clientX;
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const deltaX = e.clientX - lastMouseX;
+        lastMouseX = e.clientX;
+        currentYaw += deltaX * 0.7;
+      }
+    });
+
+    // Customization Setters
+    function setCamo(camo) {
+      currentCamo = camo;
+      document.getElementById('camo-badge').innerText = camo.toUpperCase();
+      document.querySelectorAll('.camo-btn').forEach(btn => btn.classList.remove('border-cyan-500/50'));
+      event.currentTarget.classList.add('border-cyan-500/50');
+    }
+
+    function setHeadgear(hg) {
+      currentHeadgear = hg;
+      document.getElementById('headgear-badge').innerText = hg.toUpperCase();
+      document.querySelectorAll('.headgear-btn').forEach(btn => btn.classList.remove('border-cyan-500/50'));
+      event.currentTarget.classList.add('border-cyan-500/50');
+    }
+
+    function setVest(vest) {
+      currentVest = vest;
+      document.getElementById('vest-badge').innerText = vest.toUpperCase();
+      document.querySelectorAll('.vest-btn').forEach(btn => btn.classList.remove('border-cyan-500/50'));
+      event.currentTarget.classList.add('border-cyan-500/50');
+    }
+
+    function toggleStance() {
+      bIsAiming = !bIsAiming;
+      document.getElementById('stance-label').innerText = bIsAiming ? 'STANCE: HIGH-READY ADS' : 'STANCE: LOW-READY PATROL';
+    }
+
+    function toggleRotation() {
+      bIsRotating = !bIsRotating;
+      document.getElementById('btn-rotation').innerText = bIsRotating ? 'PAUSE' : 'RESUME';
+    }
+
+    function setSpeed(spd) {
+      rotationSpeed = spd;
+      bIsRotating = true;
+      document.getElementById('btn-rotation').innerText = 'PAUSE';
+    }
+
+    function resetFacing() {
+      currentYaw = 0.0;
+    }
+
+    // Color palettes
+    const camoPalettes = {
+      urban: { uniform: '#3b4352', armor: '#1e2430', weapon: '#11141a', accent: '#06b6d4' },
+      woodland: { uniform: '#2d3d26', armor: '#3c3525', weapon: '#1a1917', accent: '#10b981' },
+      desert: { uniform: '#806e53', armor: '#8f7e61', weapon: '#61543e', accent: '#f59e0b' },
+      blackout: { uniform: '#0c0e12', armor: '#15171d', weapon: '#08090b', accent: '#ef4444' }
+    };
+
+    // Main 3D Rendering Loop
+    let lastTime = performance.now();
+    function render(time) {
+      const dt = (time - lastTime) / 1000;
+      lastTime = time;
+
+      if (bIsRotating && !isDragging) {
+        currentYaw = (currentYaw + rotationSpeed * dt) % 360;
+      }
+      breathTime += dt;
+
+      document.getElementById('yaw-readout').innerText = `YAW: ${currentYaw.toFixed(1)}°`;
+
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const cx = w / 2;
+      const cy = h * 0.72; // floor level
+      const scale = h * 0.0036;
+
+      const palette = camoPalettes[currentCamo];
+
+      // Procedural breathing idle sway
+      const breathZ = Math.sin(breathTime * 1.8) * 4 * scale;
+      const breathPitch = Math.sin(breathTime * 1.8) * 0.03;
+
+      // Draw Pedestal Platform with metallic bevel
+      ctx.save();
+      ctx.translate(cx, cy);
+      const radYaw = (currentYaw * Math.PI) / 180;
+
+      // Platform ellipse
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 160 * scale, 45 * scale, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 2 * scale;
+      ctx.stroke();
+
+      // Platform grid marks
+      for (let a = 0; a < 8; a++) {
+        const markAngle = radYaw + (a * Math.PI) / 4;
+        const mx = Math.cos(markAngle) * 140 * scale;
+        const my = Math.sin(markAngle) * 40 * scale;
+        ctx.beginPath();
+        ctx.arc(mx, my, 2.5 * scale, 0, Math.PI * 2);
+        ctx.fillStyle = '#06b6d4';
+        ctx.fill();
+      }
+
+      // Draw 3D Character (Hierarchy: Boots -> Legs -> Pelvis -> Torso -> Arms/Weapon -> Head)
+      // Depth sorting based on Yaw rotation
+      const cosY = Math.cos(radYaw);
+      const sinY = Math.sin(radYaw);
+
+      // 3D projection helper
+      function project(x, y, z) {
+        // Rotate around Y axis (in 3D, Yaw around Z in Unreal)
+        const rx = x * cosY - y * sinY;
+        const ry = x * sinY + y * cosY; // depth
+        const px = rx * scale;
+        const py = -z * scale + (ry * 0.25 * scale); // slight perspective tilt
+        return { x: px, y: py, depth: ry };
+      }
+
+      // 1. Boots & Legs
+      const legW = 18 * scale;
+      const leftFoot = project(-14, 0, 6);
+      const rightFoot = project(14, 0, 6);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(leftFoot.x - legW/2, leftFoot.y - 12*scale, legW, 14*scale);
+      ctx.fillRect(rightFoot.x - legW/2, rightFoot.y - 12*scale, legW, 14*scale);
+
+      // Thighs & Calves
+      ctx.fillStyle = palette.uniform;
+      ctx.fillRect(leftFoot.x - legW/2, leftFoot.y - 70*scale, legW, 60*scale);
+      ctx.fillRect(rightFoot.x - legW/2, rightFoot.y - 70*scale, legW, 60*scale);
+
+      // 2. Pelvis & Spine
+      const pelvis = project(0, 0, 78);
+      ctx.fillStyle = palette.uniform;
+      ctx.fillRect(pelvis.x - 28*scale, pelvis.y - 30*scale, 56*scale, 32*scale);
+
+      // 3. Torso & Armor Vest
+      const chest = project(0, 0, 114 + breathZ);
+      ctx.fillStyle = palette.armor;
+      const vestWidth = currentVest === 'heavy' ? 68 * scale : (currentVest === 'jpc' ? 58 * scale : 52 * scale);
+      const vestHeight = currentVest === 'heavy' ? 56 * scale : 48 * scale;
+      ctx.fillRect(chest.x - vestWidth/2, chest.y - vestHeight/2, vestWidth, vestHeight);
+
+      // Ceramic Armor Plate outline
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 1.5 * scale;
+      ctx.strokeRect(chest.x - vestWidth/2 + 4*scale, chest.y - vestHeight/2 + 4*scale, vestWidth - 8*scale, vestHeight - 8*scale);
+
+      // 4. Arms & Tactical Assault Rifle in ADS Stance
+      const aimOffsetZ = bIsAiming ? 0 : -25 * scale;
+      const weaponPos = project(28, 12, 118 + breathZ + aimOffsetZ);
+
+      // Draw Rifle
+      ctx.save();
+      ctx.translate(weaponPos.x, weaponPos.y);
+      ctx.rotate((bIsAiming ? 0 : 0.3) + breathPitch);
+
+      // Rifle Receiver & Stock
+      ctx.fillStyle = palette.weapon;
+      ctx.fillRect(-30 * scale, -8 * scale, 60 * scale, 16 * scale); // Receiver
+      ctx.fillRect(-55 * scale, -6 * scale, 25 * scale, 12 * scale); // Stock
+      ctx.fillRect(30 * scale, -4 * scale, 45 * scale, 8 * scale);  // Barrel
+      ctx.fillRect(0 * scale, 8 * scale, 14 * scale, 28 * scale);   // 30-round mag
+
+      // Holo Optic with Amber Reticle
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(-8 * scale, -18 * scale, 20 * scale, 10 * scale);
+      ctx.beginPath();
+      ctx.arc(2 * scale, -13 * scale, 2.5 * scale, 0, Math.PI * 2);
+      ctx.fillStyle = '#ef4444';
+      ctx.fill();
+
+      ctx.restore();
+
+      // Arms holding weapon
+      ctx.fillStyle = palette.uniform;
+      ctx.fillRect(chest.x - 36*scale, chest.y - 12*scale, 24*scale, 18*scale); // Left shoulder
+      ctx.fillRect(chest.x + 14*scale, chest.y - 12*scale, 24*scale, 18*scale); // Right shoulder
+
+      // 5. Head & Headgear
+      const head = project(0, 0, 148 + breathZ);
+      // Neck
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(head.x - 10*scale, head.y + 6*scale, 20*scale, 14*scale);
+
+      // Head
+      ctx.fillStyle = palette.uniform;
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 22 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Headgear Render
+      if (currentHeadgear === 'helmet' || currentHeadgear === 'nvg') {
+        ctx.fillStyle = palette.armor;
+        ctx.beginPath();
+        ctx.arc(head.x, head.y - 4*scale, 25 * scale, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 1.5 * scale;
+        ctx.stroke();
+
+        if (currentHeadgear === 'nvg') {
+          // GPNVG-18 Quad Nods with green phosphor glow
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(head.x - 18*scale, head.y - 4*scale, 36*scale, 10*scale);
+          ctx.fillStyle = '#22c55e';
+          for (let n = -12; n <= 12; n += 8) {
+            ctx.beginPath();
+            ctx.arc(head.x + n*scale, head.y + 1*scale, 3*scale, 0, Math.PI*2);
+            ctx.fill();
+          }
+        }
+      } else if (currentHeadgear === 'balaclava') {
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(head.x, head.y, 23 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0284c7'; // tactical goggles
+        ctx.fillRect(head.x - 14*scale, head.y - 6*scale, 28*scale, 8*scale);
+      } else if (currentHeadgear === 'cap') {
+        ctx.fillStyle = palette.armor;
+        ctx.fillRect(head.x - 22*scale, head.y - 14*scale, 44*scale, 10*scale);
+        ctx.fillRect(head.x + 10*scale, head.y - 10*scale, 20*scale, 4*scale); // cap bill
+      }
+
+      ctx.restore();
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+
+    // Spring-Mass-Damper Aim Punch Waveform Visualizer
+    const recoilCanvas = document.getElementById('recoilCanvas');
+    const rCtx = recoilCanvas.getContext('2d');
+    let recoilHistory = new Array(80).fill(0);
+    let springTheta = 0.0;
+    let springOmega = 0.0;
+    const springK = 35.0; // stiffness
+    const dampingC = 6.0; // damping
+
+    function updateRecoilPhysics() {
+      // Damped harmonic oscillator simulation
+      const springF = -springK * springTheta;
+      const dampF = -dampingC * springOmega;
+      const alpha = springF + dampF;
+
+      springOmega += alpha * 0.04;
+      springTheta += springOmega * 0.04;
+
+      recoilHistory.shift();
+      recoilHistory.push(springTheta);
+
+      // Draw waveform
+      rCtx.clearRect(0, 0, recoilCanvas.width, recoilCanvas.height);
+      const rw = recoilCanvas.width;
+      const rh = recoilCanvas.height;
+      const midY = rh / 2;
+
+      rCtx.strokeStyle = 'rgba(6, 182, 212, 0.3)';
+      rCtx.lineWidth = 1;
+      rCtx.beginPath();
+      rCtx.moveTo(0, midY);
+      rCtx.lineTo(rw, midY);
+      rCtx.stroke();
+
+      rCtx.strokeStyle = '#06b6d4';
+      rCtx.lineWidth = 2;
+      rCtx.beginPath();
+      for (let i = 0; i < recoilHistory.length; i++) {
+        const x = (i / (recoilHistory.length - 1)) * rw;
+        const y = midY - (recoilHistory[i] * rh * 0.4);
+        if (i === 0) rCtx.moveTo(x, y);
+        else rCtx.lineTo(x, y);
+      }
+      rCtx.stroke();
+
+      requestAnimationFrame(updateRecoilPhysics);
+    }
+    recoilCanvas.width = 300;
+    recoilCanvas.height = 96;
+    requestAnimationFrame(updateRecoilPhysics);
+
+    function triggerImpact() {
+      // Apply kinetic bullet impulse
+      springOmega += 12.0;
+      document.getElementById('impact-readout').innerText = 'IMPACT RECORDED // FLINCH ANGLE: +14.2° // SPRING RECOVERY ACTIVE';
+      setTimeout(() => {
+        document.getElementById('impact-readout').innerText = 'STATUS: HARMONIC OSCILLATOR STABILIZED';
+      }, 1200);
+    }
+  </script>
+</body>
+</html>
