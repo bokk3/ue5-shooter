@@ -5,6 +5,7 @@
 [![Tickrate](https://img.shields.io/badge/Tickrate-128%20Hz-brightgreen.svg)]()
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20VPS-lightgrey.svg)]()
 [![Build](https://img.shields.io/badge/Build-Standalone%20Monolithic-success.svg)]()
+[![Website](https://img.shields.io/badge/Live%20Website-noble--fermi.pages.dev-cyan.svg)](https://noble-fermi.pages.dev/)
 
 > **Noble Fermi** is a competitive tactical first-person shooter built from the ground up in Unreal Engine 5.8 C++. It blends the lethal, high-tempo gunplay of golden-era tactical multiplayer (*Call of Duty: Modern Warfare 2*) with authoritative **128-tick dedicated server networking**, an **anatomically accurate human male skeletal mechanics system** (180 cm / 82 kg anthropometry), and a **hardware-accelerated Slate C++ start menu featuring real-time 3D character customization**.
 

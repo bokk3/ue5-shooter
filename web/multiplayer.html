@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noble Fermi - Classic MW2 Multiplayer Experience</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .glow-yellow { text-shadow: 0 0 10px rgba(250, 204, 21, 0.9); }
+    .glow-red { text-shadow: 0 0 15px rgba(239, 68, 68, 0.9); }
+    .glow-cyan { text-shadow: 0 0 10px rgba(6, 182, 212, 0.8); }
+    .mw2-font { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    
+    @keyframes float-up {
+      0% { opacity: 0; transform: translateY(10px) scale(0.8); }
+      20% { opacity: 1; transform: translateY(0) scale(1.1); }
+      80% { opacity: 1; transform: translateY(-30px) scale(1); }
+      100% { opacity: 0; transform: translateY(-50px) scale(0.9); }
+    }
+    .animate-xp {
+      animation: float-up 1.2s forwards ease-out;
+    }
+    @keyframes nuke-flash {
+      0% { opacity: 0; }
+      15% { opacity: 1; }
+      70% { opacity: 1; }
+      100% { opacity: 0.9; }
+    }
+  </style>
+</head>
+<body class="bg-[#030712] text-slate-100 font-sans select-none overflow-hidden m-0 p-0 h-screen w-screen relative">
+  <!-- Combat Battlefield Canvas (Targets, Predator Missile, Tracers) -->
+  <canvas id="battleCanvas" class="absolute inset-0 cursor-crosshair z-0"></canvas>
+
+  <!-- TOP-LEFT: MINIMAP RADAR & COMPASS (Classic MW2 style) -->
+  <div class="absolute top-4 left-4 z-20 pointer-events-none flex flex-col space-y-2">
+    <div class="relative w-44 h-44 rounded-full border-2 border-emerald-500/60 bg-black/70 backdrop-blur-md overflow-hidden shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+      <!-- Radar grid -->
+      <div class="absolute inset-0 border border-emerald-900/40 rounded-full"></div>
+      <div class="absolute top-1/2 left-0 right-0 h-[1px] bg-emerald-800/40"></div>
+      <div class="absolute left-1/2 top-0 bottom-0 w-[1px] bg-emerald-800/40"></div>
+      <!-- Center player arrow -->
+      <div class="absolute inset-0 flex items-center justify-center">
+        <div class="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[9px] border-b-emerald-400"></div>
+      </div>
+      <!-- Rotating sweep hand -->
+      <div id="radar-sweep" class="absolute inset-0 rounded-full origin-center pointer-events-none" style="background: conic-gradient(from 0deg, rgba(16,185,129,0.3) 0deg, transparent 60deg);"></div>
+      <!-- Enemy Red Pings (shown during UAV) -->
+      <div id="radar-pings" class="absolute inset-0 pointer-events-none"></div>
+    </div>
+    <div class="flex items-center space-x-2 text-[11px] font-mono text-emerald-400">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span id="uav-status">UAV RECON: STANDBY</span>
+    </div>
+  </div>
+
+  <!-- TOP CENTER: TDM SCORE HEADER -->
+  <header class="absolute top-4 left-0 right-0 z-20 flex justify-center pointer-events-none">
+    <div class="bg-black/80 border border-slate-700/80 px-8 py-2 rounded-lg flex items-center space-x-8 backdrop-blur-md shadow-2xl">
+      <!-- Team Alpha (TF 141) -->
+      <div class="flex items-center space-x-3">
+        <span class="text-xs font-mono font-bold text-sky-400 uppercase">TASK FORCE 141</span>
+        <span id="score-alpha" class="text-3xl font-black font-mono text-sky-400">42</span>
+      </div>
+
+      <!-- Match Timer & Goal -->
+      <div class="flex flex-col items-center border-x border-slate-700 px-6">
+        <span id="match-timer" class="text-lg font-mono font-black text-amber-400">08:45</span>
+        <span class="text-[10px] font-mono text-slate-400 uppercase">FIRST TO 75</span>
+      </div>
+
+      <!-- Team Bravo (OpFor) -->
+      <div class="flex items-center space-x-3">
+        <span id="score-bravo" class="text-3xl font-black font-mono text-rose-500">38</span>
+        <span class="text-xs font-mono font-bold text-rose-500 uppercase">OPFOR</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- TOP RIGHT: CLASSIC KILLFEED -->
+  <div id="killfeed-container" class="absolute top-4 right-4 z-20 pointer-events-none flex flex-col space-y-1.5 w-72 text-right">
+    <!-- Dynamic Killfeed Rows will appear here -->
+  </div>
+
+  <!-- CENTER: XP POPUPS & MEDAL BANNERS -->
+  <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-20">
+    <div id="xp-popup-anchor" class="relative h-20 w-64 flex items-center justify-center"></div>
+    <div id="medal-banner" class="hidden flex flex-col items-center space-y-1 bg-black/70 border border-amber-400/60 px-6 py-2 rounded shadow-2xl">
+      <span id="medal-title" class="text-sm font-black font-mono text-amber-400 uppercase tracking-widest glow-yellow">DOUBLE KILL</span>
+      <span id="medal-desc" class="text-xs font-mono text-slate-300">+50 XP BONUS</span>
+    </div>
+  </div>
+
+  <!-- BOTTOM RIGHT: WEAPON, AMMO & KILLSTREAK DOCK -->
+  <div class="absolute bottom-6 right-6 z-20 pointer-events-none flex flex-col items-end space-y-3">
+    <!-- Active Killstreak Buttons (3, 4, 5) -->
+    <div class="flex space-x-2">
+      <!-- UAV Slot -->
+      <div id="streak-uav" class="pointer-events-auto cursor-pointer p-2.5 bg-black/75 border border-slate-800 rounded flex flex-col items-center transition-all opacity-40 hover:scale-105" onclick="triggerUAV()">
+        <span class="text-[10px] font-mono font-bold text-slate-400">[3] UAV</span>
+        <span class="text-xs font-black text-cyan-400">3 KILLS</span>
+      </div>
+      <!-- Predator Slot -->
+      <div id="streak-pred" class="pointer-events-auto cursor-pointer p-2.5 bg-black/75 border border-slate-800 rounded flex flex-col items-center transition-all opacity-40 hover:scale-105" onclick="triggerPredator()">
+        <span class="text-[10px] font-mono font-bold text-slate-400">[4] PREDATOR</span>
+        <span class="text-xs font-black text-amber-400">5 KILLS</span>
+      </div>
+      <!-- Tactical Nuke Slot -->
+      <div id="streak-nuke" class="pointer-events-auto cursor-pointer p-2.5 bg-black/75 border border-red-950 rounded flex flex-col items-center transition-all opacity-40 hover:scale-105" onclick="triggerNuke()">
+        <span class="text-[10px] font-mono font-bold text-red-500">[5] NUKE</span>
+        <span class="text-xs font-black text-red-400">25 KILLS</span>
+      </div>
+    </div>
+
+    <!-- Streak Counter Bar -->
+    <div class="w-full bg-slate-900/90 border border-slate-700 px-4 py-1.5 rounded flex justify-between items-center text-xs font-mono">
+      <span class="text-slate-400">CURRENT STREAK</span>
+      <span id="current-streak-num" class="text-amber-400 font-black text-sm">0</span>
+    </div>
+
+    <!-- Ammo & Weapon -->
+    <div class="text-right">
+      <div class="flex items-baseline justify-end space-x-2">
+        <span id="mag-num" class="text-6xl font-black font-mono text-white">30</span>
+        <span class="text-2xl font-mono text-slate-500">/</span>
+        <span id="res-num" class="text-2xl font-mono text-cyan-400 font-bold">180</span>
+      </div>
+      <div class="text-xs font-mono font-bold text-slate-400 uppercase">
+        NF-98 TAC CARBINE • 6.8MM HYBRID
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM LEFT: PERK BADGES & VITALS -->
+  <div class="absolute bottom-6 left-6 z-20 pointer-events-none space-y-3">
+    <!-- MW2 Classic Perks -->
+    <div class="flex space-x-2">
+      <div class="px-2.5 py-1 bg-blue-950/80 border border-blue-500 text-blue-300 text-[11px] font-mono font-bold rounded">
+        SLEIGHT OF HAND
+      </div>
+      <div class="px-2.5 py-1 bg-red-950/80 border border-red-500 text-red-300 text-[11px] font-mono font-bold rounded">
+        STOPPING POWER
+      </div>
+      <div class="px-2.5 py-1 bg-yellow-950/80 border border-amber-500 text-amber-300 text-[11px] font-mono font-bold rounded">
+        NINJA
+      </div>
+    </div>
+
+    <!-- Health Bar -->
+    <div class="w-64 space-y-1">
+      <div class="flex justify-between text-[11px] font-mono text-slate-400">
+        <span>OPERATOR BORIS</span>
+        <span id="hp-val" class="text-emerald-400 font-bold">100 HP</span>
+      </div>
+      <div class="w-full h-2.5 bg-slate-900 border border-slate-700 rounded-sm p-[1px]">
+        <div id="hp-bar" class="h-full bg-emerald-500 transition-all duration-150 w-full"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREDATOR MISSILE THERMAL OVERLAY (Rugged Laptop Interface) -->
+  <div id="predator-overlay" class="hidden fixed inset-0 z-40 bg-[#090b0d] flex flex-col justify-between p-8 cursor-crosshair">
+    <!-- Predator Header -->
+    <div class="flex justify-between items-start font-mono text-xs text-white">
+      <div class="space-y-1">
+        <div class="text-amber-400 font-bold text-sm tracking-widest">PREDATOR MISSILE // OPTICAL THERMAL FLIR</div>
+        <div>ALTITUDE: <span id="pred-alt" class="text-emerald-400 font-bold">2,400 M</span></div>
+        <div>SPEED: <span id="pred-speed" class="text-cyan-400 font-bold">340 M/S</span></div>
+      </div>
+      <div class="text-right space-y-1">
+        <div class="text-rose-400 font-bold animate-pulse">SEEKER ACTIVE</div>
+        <div>[MOUSE]: STEER MISSILE</div>
+        <div>[SPACE / CLICK]: BOOST THRUST</div>
+      </div>
+    </div>
+
+    <!-- Predator Crosshair Target Box -->
+    <div class="flex-1 flex items-center justify-center relative">
+      <div id="pred-reticle" class="relative w-48 h-48 border-2 border-white/60 flex items-center justify-center">
+        <div class="w-2 h-2 bg-rose-500 rounded-full animate-ping"></div>
+        <div class="absolute -top-6 text-[10px] font-mono text-white tracking-widest">AIM POINT</div>
+      </div>
+    </div>
+
+    <div class="flex justify-between text-xs font-mono text-slate-400">
+      <span>ORDNANCE: HE 500LB</span>
+      <span class="text-amber-400">LASER DESIGNATION LOCKED</span>
+    </div>
+  </div>
+
+  <!-- TACTICAL NUKE COUNTDOWN OVERLAY -->
+  <div id="nuke-banner" class="hidden fixed top-20 left-0 right-0 z-50 flex flex-col items-center pointer-events-none">
+    <div class="bg-red-950/90 border-2 border-red-500 px-12 py-3 rounded shadow-[0_0_30px_rgba(239,68,68,0.8)] text-center animate-pulse">
+      <h2 class="text-3xl font-black font-mono text-white tracking-widest glow-red">TACTICAL NUKE INCOMING</h2>
+      <div class="text-5xl font-black font-mono text-red-400 mt-1">
+        <span id="nuke-seconds">10.0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NUKE BLINDING FLASH & VICTORY SCREEN -->
+  <div id="nuke-flash" class="hidden fixed inset-0 z-50 bg-white pointer-events-none flex items-center justify-center transition-all duration-1000">
+    <div class="text-center space-y-4">
+      <h1 class="text-7xl font-black font-mono text-black tracking-tighter uppercase">VICTORY</h1>
+      <p class="text-2xl font-mono text-slate-800 font-bold uppercase">TACTICAL NUKE DETONATION • MATCH CONCLUDED</p>
+      <button onclick="location.reload()" class="mt-8 px-8 py-3 bg-black text-white font-mono font-bold text-sm rounded shadow-2xl pointer-events-auto">
+        PLAY AGAIN
+      </div>
+    </div>
+  </div>
+
+  <!-- SCOREBOARD MODAL (HOLD TAB) -->
+  <div id="scoreboard-modal" class="hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex items-center justify-center p-12">
+    <div class="w-full max-w-4xl bg-slate-950 border border-slate-700 rounded-lg p-6 space-y-6 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div>
+          <h2 class="text-xl font-black font-mono text-white uppercase tracking-wider">TEAM DEATHMATCH // CRASH</h2>
+          <p class="text-xs font-mono text-slate-400">ROUND 1 • SCORE LIMIT: 75</p>
+        </div>
+        <div class="text-right text-xs font-mono text-slate-400">
+          HOLD [TAB] TO VIEW SCOREBOARD
+        </div>
+      </div>
+
+      <!-- Alpha Team Table -->
+      <div>
+        <div class="flex justify-between text-xs font-mono font-bold text-sky-400 border-b border-sky-900/50 pb-1 mb-2">
+          <span>TASK FORCE 141 (ALLIES)</span>
+          <div class="space-x-8">
+            <span>SCORE</span>
+            <span>KILLS</span>
+            <span>DEATHS</span>
+            <span>PING</span>
+          </div>
+        </div>
+        <div class="space-y-1.5 text-xs font-mono" id="score-alpha-rows">
+          <div class="flex justify-between p-2 bg-sky-950/40 border border-sky-500/40 rounded text-white font-bold">
+            <span>★ OPERATOR_BORIS (YOU)</span>
+            <div class="space-x-8 text-right font-mono">
+              <span class="text-sky-300">2,400</span>
+              <span id="sb-kills">24</span>
+              <span id="sb-deaths">3</span>
+              <span class="text-emerald-400">21ms</span>
+            </div>
+          </div>
+          <div class="flex justify-between p-2 bg-slate-900/40 text-slate-300">
+            <span>Ghost_Simon</span>
+            <div class="space-x-8 text-right">
+              <span>1,800</span><span>18</span><span>5</span><span class="text-emerald-400">28ms</span>
+            </div>
+          </div>
+          <div class="flex justify-between p-2 bg-slate-900/40 text-slate-300">
+            <span>Soap_MacTavish</span>
+            <div class="space-x-8 text-right">
+              <span>1,400</span><span>14</span><span>7</span><span class="text-emerald-400">32ms</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bravo Team Table -->
+      <div>
+        <div class="flex justify-between text-xs font-mono font-bold text-rose-500 border-b border-rose-900/50 pb-1 mb-2">
+          <span>OPFOR / SHADOW COMPANY (AXIS)</span>
+          <div class="space-x-8">
+            <span>SCORE</span>
+            <span>KILLS</span>
+            <span>DEATHS</span>
+            <span>PING</span>
+          </div>
+        </div>
+        <div class="space-y-1.5 text-xs font-mono">
+          <div class="flex justify-between p-2 bg-slate-900/40 text-slate-300">
+            <span>Shadow_Lead</span>
+            <div class="space-x-8 text-right font-mono">
+              <span class="text-rose-400">2,100</span><span>21</span><span>6</span><span class="text-emerald-400">19ms</span>
+            </div>
+          </div>
+          <div class="flex justify-between p-2 bg-slate-900/40 text-slate-300">
+            <span>Makarov_Loyalist</span>
+            <div class="space-x-8 text-right">
+              <span>1,100</span><span>11</span><span>12</span><span class="text-emerald-400">45ms</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Web Audio Synthesizer for MW2 Sound Design
+    let audioCtx = null;
+    function getAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playGunshot() {
+      try {
+        const ctx = getAudio();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.1);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } catch (e) {}
+    }
+
+    function playLevelUpChord() {
+      // Classic MW2 level-up / accolade guitar riff chord
+      try {
+        const ctx = getAudio();
+        const now = ctx.currentTime;
+        const notes = [440, 554.37, 659.25, 880];
+        notes.forEach((f, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, now + (i * 0.04));
+          gain.gain.setValueAtTime(0.08, now + (i * 0.04));
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + (i * 0.04));
+          osc.stop(now + 0.6);
+        });
+      } catch (e) {}
+    }
+
+    function playSiren() {
+      try {
+        const ctx = getAudio();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.linearRampToValueAtTime(1100, now + 0.5);
+        osc.frequency.linearRampToValueAtTime(600, now + 1.0);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 1.0);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 1.0);
+      } catch (e) {}
+    }
+
+    // State Variables
+    let currentStreak = 0;
+    let kills = 24;
+    let deaths = 3;
+    let alphaScore = 42;
+    let bravoScore = 38;
+    let matchSeconds = 525; // 08:45
+    let uavActive = false;
+    let isPredator = false;
+    let predatorAlt = 2400;
+    let isHoldingTab = false;
+
+    // Targets in the arena
+    let targets = [
+      { id: 1, x: 300, y: 350, vx: 1.2, isEnemy: true, name: 'OpFor_Scout' },
+      { id: 2, x: 550, y: 320, vx: -0.9, isEnemy: true, name: 'Shadow_Rifleman' },
+      { id: 3, x: 800, y: 360, vx: 1.5, isEnemy: true, name: 'Makarov_Sniper' }
+    ];
+
+    // Canvas
+    const canvas = document.getElementById('battleCanvas');
+    const ctx = canvas.getContext('2d');
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Key Listeners
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        document.getElementById('scoreboard-modal').classList.remove('hidden');
+      }
+      if (e.key === '3') triggerUAV();
+      if (e.key === '4') triggerPredator();
+      if (e.key === '5' || e.key.toLowerCase() === 'n') triggerNuke();
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'Tab') {
+        document.getElementById('scoreboard-modal').classList.add('hidden');
+      }
+    });
+
+    window.addEventListener('mousedown', (e) => {
+      if (isPredator) {
+        // Detonate predator
+        detonatePredator();
+        return;
+      }
+      playGunshot();
+      checkHit(e.clientX, e.clientY);
+    });
+
+    function checkHit(clickX, clickY) {
+      targets.forEach(t => {
+        const dist = Math.hypot(clickX - t.x, clickY - t.y);
+        if (dist <= 35) {
+          recordKill(t);
+        }
+      });
+    }
+
+    function recordKill(target) {
+      kills++;
+      currentStreak++;
+      alphaScore++;
+      document.getElementById('score-alpha').innerText = alphaScore;
+      document.getElementById('current-streak-num').innerText = currentStreak;
+      document.getElementById('sb-kills').innerText = kills;
+
+      // Pop XP
+      showXPPopup("+100 XP");
+
+      // Check Streaks
+      if (currentStreak === 3) {
+        unlockStreak('uav');
+        showMedal("UAV ONLINE", "RECON SCANNER READY [3]");
+      } else if (currentStreak === 5) {
+        unlockStreak('pred');
+        showMedal("PREDATOR MISSILE", "AIR-TO-SURFACE MISSILE READY [4]");
+      } else if (currentStreak >= 25) {
+        unlockStreak('nuke');
+        showMedal("TACTICAL NUKE READY", "PRESS [5] TO END MATCH");
+      } else if (currentStreak % 2 === 0) {
+        showMedal("DOUBLE KILL", "+50 XP BONUS");
+      }
+
+      // Add to Killfeed
+      addKillfeedEntry("OPERATOR_BORIS", target.name, "NF-98");
+
+      // Respawn target across screen
+      target.x = (target.vx > 0) ? -50 : canvas.width + 50;
+      target.y = 280 + Math.random() * 120;
+    }
+
+    function showXPPopup(text) {
+      playLevelUpChord();
+      const anchor = document.getElementById('xp-popup-anchor');
+      const div = document.createElement('div');
+      div.className = "absolute text-2xl font-black font-mono text-yellow-400 glow-yellow animate-xp";
+      div.innerText = text;
+      anchor.appendChild(div);
+      setTimeout(() => div.remove(), 1200);
+    }
+
+    function showMedal(title, desc) {
+      const banner = document.getElementById('medal-banner');
+      document.getElementById('medal-title').innerText = title;
+      document.getElementById('medal-desc').innerText = desc;
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 2200);
+    }
+
+    function addKillfeedEntry(killer, victim, weapon) {
+      const container = document.getElementById('killfeed-container');
+      const row = document.createElement('div');
+      row.className = "text-xs font-mono font-bold bg-black/60 px-3 py-1 rounded inline-block transition-opacity duration-300";
+      row.innerHTML = `<span class="text-sky-400">${killer}</span> <span class="text-slate-400">[${weapon}]</span> <span class="text-rose-400">${victim}</span>`;
+      container.appendChild(row);
+      setTimeout(() => {
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 400);
+      }, 4000);
+    }
+
+    function unlockStreak(type) {
+      const el = document.getElementById('streak-' + type);
+      if (el) {
+        el.classList.remove('opacity-40');
+        el.classList.add('shadow-[0_0_15px_#f59e0b]', 'border-amber-400');
+      }
+    }
+
+    function triggerUAV() {
+      if (currentStreak < 3 && !uavActive) {
+        alert("Earn 3 kills to unlock UAV!");
+        return;
+      }
+      uavActive = true;
+      document.getElementById('uav-status').innerText = "UAV RECON: ONLINE (30S)";
+      document.getElementById('streak-uav').classList.add('opacity-40');
+      playLevelUpChord();
+
+      // Render red enemy blips on radar
+      const radarPings = document.getElementById('radar-pings');
+      radarPings.innerHTML = `
+        <div class="absolute top-10 left-12 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></div>
+        <div class="absolute top-28 left-24 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></div>
+        <div class="absolute top-16 left-32 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></div>
+      `;
+      setTimeout(() => {
+        uavActive = false;
+        radarPings.innerHTML = '';
+        document.getElementById('uav-status').innerText = "UAV RECON: STANDBY";
+      }, 15000);
+    }
+
+    // Predator Missile Sequence
+    function triggerPredator() {
+      if (currentStreak < 5) {
+        alert("Earn 5 kills to unlock Predator Missile!");
+        return;
+      }
+      isPredator = true;
+      predatorAlt = 2400;
+      document.getElementById('predator-overlay').classList.remove('hidden');
+      document.getElementById('streak-pred').classList.add('opacity-40');
+      playLevelUpChord();
+    }
+
+    function detonatePredator() {
+      isPredator = false;
+      document.getElementById('predator-overlay').classList.add('hidden');
+      // Eliminate all targets
+      targets.forEach(t => recordKill(t));
+      showMedal("PREDATOR STRIKE", "MULTI-KILL CONFIRMED");
+    }
+
+    // Tactical Nuke Sequence
+    function triggerNuke() {
+      if (currentStreak < 25) {
+        // For testing convenience, allow shortcut
+        if (!confirm("Tactical Nuke requires 25 kills. Detonate test nuke anyway?")) return;
+      }
+
+      const banner = document.getElementById('nuke-banner');
+      banner.classList.remove('hidden');
+
+      let nukeTime = 10.0;
+      const sirenInterval = setInterval(() => {
+        playSiren();
+      }, 1000);
+
+      const countInterval = setInterval(() => {
+        nukeTime -= 0.1;
+        document.getElementById('nuke-seconds').innerText = Math.max(0, nukeTime).toFixed(1);
+        if (nukeTime <= 0) {
+          clearInterval(countInterval);
+          clearInterval(sirenInterval);
+          banner.classList.add('hidden');
+          // Detonate flash
+          document.getElementById('nuke-flash').classList.remove('hidden');
+        }
+      }, 100);
+    }
+
+    // Render loop
+    let radarAngle = 0;
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Range & Horizon
+      ctx.fillStyle = '#050c18';
+      ctx.fillRect(0, canvas.height / 2 + 50, canvas.width, canvas.height);
+      ctx.strokeStyle = '#0e2439';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 100) {
+        ctx.beginPath();
+        ctx.moveTo(x, canvas.height / 2 + 50);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+
+      // Draw Enemies
+      targets.forEach(t => {
+        t.x += t.vx;
+        if (t.x > canvas.width + 80) t.x = -60;
+        if (t.x < -80) t.x = canvas.width + 60;
+
+        // Silhouette
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(t.x, t.y - 20, 10, 0, Math.PI * 2); // head
+        ctx.fill();
+        ctx.fillRect(t.x - 8, t.y - 10, 16, 30); // body
+
+        // Enemy Nameplate
+        ctx.fillStyle = '#f87171';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`[OPFOR] ${t.name}`, t.x, t.y - 36);
+      });
+
+      // Rotate radar sweep
+      radarAngle += 2.5;
+      document.getElementById('radar-sweep').style.transform = `rotate(${radarAngle}deg)`;
+
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
+

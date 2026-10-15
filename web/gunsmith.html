@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noble Fermi - Gunsmith & Create-A-Class Prototype</title>
+<style>
+  :root {
+    --bg-dark: #0a0c0e;
+    --panel-bg: rgba(16, 21, 26, 0.88);
+    --panel-border: #1e293b;
+    --accent-gold: #eab308;
+    --accent-amber: #f59e0b;
+    --accent-blue: #38bdf8;
+    --accent-green: #22c55e;
+    --accent-red: #ef4444;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-dim: #64748b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    background-image: 
+      radial-gradient(circle at 50% 20%, rgba(234, 179, 8, 0.05) 0%, transparent 60%),
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 100% 100%, 40px 40px, 40px 40px;
+  }
+
+  /* Scanline effect */
+  body::after {
+    content: " ";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 4px;
+    z-index: 999;
+    opacity: 0.6;
+  }
+
+  /* Top Navigation Bar */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 36px;
+    border-bottom: 1px solid var(--panel-border);
+    background: rgba(10, 12, 14, 0.95);
+    backdrop-filter: blur(12px);
+    z-index: 10;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand-logo {
+    width: 32px; height: 32px;
+    background: var(--accent-gold);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: #000;
+    font-size: 14px;
+  }
+  .brand-title {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .brand-subtitle {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent-gold);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+  }
+  .nav-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 4px;
+  }
+  .nav-btn:hover {
+    color: #fff;
+    border-color: var(--panel-border);
+    background: rgba(255,255,255,0.03);
+  }
+  .nav-btn.active {
+    color: #000;
+    background: var(--accent-gold);
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 16px rgba(234, 179, 8, 0.4);
+  }
+
+  /* Main Container */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr 380px;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 65px);
+  }
+
+  /* Left Panel: Class Selector & Slots */
+  .sidebar {
+    background: var(--panel-bg);
+    border-right: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  .class-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .class-btn {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 10px 14px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .class-btn:hover {
+    background: rgba(234, 179, 8, 0.08);
+    border-color: rgba(234, 179, 8, 0.3);
+  }
+  .class-btn.active {
+    background: rgba(234, 179, 8, 0.15);
+    border-color: var(--accent-gold);
+    box-shadow: inset 4px 0 0 var(--accent-gold);
+  }
+  .class-btn-name {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .class-btn-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .section-header {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    font-weight: 700;
+    border-bottom: 1px solid rgba(234, 179, 8, 0.2);
+    padding-bottom: 4px;
+    margin-top: 8px;
+  }
+
+  .slot-card {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .slot-card:hover {
+    border-color: rgba(234, 179, 8, 0.5);
+    background: rgba(234, 179, 8, 0.04);
+  }
+  .slot-card.active {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 12px rgba(234, 179, 8, 0.2);
+  }
+  .slot-card-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 700;
+  }
+  .slot-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .slot-card-meta {
+    font-size: 11px;
+    color: var(--accent-blue);
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Center Stage: 3D Gunsmith Viewport */
+  .viewport-stage {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(circle at center, rgba(30, 41, 59, 0.3) 0%, rgba(10, 12, 14, 0.95) 75%);
+  }
+
+  .viewport-toolbar {
+    position: absolute;
+    top: 20px;
+    left: 24px;
+    right: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 5;
+    pointer-events: auto;
+  }
+
+  .weapon-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .weapon-name {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .weapon-class {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--accent-gold);
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+  }
+  .btn-action {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-action:hover {
+    background: var(--accent-gold);
+    color: #000;
+    border-color: var(--accent-gold);
+  }
+
+  /* Interactive Canvas */
+  #gunsmithCanvas {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+  }
+  #gunsmithCanvas:active {
+    cursor: grabbing;
+  }
+
+  /* Attachment Sockets Overlay */
+  .attachment-sockets-bar {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    background: rgba(16, 21, 26, 0.92);
+    border: 1px solid var(--panel-border);
+    padding: 10px 18px;
+    border-radius: 8px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    z-index: 5;
+  }
+
+  .socket-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.02);
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 90px;
+  }
+  .socket-node:hover {
+    background: rgba(234, 179, 8, 0.1);
+    border-color: rgba(234, 179, 8, 0.4);
+  }
+  .socket-node.active {
+    border-color: var(--accent-gold);
+    background: rgba(234, 179, 8, 0.18);
+  }
+  .socket-node-type {
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 700;
+  }
+  .socket-node-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  /* Right Panel: Gunsmith Inspector & Attachment Picker */
+  .inspector {
+    background: var(--panel-bg);
+    border-left: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 24px;
+    gap: 20px;
+  }
+
+  .inspector-title {
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    font-weight: 800;
+    border-bottom: 1px solid rgba(234, 179, 8, 0.2);
+    padding-bottom: 6px;
+  }
+
+  /* Attachment Selection List */
+  .attachment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .attachment-option {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--panel-border);
+    padding: 10px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .attachment-option:hover {
+    border-color: rgba(234, 179, 8, 0.4);
+    background: rgba(234, 179, 8, 0.05);
+  }
+  .attachment-option.selected {
+    border-color: var(--accent-gold);
+    background: rgba(234, 179, 8, 0.14);
+  }
+  .att-info-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .att-info-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .att-tag {
+    font-size: 10px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.05);
+    color: var(--accent-blue);
+    font-weight: 600;
+  }
+
+  /* Stat Bars */
+  .stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(0,0,0,0.25);
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+  }
+  .stat-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .stat-label { color: var(--text-muted); }
+  .stat-val-group { display: flex; gap: 6px; }
+  .stat-val-current { color: #fff; font-weight: 800; }
+  .stat-val-diff { font-weight: 700; }
+  .stat-val-diff.positive { color: var(--accent-green); }
+  .stat-val-diff.negative { color: var(--accent-red); }
+
+  .stat-bar-bg {
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .stat-bar-fill {
+    height: 100%;
+    background: var(--text-main);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .stat-bar-delta {
+    position: absolute;
+    top: 0; height: 100%;
+    transition: all 0.3s;
+  }
+  .stat-bar-delta.positive {
+    background: var(--accent-green);
+  }
+  .stat-bar-delta.negative {
+    background: var(--accent-red);
+  }
+
+  /* Camo Selector */
+  .camo-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .camo-swatch {
+    height: 48px;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    padding: 3px;
+    transition: all 0.2s;
+  }
+  .camo-swatch:hover {
+    transform: scale(1.05);
+    border-color: rgba(234, 179, 8, 0.5);
+  }
+  .camo-swatch.selected {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+  }
+  .camo-name {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    background: rgba(0,0,0,0.7);
+    padding: 1px 4px;
+    border-radius: 2px;
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Modal: Sight Picture ADS Test */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-container {
+    background: var(--panel-bg);
+    border: 1px solid var(--accent-gold);
+    border-radius: 8px;
+    width: 640px;
+    box-shadow: 0 0 30px rgba(234, 179, 8, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+  }
+  .modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    cursor: pointer;
+  }
+  .modal-close:hover { color: #fff; }
+  .sight-picture-stage {
+    position: relative;
+    width: 640px;
+    height: 400px;
+    background: #050608;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #adsCanvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Footer status ticker */
+  footer {
+    padding: 8px 36px;
+    border-top: 1px solid var(--panel-border);
+    background: rgba(10, 12, 14, 0.95);
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">NF</div>
+      <div>
+        <div class="brand-title">Noble Fermi</div>
+        <div class="brand-subtitle">Gunsmith &amp; Loadout Tactical Workbench</div>
+      </div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-btn active" onclick="switchMainTab('gunsmith')">Weapon Gunsmith</button>
+      <button class="nav-btn" onclick="switchMainTab('loadout')">Class Loadouts</button>
+      <button class="nav-btn" onclick="switchMainTab('killstreaks')">Killstreak Package</button>
+    </div>
+
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <span style="font-size: 12px; color: var(--accent-gold); font-weight: 700; letter-spacing: 1px;">SLOT ALLOCATION: <span id="slotCountDisplay">3 / 5</span></span>
+      <button class="btn-action" onclick="resetAttachments()">Reset All</button>
+    </div>
+  </header>
+
+  <!-- Main Three-Column Layout -->
+  <div class="main-layout">
+
+    <!-- Column 1: Class Selector & Weapon Loadout Slots -->
+    <div class="sidebar">
+      <div class="section-header">Active Custom Class</div>
+      <div class="class-picker" id="classPicker">
+        <!-- Injected via JS -->
+      </div>
+
+      <div class="section-header">Loadout Slots</div>
+      <div class="slot-card active" id="slotPrimary" onclick="selectSlot('primary')">
+        <div class="slot-card-label">Primary Weapon</div>
+        <div class="slot-card-title" id="slotPrimaryTitle">M4A1 SOPMOD</div>
+        <div class="slot-card-meta">Assault Rifle &bull; 5.56 NATO &bull; Full-Auto</div>
+      </div>
+
+      <div class="slot-card" id="slotSecondary" onclick="selectSlot('secondary')">
+        <div class="slot-card-label">Secondary Weapon</div>
+        <div class="slot-card-title" id="slotSecondaryTitle">Desert Eagle .50</div>
+        <div class="slot-card-meta">Heavy Pistol &bull; .50 Action Express</div>
+      </div>
+
+      <div class="slot-card" id="slotPerks" onclick="selectSlot('perks')">
+        <div class="slot-card-label">Pick-3 Perk Tier</div>
+        <div class="slot-card-title" id="slotPerksTitle">Sleight | Stopping | Ninja</div>
+        <div class="slot-card-meta">Fast Reload &bull; +40% Dmg &bull; Silent Steps</div>
+      </div>
+
+      <div class="slot-card" id="slotEquipment" onclick="selectSlot('equipment')">
+        <div class="slot-card-label">Lethal &amp; Tactical</div>
+        <div class="slot-card-title" id="slotEquipmentTitle">Semtex + Flashbang (x2)</div>
+        <div class="slot-card-meta">Sticky Fuse &bull; 3s Concussive Blind</div>
+      </div>
+
+      <div class="slot-card" id="slotStreaks" onclick="selectSlot('streaks')">
+        <div class="slot-card-label">Killstreak Chain</div>
+        <div class="slot-card-title" id="slotStreaksTitle">3 - UAV | 5 - Pred | 25 - Nuke</div>
+        <div class="slot-card-meta">Air Recon &bull; Hellfire &bull; Game Ender</div>
+      </div>
+    </div>
+
+    <!-- Column 2: 3D Gunsmith Viewport & Attachment Nodes -->
+    <div class="viewport-stage">
+      <div class="viewport-toolbar">
+        <div class="weapon-title-block">
+          <div class="weapon-name" id="viewportWeaponName">M4A1 CARBINE</div>
+          <div class="weapon-class" id="viewportWeaponClass">5.56x45mm NATO &bull; Fully Automatic Assault Rifle</div>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn-action" onclick="openAdsModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+            Test Sight Picture (ADS)
+          </button>
+          <button class="btn-action" onclick="toggleFireAnimation()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            Test Gunfire &amp; Flash
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas for procedural weapon rendering -->
+      <canvas id="gunsmithCanvas"></canvas>
+
+      <!-- Attachment Sockets Dock -->
+      <div class="attachment-sockets-bar" id="socketDock">
+        <div class="socket-node active" onclick="selectSocket('optic')">
+          <div class="socket-node-type">Optic</div>
+          <div class="socket-node-name" id="socketNameOptic">Iron Sights</div>
+        </div>
+        <div class="socket-node" onclick="selectSocket('muzzle')">
+          <div class="socket-node-type">Muzzle</div>
+          <div class="socket-node-name" id="socketNameMuzzle">Standard</div>
+        </div>
+        <div class="socket-node" onclick="selectSocket('underbarrel')">
+          <div class="socket-node-type">Underbarrel</div>
+          <div class="socket-node-name" id="socketNameUnderbarrel">None</div>
+        </div>
+        <div class="socket-node" onclick="selectSocket('magazine')">
+          <div class="socket-node-type">Magazine</div>
+          <div class="socket-node-name" id="socketNameMagazine">30 Round</div>
+        </div>
+        <div class="socket-node" onclick="selectSocket('stock')">
+          <div class="socket-node-type">Stock</div>
+          <div class="socket-node-name" id="socketNameStock">Standard Stock</div>
+        </div>
+        <div class="socket-node" onclick="selectSocket('camo')">
+          <div class="socket-node-type">Camouflage</div>
+          <div class="socket-node-name" id="socketNameCamo">Desert Hex</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 3: Gunsmith Inspector & Real-Time Stat Diffs -->
+    <div class="inspector">
+      <div class="inspector-title" id="inspectorTitle">Optic Attachments</div>
+      
+      <!-- List of selectable attachments -->
+      <div class="attachment-list" id="attachmentList">
+        <!-- Injected dynamically -->
+      </div>
+
+      <!-- Weapon Performance Stats With Live Delta Comparison -->
+      <div class="inspector-title">Performance Diagnostics</div>
+      <div class="stats-container">
+        
+        <div class="stat-row">
+          <div class="stat-header">
+            <span class="stat-label">Damage (Torso / Head)</span>
+            <div class="stat-val-group">
+              <span class="stat-val-current" id="statValDamage">40 / 56</span>
+              <span class="stat-val-diff" id="statDiffDamage"></span>
+            </div>
+          </div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fill" id="statBarDamage" style="width: 55%;"></div>
+            <div class="stat-bar-delta" id="statDeltaDamage"></div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-header">
+            <span class="stat-label">Fire Rate</span>
+            <div class="stat-val-group">
+              <span class="stat-val-current" id="statValFireRate">800 RPM</span>
+              <span class="stat-val-diff" id="statDiffFireRate"></span>
+            </div>
+          </div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fill" id="statBarFireRate" style="width: 72%;"></div>
+            <div class="stat-bar-delta" id="statDeltaFireRate"></div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-header">
+            <span class="stat-label">Recoil Control</span>
+            <div class="stat-val-group">
+              <span class="stat-val-current" id="statValRecoil">70%</span>
+              <span class="stat-val-diff" id="statDiffRecoil"></span>
+            </div>
+          </div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fill" id="statBarRecoil" style="width: 70%;"></div>
+            <div class="stat-bar-delta" id="statDeltaRecoil"></div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-header">
+            <span class="stat-label">Range &amp; Velocity</span>
+            <div class="stat-val-group">
+              <span class="stat-val-current" id="statValRange">65m</span>
+              <span class="stat-val-diff" id="statDiffRange"></span>
+            </div>
+          </div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fill" id="statBarRange" style="width: 65%;"></div>
+            <div class="stat-bar-delta" id="statDeltaRange"></div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-header">
+            <span class="stat-label">Mobility &amp; ADS Speed</span>
+            <div class="stat-val-group">
+              <span class="stat-val-current" id="statValMobility">220 ms</span>
+              <span class="stat-val-diff" id="statDiffMobility"></span>
+            </div>
+          </div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fill" id="statBarMobility" style="width: 60%;"></div>
+            <div class="stat-bar-delta" id="statDeltaMobility"></div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-header">
+            <span class="stat-label">Acoustic Signature</span>
+            <div class="stat-val-group">
+              <span class="stat-val-current" id="statValAcoustic" style="color: var(--accent-red)">Loud (60m Ping)</span>
+            </div>
+          </div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fill" id="statBarAcoustic" style="width: 85%; background: var(--accent-red);"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Camouflage Palette -->
+      <div class="inspector-title">Tactical Camouflage</div>
+      <div class="camo-grid" id="camoPalette">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ADS Modal Window for Sight-Picture Preview -->
+  <div class="modal-overlay" id="adsModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title" id="adsModalTitle">ADS Sight Picture Preview</div>
+        <button class="modal-close" onclick="closeAdsModal()">&times;</button>
+      </div>
+      <div class="sight-picture-stage">
+        <canvas id="adsCanvas" width="640" height="400"></canvas>
+      </div>
+      <div style="padding: 12px 20px; font-size: 12px; color: var(--text-dim); display: flex; justify-content: space-between;">
+        <span>Focal Length: <b id="adsFovText">65° FOV</b></span>
+        <span>Parallax Offset: <b>True Optical Zero</b></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Ticker -->
+  <footer>
+    <span>TACTICAL SYSTEM: UFPSGunsmithComponent &bull; UFPSPerkComponent &bull; UFPSInventoryComponent</span>
+    <span>NETWORK ENGINE: REPLICATED ACTOR ATTACHMENTS &bull; SUB-MILLISECOND HIT REGISTRATION</span>
+  </footer>
+
+  <script>
+    // --- Data Models ---
+    const CLASSES = [
+      { id: 1, name: "Custom 1: Assault", desc: "M4A1 + Sleight of Hand + Stopping Power", primary: "m4a1", secondary: "deagle", perks: ["sleight", "stopping", "ninja"], lethal: "semtex", tactical: "flashbang" },
+      { id: 2, name: "Custom 2: Stealth Ops", desc: "ACR Suppressed + Cold-Blooded + Ninja", primary: "acr", secondary: "usp", perks: ["scavenger", "coldblooded", "ninja"], lethal: "claymore", tactical: "smoke" },
+      { id: 3, name: "Custom 3: Heavy Gunner", desc: "RPD LMG + Stopping Power + Steady Aim", primary: "rpd", secondary: "thumper", perks: ["sleight", "stopping", "steadyaim"], lethal: "frag", tactical: "stun" },
+      { id: 4, name: "Custom 4: Intervention", desc: "Intervention .50 + Sleight + Stopping Power", primary: "intervention", secondary: "spas12", perks: ["sleight", "stopping", "commando"], lethal: "throwingknife", tactical: "smoke" },
+      { id: 5, name: "Custom 5: Rusher", desc: "UMP45 + Marathon + Lightweight + Commando", primary: "ump45", secondary: "g18", perks: ["marathon", "lightweight", "commando"], lethal: "semtex", tactical: "stun" }
+    ];
+
+    const ATTACHMENTS = {
+      optic: [
+        { id: "iron", name: "Iron Sights", desc: "Clean factory sights. Fast 200ms ADS speed.", zoom: 1.0, adsDelta: 0, recoilDelta: 0, rangeDelta: 0, tag: "Standard" },
+        { id: "red_dot", name: "Reflex Red Dot", desc: "Precision 2 MOA illuminated center dot. +20ms ADS.", zoom: 1.25, adsDelta: 20, recoilDelta: -5, rangeDelta: 0, tag: "+Precision" },
+        { id: "holo", name: "Holographic 553", desc: "68 MOA outer reticle with 1 MOA dot. Tighter bloom.", zoom: 1.5, adsDelta: 30, recoilDelta: -8, rangeDelta: 5, tag: "+Target Acquire" },
+        { id: "acog", name: "ACOG 4.0x Scope", desc: "Long-range chevron optic. Slight scope glint. +60ms ADS.", zoom: 4.0, adsDelta: 60, recoilDelta: -12, rangeDelta: 20, tag: "+Distance" },
+        { id: "thermal", name: "Thermal Vision Scope", desc: "Infrared imaging. Highlights enemy heat signatures.", zoom: 3.5, adsDelta: 80, recoilDelta: -5, rangeDelta: 15, tag: "+Thermal" }
+      ],
+      muzzle: [
+        { id: "standard", name: "Standard Flash Hider", desc: "Factory muzzle device.", suppressed: false, recoilDelta: 0, rangeDelta: 0, adsDelta: 0, tag: "Factory" },
+        { id: "suppressor", name: "Tactical Suppressor", desc: "Completely eliminates radar gunfire ping and muzzle flash. -12% range.", suppressed: true, recoilDelta: -4, rangeDelta: -12, adsDelta: 15, tag: "+Stealth" },
+        { id: "compensator", name: "Ported Compensator", desc: "Vents gasses upwards to cut vertical kick by 25%.", suppressed: false, recoilDelta: -25, rangeDelta: 0, adsDelta: 10, tag: "+Recoil Control" },
+        { id: "breacher", name: "Breacher Device", desc: "Heavy spiked muzzle. Enhances close-quarters melee damage.", suppressed: false, recoilDelta: 0, rangeDelta: -5, adsDelta: -5, tag: "+Melee Lethality" }
+      ],
+      underbarrel: [
+        { id: "none", name: "No Attachment", desc: "Bare picatinny rail.", recoilDelta: 0, adsDelta: 0, tag: "Default" },
+        { id: "foregrip", name: "Vertical Foregrip", desc: "Significant reduction in horizontal bounce and weapon sway.", recoilDelta: -22, adsDelta: 15, tag: "+Stability" },
+        { id: "angled", name: "Angled Ergonomic Grip", desc: "Enhanced ergonomics for 15% faster ADS transition.", recoilDelta: -10, adsDelta: -25, tag: "+ADS Speed" },
+        { id: "m203", name: "M203 40mm Launcher", desc: "Underbarrel high-explosive grenade tube with 2 rounds.", recoilDelta: 10, adsDelta: 45, tag: "+Explosive" }
+      ],
+      magazine: [
+        { id: "standard", name: "30 Round STANAG", desc: "Standard 30-round steel box magazine.", capacity: 30, adsDelta: 0, reloadDelta: 0, tag: "Standard" },
+        { id: "ext_mag", name: "45 Round Extended", desc: "High-capacity polymer magazine (+50% capacity). Slight mobility penalty.", capacity: 45, adsDelta: 25, reloadDelta: 15, tag: "+Ammo" },
+        { id: "fast_mag", name: "Jungle-Style Fast Mag", desc: "Two magazines taped together for blazing fast reloads.", capacity: 30, adsDelta: -10, reloadDelta: -40, tag: "+Reload Speed" }
+      ],
+      stock: [
+        { id: "standard", name: "Mil-Spec Buffer Stock", desc: "Standard collapsable stock.", recoilDelta: 0, adsDelta: 0, mobilityDelta: 0, tag: "Factory" },
+        { id: "no_stock", name: "No Stock (Buffer Tube)", desc: "Removed buttstock. Extreme mobility and sprint-out speed (+20% recoil).", recoilDelta: 25, adsDelta: -45, mobilityDelta: 25, tag: "+Hyper Mobility" },
+        { id: "heavy_stock", name: "Precision Marksman Stock", desc: "Weighted cheek-rest stock for zero idle sway and lower recoil.", recoilDelta: -20, adsDelta: 30, mobilityDelta: -15, tag: "+Accuracy" }
+      ]
+    };
+
+    const CAMOS = [
+      { id: "desert", name: "Desert Hex", color1: "#c29b68", color2: "#785834" },
+      { id: "arctic", name: "Arctic Snow", color1: "#e2e8f0", color2: "#64748b" },
+      { id: "woodland", name: "Woodland", color1: "#2d4a22", color2: "#192813" },
+      { id: "digital", name: "Digital Blue", color1: "#0284c7", color2: "#082f49" },
+      { id: "red_tiger", name: "Red Tiger", color1: "#dc2626", color2: "#450a0a" },
+      { id: "blue_tiger", name: "Blue Tiger", color1: "#2563eb", color2: "#172554" },
+      { id: "fall", name: "Fall Camo", color1: "#ea580c", color2: "#7c2d12" },
+      { id: "gold", name: "Solid Gold", color1: "#fbbf24", color2: "#78350f" }
+    ];
+
+    // State
+    let activeClass = 0;
+    let activeSocket = "optic";
+    let selectedAttachments = {
+      optic: "iron",
+      muzzle: "standard",
+      underbarrel: "none",
+      magazine: "standard",
+      stock: "standard",
+      camo: "desert"
+    };
+
+    // Canvas & 3D turntable state
+    let canvas = document.getElementById("gunsmithCanvas");
+    let ctx = canvas.getContext("2d");
+    let rotY = 0.2;
+    let rotX = 0.05;
+    let isDragging = false;
+    let lastMouseX = 0, lastMouseY = 0;
+    let muzzleFlash = 0;
+
+    // Initialize UI
+    function init() {
+      renderClasses();
+      renderCamos();
+      selectSocket("optic");
+      updateStats();
+
+      // Setup canvas resize
+      resizeCanvas();
+      window.addEventListener("resize", resizeCanvas);
+
+      // Mouse drag controls for turntable
+      canvas.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      });
+      window.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        let dx = e.clientX - lastMouseX;
+        let dy = e.clientY - lastMouseY;
+        rotY += dx * 0.008;
+        rotX = Math.max(-0.3, Math.min(0.3, rotX + dy * 0.005));
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      });
+      window.addEventListener("mouseup", () => { isDragging = false; });
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+
+    function renderClasses() {
+      const container = document.getElementById("classPicker");
+      container.innerHTML = CLASSES.map((cls, idx) => `
+        <div class="class-btn ${idx === activeClass ? 'active' : ''}" onclick="selectClass(${idx})">
+          <div>
+            <div class="class-btn-name">${cls.name}</div>
+            <div class="class-btn-desc">${cls.desc}</div>
+          </div>
+          <span style="font-size: 11px; color: var(--accent-gold); font-weight: 700;">[SELECT]</span>
+        </div>
+      `).join("");
+    }
+
+    function selectClass(idx) {
+      activeClass = idx;
+      renderClasses();
+      const cls = CLASSES[idx];
+      document.getElementById("slotPrimaryTitle").innerText = cls.primary.toUpperCase() + " Tactical";
+      document.getElementById("viewportWeaponName").innerText = cls.primary.toUpperCase() + " CARBINE";
+    }
+
+    function selectSocket(socket) {
+      activeSocket = socket;
+      document.querySelectorAll(".socket-node").forEach(n => n.classList.remove("active"));
+      const dockNodes = document.querySelectorAll(".socket-node");
+      const socketKeys = ["optic", "muzzle", "underbarrel", "magazine", "stock", "camo"];
+      const sIdx = socketKeys.indexOf(socket);
+      if (sIdx >= 0 && dockNodes[sIdx]) dockNodes[sIdx].classList.add("active");
+
+      document.getElementById("inspectorTitle").innerText = socket.toUpperCase() + " SELECTION";
+      renderAttachmentList();
+    }
+
+    function renderAttachmentList() {
+      const listContainer = document.getElementById("attachmentList");
+      if (activeSocket === "camo") {
+        listContainer.innerHTML = `<div style="font-size: 12px; color: var(--text-dim);">Select camouflage swatch below to coat receiver, handguard and attachments.</div>`;
+        return;
+      }
+
+      const options = ATTACHMENTS[activeSocket] || [];
+      const currentSelected = selectedAttachments[activeSocket];
+
+      listContainer.innerHTML = options.map(opt => `
+        <div class="attachment-option ${opt.id === currentSelected ? 'selected' : ''}" onclick="pickAttachment('${activeSocket}', '${opt.id}')">
+          <div>
+            <div class="att-info-name">${opt.name}</div>
+            <div class="att-info-desc">${opt.desc}</div>
+          </div>
+          <span class="att-tag">${opt.tag}</span>
+        </div>
+      `).join("");
+    }
+
+    function pickAttachment(socket, attId) {
+      selectedAttachments[socket] = attId;
+      renderAttachmentList();
+
+      // Update socket dock text
+      const opt = ATTACHMENTS[socket].find(o => o.id === attId);
+      if (opt) {
+        const idMap = {
+          optic: "socketNameOptic",
+          muzzle: "socketNameMuzzle",
+          underbarrel: "socketNameUnderbarrel",
+          magazine: "socketNameMagazine",
+          stock: "socketNameStock"
+        };
+        if (idMap[socket]) document.getElementById(idMap[socket]).innerText = opt.name;
+      }
+
+      updateStats();
+      updateSlotAllocation();
+    }
+
+    function renderCamos() {
+      const container = document.getElementById("camoPalette");
+      container.innerHTML = CAMOS.map(c => `
+        <div class="camo-swatch ${c.id === selectedAttachments.camo ? 'selected' : ''}" 
+             style="background: linear-gradient(135deg, ${c.color1} 50%, ${c.color2} 50%);"
+             onclick="pickCamo('${c.id}')">
+          <div class="camo-name">${c.name}</div>
+        </div>
+      `).join("");
+    }
+
+    function pickCamo(camoId) {
+      selectedAttachments.camo = camoId;
+      renderCamos();
+      const camoObj = CAMOS.find(c => c.id === camoId);
+      if (camoObj) document.getElementById("socketNameCamo").innerText = camoObj.name;
+    }
+
+    function resetAttachments() {
+      selectedAttachments = {
+        optic: "iron",
+        muzzle: "standard",
+        underbarrel: "none",
+        magazine: "standard",
+        stock: "standard",
+        camo: "desert"
+      };
+      document.getElementById("socketNameOptic").innerText = "Iron Sights";
+      document.getElementById("socketNameMuzzle").innerText = "Standard";
+      document.getElementById("socketNameUnderbarrel").innerText = "None";
+      document.getElementById("socketNameMagazine").innerText = "30 Round";
+      document.getElementById("socketNameStock").innerText = "Standard Stock";
+      renderAttachmentList();
+      renderCamos();
+      updateStats();
+      updateSlotAllocation();
+    }
+
+    function updateSlotAllocation() {
+      let count = 0;
+      if (selectedAttachments.optic !== "iron") count++;
+      if (selectedAttachments.muzzle !== "standard") count++;
+      if (selectedAttachments.underbarrel !== "none") count++;
+      if (selectedAttachments.magazine !== "standard") count++;
+      if (selectedAttachments.stock !== "standard") count++;
+      document.getElementById("slotCountDisplay").innerText = `${count} / 5`;
+    }
+
+    function updateStats() {
+      // Base stats
+      let damage = 40;
+      let headDamage = 56;
+      let fireRate = 800;
+      let recoil = 70; // 0 to 100
+      let range = 65; // meters
+      let ads = 220; // ms
+      let isSuppressed = (selectedAttachments.muzzle === "suppressor");
+
+      // Apply deltas
+      Object.keys(selectedAttachments).forEach(slot => {
+        const attId = selectedAttachments[slot];
+        if (ATTACHMENTS[slot]) {
+          const item = ATTACHMENTS[slot].find(i => i.id === attId);
+          if (item) {
+            if (item.recoilDelta) recoil -= item.recoilDelta; // lower is better recoil control
+            if (item.rangeDelta) range += item.rangeDelta;
+            if (item.adsDelta) ads += item.adsDelta;
+          }
+        }
+      });
+
+      // Recoil clamp
+      recoil = Math.max(30, Math.min(95, recoil));
+      range = Math.max(35, Math.min(100, range));
+      ads = Math.max(140, Math.min(380, ads));
+
+      // Update DOM
+      document.getElementById("statValDamage").innerText = `${damage} / ${headDamage}`;
+      document.getElementById("statValFireRate").innerText = `${fireRate} RPM`;
+      document.getElementById("statValRecoil").innerText = `${Math.round(recoil)}%`;
+      document.getElementById("statValRange").innerText = `${Math.round(range)}m`;
+      document.getElementById("statValMobility").innerText = `${Math.round(ads)} ms`;
+
+      document.getElementById("statBarRecoil").style.width = recoil + "%";
+      document.getElementById("statBarRange").style.width = (range / 100 * 100) + "%";
+      document.getElementById("statBarMobility").style.width = (1 - (ads - 140) / 240) * 100 + "%";
+
+      // Acoustic
+      const acText = document.getElementById("statValAcoustic");
+      const acBar = document.getElementById("statBarAcoustic");
+      if (isSuppressed) {
+        acText.innerText = "Stealth (Suppressed / 0m Ping)";
+        acText.style.color = "var(--accent-green)";
+        acBar.style.width = "15%";
+        acBar.style.background = "var(--accent-green)";
+      } else {
+        acText.innerText = "Loud Gunfire (60m Radar Ping)";
+        acText.style.color = "var(--accent-red)";
+        acBar.style.width = "85%";
+        acBar.style.background = "var(--accent-red)";
+      }
+    }
+
+    // --- Render procedural 3D weapon turntable on Canvas ---
+    function renderLoop() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+
+      // Background ambient grid
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.lineWidth = 1;
+      const step = 40;
+      for (let x = 0; x < w; x += step) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y < h; y += step) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      // 3D Projection math
+      const centerX = w * 0.48;
+      const centerY = h * 0.52;
+      const cosY = Math.cos(rotY);
+      const sinY = Math.sin(rotY);
+      const cosX = Math.cos(rotX);
+      const sinX = Math.sin(rotX);
+
+      function project3D(x, y, z) {
+        // Yaw (rotY) around Y
+        let rx = x * cosY - z * sinY;
+        let rz = x * sinY + z * cosY;
+        // Pitch (rotX) around X
+        let ry = y * cosX - rz * sinX;
+        rz = y * sinX + rz * cosX;
+
+        const distance = 800;
+        const scale = distance / (distance + rz);
+        return {
+          px: centerX + rx * scale,
+          py: centerY + ry * scale,
+          scale: scale,
+          depth: rz
+        };
+      }
+
+      // Camo colors
+      const camoObj = CAMOS.find(c => c.id === selectedAttachments.camo) || CAMOS[0];
+
+      // Draw Turntable Base Circle
+      ctx.save();
+      ctx.beginPath();
+      for (let a = 0; a <= Math.PI * 2; a += 0.2) {
+        let p = project3D(Math.cos(a) * 280, 160, Math.sin(a) * 280);
+        if (a === 0) ctx.moveTo(p.px, p.py);
+        else ctx.lineTo(p.px, p.py);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = "rgba(234, 179, 8, 0.25)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(234, 179, 8, 0.02)";
+      ctx.fill();
+      ctx.restore();
+
+      // Draw Weapon Geometry Pieces
+      // Helper to draw 3D box
+      function drawBox(bx, by, bz, bw, bh, bd, color) {
+        const p1 = project3D(bx - bw/2, by - bh/2, bz - bd/2);
+        const p2 = project3D(bx + bw/2, by - bh/2, bz - bd/2);
+        const p3 = project3D(bx + bw/2, by + bh/2, bz - bd/2);
+        const p4 = project3D(bx - bw/2, by + bh/2, bz - bd/2);
+        const p5 = project3D(bx - bw/2, by - bh/2, bz + bd/2);
+        const p6 = project3D(bx + bw/2, by - bh/2, bz + bd/2);
+        const p7 = project3D(bx + bw/2, by + bh/2, bz + bd/2);
+        const p8 = project3D(bx - bw/2, by + bh/2, bz + bd/2);
+
+        ctx.fillStyle = color;
+        ctx.strokeStyle = "rgba(0,0,0,0.4)";
+        ctx.lineWidth = 1;
+
+        // Front Face
+        ctx.beginPath();
+        ctx.moveTo(p1.px, p1.py); ctx.lineTo(p2.px, p2.py); ctx.lineTo(p3.px, p3.py); ctx.lineTo(p4.px, p4.py);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        // Top Face
+        ctx.beginPath();
+        ctx.moveTo(p1.px, p1.py); ctx.lineTo(p2.px, p2.py); ctx.lineTo(p6.px, p6.py); ctx.lineTo(p5.px, p5.py);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        // Side Face
+        ctx.beginPath();
+        ctx.moveTo(p2.px, p2.py); ctx.lineTo(p6.px, p6.py); ctx.lineTo(p7.px, p7.py); ctx.lineTo(p3.px, p3.py);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+
+      // Upper & Lower Receiver
+      drawBox(0, -10, 0, 140, 42, 22, camoObj.color1);
+      drawBox(-20, 20, 0, 80, 30, 20, "#1f2937"); // Grip mount
+
+      // Handguard & Barrel
+      drawBox(120, -14, 0, 110, 32, 20, camoObj.color2);
+      drawBox(200, -14, 0, 80, 14, 14, "#374151"); // Free float barrel
+
+      // Pistol Grip
+      drawBox(-35, 45, 0, 24, 50, 18, "#111827");
+
+      // Magazine Socket
+      if (selectedAttachments.magazine === "ext_mag") {
+        drawBox(20, 48, 0, 32, 85, 18, camoObj.color1); // Extended 45rd
+      } else if (selectedAttachments.magazine === "fast_mag") {
+        drawBox(14, 38, -10, 28, 65, 16, "#1f2937");
+        drawBox(26, 38, 10, 28, 65, 16, camoObj.color2); // Dual taped
+      } else {
+        drawBox(20, 38, 0, 30, 65, 18, "#1f2937"); // Standard 30rd
+      }
+
+      // Stock Socket
+      if (selectedAttachments.stock === "no_stock") {
+        drawBox(-85, -12, 0, 40, 16, 16, "#4b5563"); // Bare buffer tube
+      } else if (selectedAttachments.stock === "heavy_stock") {
+        drawBox(-110, -10, 0, 95, 36, 22, "#111827"); // Marksman stock
+        drawBox(-145, 0, 0, 25, 60, 20, "#374151"); // Buttpad
+      } else {
+        drawBox(-100, -12, 0, 75, 28, 20, camoObj.color2); // Standard stock
+      }
+
+      // Underbarrel Socket
+      if (selectedAttachments.underbarrel === "foregrip") {
+        drawBox(120, 22, 0, 20, 44, 16, "#111827");
+      } else if (selectedAttachments.underbarrel === "angled") {
+        drawBox(120, 16, 0, 50, 22, 16, "#1f2937");
+      } else if (selectedAttachments.underbarrel === "m203") {
+        drawBox(130, 24, 0, 85, 28, 24, "#111827");
+        drawBox(80, 26, 0, 18, 20, 14, "#4b5563"); // Trigger
+      }
+
+      // Muzzle Socket
+      if (selectedAttachments.muzzle === "suppressor") {
+        drawBox(270, -14, 0, 80, 26, 26, "#0f172a"); // Thick silencer can
+      } else if (selectedAttachments.muzzle === "compensator") {
+        drawBox(250, -14, 0, 30, 20, 20, "#94a3b8"); // Vented muzzle brake
+      } else if (selectedAttachments.muzzle === "breacher") {
+        drawBox(248, -14, 0, 26, 24, 24, "#475569"); // Spiked ring
+      } else {
+        drawBox(246, -14, 0, 20, 16, 16, "#1f2937"); // Standard birdcage flash hider
+      }
+
+      // Optic Socket
+      if (selectedAttachments.optic === "red_dot") {
+        drawBox(0, -38, 0, 28, 12, 18, "#111827"); // Base riser
+        drawBox(4, -52, 0, 32, 22, 22, "#1e293b"); // Sight body
+      } else if (selectedAttachments.optic === "holo") {
+        drawBox(-4, -40, 0, 50, 14, 20, "#1f2937");
+        drawBox(0, -56, 0, 48, 26, 24, "#111827"); // 553 Hood
+      } else if (selectedAttachments.optic === "acog") {
+        drawBox(-10, -42, 0, 75, 24, 22, "#334155"); // 4x Scope Tube
+        drawBox(24, -42, 0, 20, 30, 28, "#1e293b"); // Front Bell
+      } else if (selectedAttachments.optic === "thermal") {
+        drawBox(-12, -45, 0, 85, 30, 26, "#1e293b"); // Heavy IR Chassis
+      } else {
+        // Factory Iron Sights
+        drawBox(-55, -34, 0, 16, 16, 12, "#111827"); // Rear peep
+        drawBox(170, -34, 0, 12, 18, 10, "#111827"); // Front triangle post
+      }
+
+      // Muzzle Flash VFX
+      if (muzzleFlash > 0) {
+        const mPos = project3D(selectedAttachments.muzzle === "suppressor" ? 315 : 265, -14, 0);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(mPos.px, mPos.py, 35 * muzzleFlash, 0, Math.PI * 2);
+        ctx.fillStyle = selectedAttachments.muzzle === "suppressor" ? "rgba(255,100,50,0.15)" : "rgba(255,200,50,0.85)";
+        ctx.shadowColor = "#eab308";
+        ctx.shadowBlur = 30;
+        ctx.fill();
+        ctx.restore();
+        muzzleFlash -= 0.08;
+      }
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    function toggleFireAnimation() {
+      muzzleFlash = 1.0;
+    }
+
+    // --- Modal ADS Sight Picture Simulator ---
+    function openAdsModal() {
+      const modal = document.getElementById("adsModal");
+      modal.classList.add("open");
+      renderAdsView();
+    }
+    function closeAdsModal() {
+      document.getElementById("adsModal").classList.remove("open");
+    }
+
+    function renderAdsView() {
+      const adsCanvas = document.getElementById("adsCanvas");
+      const aCtx = adsCanvas.getContext("2d");
+      const w = adsCanvas.width;
+      const h = adsCanvas.height;
+
+      aCtx.fillStyle = "#090d14";
+      aCtx.fillRect(0, 0, w, h);
+
+      // Distant target dummy backdrop
+      aCtx.strokeStyle = "rgba(255,255,255,0.08)";
+      aCtx.lineWidth = 1;
+      for (let i = 0; i < h; i += 25) {
+        aCtx.beginPath(); aCtx.moveTo(0, i); aCtx.lineTo(w, i); aCtx.stroke();
+      }
+
+      // Target Dummy Silhouette at 50m
+      const cx = w / 2;
+      const cy = h / 2;
+      aCtx.fillStyle = "#1e293b";
+      aCtx.fillRect(cx - 20, cy - 35, 40, 70); // Torso
+      aCtx.beginPath();
+      aCtx.arc(cx, cy - 50, 16, 0, Math.PI * 2); // Head
+      aCtx.fill();
+
+      // Render Sight Ring & Reticle according to equipped optic
+      const opt = selectedAttachments.optic;
+
+      if (opt === "red_dot") {
+        // Reflex Lens Ring
+        aCtx.strokeStyle = "#334155";
+        aCtx.lineWidth = 8;
+        aCtx.beginPath();
+        aCtx.arc(cx, cy, 120, 0, Math.PI * 2);
+        aCtx.stroke();
+
+        // 2 MOA Crisp Red Dot
+        aCtx.fillStyle = "#ef4444";
+        aCtx.shadowColor = "#ef4444";
+        aCtx.shadowBlur = 10;
+        aCtx.beginPath();
+        aCtx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+        aCtx.fill();
+        document.getElementById("adsFovText").innerText = "65° FOV (1.25x Reflex)";
+      } else if (opt === "holo") {
+        // Holographic Lens Outer Ring
+        aCtx.strokeStyle = "#1e293b";
+        aCtx.lineWidth = 14;
+        aCtx.strokeRect(cx - 130, cy - 110, 260, 220);
+
+        // Holographic Outer 68 MOA Reticle
+        aCtx.strokeStyle = "rgba(239, 68, 68, 0.85)";
+        aCtx.lineWidth = 2.5;
+        aCtx.beginPath();
+        aCtx.arc(cx, cy, 55, 0, Math.PI * 2);
+        aCtx.stroke();
+
+        // Cross ticks
+        aCtx.beginPath();
+        aCtx.moveTo(cx - 75, cy); aCtx.lineTo(cx - 55, cy);
+        aCtx.moveTo(cx + 55, cy); aCtx.lineTo(cx + 75, cy);
+        aCtx.moveTo(cx, cy + 55); aCtx.lineTo(cx, cy + 75);
+        aCtx.stroke();
+
+        // Center 1 MOA dot
+        aCtx.fillStyle = "#ef4444";
+        aCtx.beginPath();
+        aCtx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+        aCtx.fill();
+        document.getElementById("adsFovText").innerText = "58° FOV (1.5x Holo 553)";
+      } else if (opt === "acog") {
+        // ACOG Circular Scope Body (Black surround)
+        aCtx.save();
+        aCtx.fillStyle = "rgba(0,0,0,0.85)";
+        aCtx.fillRect(0, 0, w, h);
+
+        // Lens cutout
+        aCtx.globalCompositeOperation = "destination-out";
+        aCtx.beginPath();
+        aCtx.arc(cx, cy, 140, 0, Math.PI * 2);
+        aCtx.fill();
+        aCtx.restore();
+
+        // ACOG Chevron
+        aCtx.strokeStyle = "#eab308";
+        aCtx.lineWidth = 3;
+        aCtx.beginPath();
+        aCtx.moveTo(cx - 10, cy + 8);
+        aCtx.lineTo(cx, cy);
+        aCtx.lineTo(cx + 10, cy + 8);
+        aCtx.stroke();
+
+        // Bullet Drop Hash marks
+        aCtx.strokeStyle = "rgba(0,0,0,0.6)";
+        aCtx.lineWidth = 1.5;
+        aCtx.beginPath();
+        aCtx.moveTo(cx, cy + 8); aCtx.lineTo(cx, cy + 60);
+        aCtx.moveTo(cx - 8, cy + 22); aCtx.lineTo(cx + 8, cy + 22);
+        aCtx.moveTo(cx - 12, cy + 38); aCtx.lineTo(cx + 12, cy + 38);
+        aCtx.moveTo(cx - 16, cy + 55); aCtx.lineTo(cx + 16, cy + 55);
+        aCtx.stroke();
+        document.getElementById("adsFovText").innerText = "32° FOV (4.0x Scope)";
+      } else if (opt === "thermal") {
+        // Thermal Scope Green/Grey Screen
+        aCtx.fillStyle = "#041d13";
+        aCtx.fillRect(0, 0, w, h);
+
+        // Highlight Dummy in pure Hot White/Cyan
+        aCtx.fillStyle = "#5eead4";
+        aCtx.fillRect(cx - 20, cy - 35, 40, 70);
+        aCtx.beginPath();
+        aCtx.arc(cx, cy - 50, 16, 0, Math.PI * 2);
+        aCtx.fill();
+
+        // Heavy Mil-Dot Crosshairs
+        aCtx.strokeStyle = "#22c55e";
+        aCtx.lineWidth = 1.5;
+        aCtx.beginPath();
+        aCtx.moveTo(0, cy); aCtx.lineTo(w, cy);
+        aCtx.moveTo(cx, 0); aCtx.lineTo(cx, h);
+        aCtx.stroke();
+        document.getElementById("adsFovText").innerText = "38° FOV (3.5x IR Thermal)";
+      } else {
+        // Factory Iron Sights
+        aCtx.fillStyle = "#1e293b";
+        // Rear Peep Ring
+        aCtx.beginPath();
+        aCtx.arc(cx, cy + 30, 80, Math.PI, 0, true);
+        aCtx.lineTo(cx + 80, h);
+        aCtx.lineTo(cx - 80, h);
+        aCtx.closePath();
+        aCtx.fill();
+
+        // Front Post
+        aCtx.fillStyle = "#0f172a";
+        aCtx.fillRect(cx - 4, cy - 10, 8, 45);
+        aCtx.fillStyle = "#ffffff";
+        aCtx.beginPath();
+        aCtx.arc(cx, cy - 10, 2.5, 0, Math.PI * 2);
+        aCtx.fill();
+        document.getElementById("adsFovText").innerText = "75° FOV (1.0x Iron Sights)";
+      }
+    }
+
+    function switchMainTab(tab) {
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+      if (tab === "gunsmith") document.querySelectorAll(".nav-btn")[0].classList.add("active");
+      if (tab === "loadout") document.querySelectorAll(".nav-btn")[1].classList.add("active");
+      if (tab === "killstreaks") document.querySelectorAll(".nav-btn")[2].classList.add("active");
+    }
+
+    function selectSlot(slot) {
+      document.querySelectorAll(".slot-card").forEach(s => s.classList.remove("active"));
+      const map = {
+        primary: "slotPrimary",
+        secondary: "slotSecondary",
+        perks: "slotPerks",
+        equipment: "slotEquipment",
+        streaks: "slotStreaks"
+      };
+      if (map[slot]) document.getElementById(map[slot]).classList.add("active");
+    }
+
+    // Run on mount
+    init();
+  </script>
+</body>
+</html>
+
