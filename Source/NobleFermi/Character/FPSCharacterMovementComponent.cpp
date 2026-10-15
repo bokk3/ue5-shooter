@@ -19,6 +19,31 @@ void UFPSCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float De
 {
 	Super::UpdateCharacterStateBeforeMovement(DeltaSeconds);
 
+	// Stamina drain and regeneration
+	if (CurrentFPSMode == EFPSMovementMode::Sprinting && Velocity.Size2D() > WalkSpeed)
+	{
+		CurrentStamina = FMath::Max(0.0f, CurrentStamina - StaminaSprintDrainRate * DeltaSeconds);
+		TimeSinceLastSprint = 0.0f;
+
+		if (CurrentStamina <= 0.0f)
+		{
+			bIsStaminaExhausted = true;
+			SetWantsToSprint(false);
+		}
+	}
+	else
+	{
+		TimeSinceLastSprint += DeltaSeconds;
+		if (TimeSinceLastSprint >= StaminaRegenDelay)
+		{
+			CurrentStamina = FMath::Min(MaxStamina, CurrentStamina + StaminaRegenRate * DeltaSeconds);
+			if (CurrentStamina >= 25.0f)
+			{
+				bIsStaminaExhausted = false;
+			}
+		}
+	}
+
 	if (bIsSliding)
 	{
 		// Check if sliding velocity dropped below threshold
@@ -53,6 +78,12 @@ float UFPSCharacterMovementComponent::GetMaxSpeed() const
 
 void UFPSCharacterMovementComponent::SetWantsToSprint(bool bSprint)
 {
+	if (bSprint && (bIsStaminaExhausted || CurrentStamina <= 5.0f))
+	{
+		bWantsToSprint = false;
+		return;
+	}
+
 	bWantsToSprint = bSprint;
 
 	if (bWantsToSprint && IsMovingOnGround() && !IsCrouching() && !bIsSliding)

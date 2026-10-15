@@ -91,7 +91,18 @@ Everything is launchable directly from the main menu without needing separate sc
 - **Exposure Lock**: Manual camera exposure is locked across both the preview actor and player pawn, eliminating auto-exposure eye-adaptation screen whiteout.
 - **Golden-Hour Sun & Volumetric Dust**: Directional sun at 10.0 lux with real-time dynamic shadows, sky atmosphere, warm height fog dust haze, and a pulsating aviation hazard beacon atop the 12m central derrick.
 
+### 3.4. In-Game Tactical HUD
+- **Top-Left Minimap**: $180\times 180\text{ px}$ circular tactical radar with $25\text{ m}$ / $50\text{ m}$ range rings, $120^\circ/\text{s}$ rotating sweep line, player orientation chevron, Domination flags A/B/C, and real-time gunfire acoustic radar blips.
+- **Top-Center Radar Compass**: $440\text{ px}$ horizontal bearing tape displaying cardinal directions (`N`, `NE`, `E`, `SE`, `S`, `SW`, `W`, `NW`), $5^\circ/15^\circ$ degree ticks, center digital heading ticker `[ 045° ]`, objective waypoints, and acoustic threat diamonds.
+- **Bottom-Left Operator Vitals**:
+  - **Armor Shield (100)**: Cobalt blue bar representing Level IV ceramic plate integrity.
+  - **Health (100 HP)**: Live numerical HP readout with dynamic color shift (cyan &rarr; amber &rarr; critical red).
+  - **Tactical Stamina (100)**: Emerald green meter. Drains at $18.0/\text{s}$ during tactical sprint; regenerates at $28.0/\text{s}$ after $0.8\text{ s}$ of rest/walking. Exhaustion locks sprint at 0 until 15 stamina is restored.
+- **Bottom-Right Weapon & Ammo HUD**: Active weapon name, fire mode (`FULL-AUTO 750 RPM`), large 30pt digital counter with reserve (`30 / 120`), emergency low-ammo flashing, and `[>> RELOADING...]` sequence status.
+- **Dynamic Reticle & Hitmarker**: Bloom-scaling crosshair that collapses smoothly during ADS, plus confirmed impact diagonal `X` hitmarkers.
+
 ---
+
 
 ## 4. Multiplayer & Dedicated Server Deployment
 

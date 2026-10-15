@@ -40,6 +40,12 @@ public:
 	void RechargeShield(float ShieldAmount);
 
 	UFUNCTION(BlueprintPure, Category = "FPS Combat")
+	float GetCurrentHealth() const { return CurrentHealth; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Combat")
+	float GetCurrentShield() const { return CurrentShield; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Combat")
 	float GetHealthPercent() const { return MaxHealth > 0.0f ? CurrentHealth / MaxHealth : 0.0f; }
 
 	UFUNCTION(BlueprintPure, Category = "FPS Combat")

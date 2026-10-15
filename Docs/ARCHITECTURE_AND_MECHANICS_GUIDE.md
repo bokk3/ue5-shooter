@@ -263,10 +263,81 @@ When reloading (tactical: $T = 2.2\text{ s}$, empty: $T = 2.9\text{ s}$), the we
 
 ---
 
-## 9. Why This Foundation Is an Exceptional Start
+---
+
+## 9. Slate Tactical HUD, Acoustic Minimap, Compass Tape & Operator Vitals
+
+Noble Fermi features a zero-dependency, hardware-accelerated tactical HUD implemented in pure C++ Slate (`SFPSHUDWidget` / `UFPSHUDWidget`). It delivers critical combat telemetry without UMG/web overhead, executing directly on the Slate draw thread with custom vector drawing via `FSlateDrawElement`.
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  [MINIMAP]                                [RADAR COMPASS TAPE]                   │
+│  • 180x180 Circular Scope                 • 440px Horizontal Tape (90° FOV)      │
+│  • 25m / 50m Range Rings                  • N, NE, E, SE, S, SW, W, NW Markers   │
+│  • 120°/s Radar Sweep                     • [ 045° ] Digital Heading Ticker      │
+│  • Flags A/B/C + Gunfire Blips            • Threat Diamonds & Objective Waypoints│
+│                                                                                  │
+│                                    [ + ]                                         │
+│                            Dynamic Center Reticle                                │
+│                            (Collapses in ADS)                                    │
+│                            Hitmarker Feedback                                    │
+│                                                                                  │
+│  [OPERATOR VITALS]                                        [AMMO & WEAPON STATUS] │
+│  • Armor Shield: 100 (Level IV Ceramic)                   • NF-98 CARBINE        │
+│  • Health: 100 HP (Dynamic Amber Alert)                   • FULL-AUTO 750 RPM    │
+│  • Stamina: 100 (Sprint Drain & Regen)                    • 30 / 120 Digital Ammo│
+│  • Exhaustion Safety Lock                                 • [>> RELOADING...]    │
+└──────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 9.1. Top-Left Tactical Minimap
+- **Circular Tactical Scope**: $180 \times 180\text{ px}$ circular radar display with dual range rings representing $25\text{ m}$ and $50\text{ m}$ combat perimeters.
+- **Continuous Radar Sweep**: Rotating scan line sweeping clockwise at $120^\circ/\text{s}$ with trailing phosphor glow.
+- **Authoritative Player Orientation**: Forward-facing tactical chevron centered at the radar origin, rotating in real-time with the player's yaw.
+- **Tactical Objective Coordinates**: Domination flags A, B, and C rendered at real-time relative arena positions with distinctive cyan/gold/magenta letter badges.
+- **Acoustic Gunfire Threat Pings**: Integrated with `UFPSRadarSubsystem`. When an unsuppressed weapon discharges within acoustic range, a threat blip appears on the radar with expanding circular sound waves that fade smoothly over their lifetime.
+
+### 9.2. Top-Center Horizontal Radar Compass Tape
+- **$90^\circ$ Field-of-View Bearing Window**: $440\text{ px}$ wide tactical compass tape centered at top of screen.
+- **Tick Marks & Cardinal Indicators**:
+  - Minor tick marks every $5^\circ$, major tick marks every $15^\circ$.
+  - High-visibility cardinal and intercardinal direction labels: `N` ($0^\circ$), `NE` ($45^\circ$), `E` ($90^\circ$), `SE` ($135^\circ$), `S` ($180^\circ$), `SW` ($225^\circ$), `W` ($270^\circ$), `NW` ($315^\circ$).
+- **Digital Heading Readout Box**: Framed digital bearing readout (`[ 045° ]`) centered directly above the compass tape.
+- **Objective Waypoint Markers**: Domination flags A, B, and C projected onto the compass heading tape, clamping to the edges when outside the current $90^\circ$ viewport.
+- **Acoustic Gunfire Threat Diamonds**: Hostile gunshot bearings appear as pulsing amber/red threat diamonds on the tape, indicating immediate azimuth to the shooter.
+
+### 9.3. Bottom-Left Operator Vitals & Stamina System
+- **Level IV Ceramic Armor Shield Meter**:
+  - $100.0$ max capacity in cobalt blue (`FLinearColor(0.2, 0.55, 1.0)`).
+  - Absorbs incoming kinetic energy protecting the operator's thoracic spine and chest vitals (`spine_02`, `spine_03`).
+- **Vital Health Meter**:
+  - $100.0$ max HP with real-time numeric readout (`[100 / 100]`).
+  - Dynamic color gradient shifts from combat cyan (`FLinearColor(0.15, 0.85, 0.65)`) to amber warning ($< 50\text{ HP}$) and critical red ($< 25\text{ HP}$).
+- **Tactical Stamina Meter (`FPSCharacterMovementComponent`)**:
+  - $100.0$ max capacity rendered in emerald green (`FLinearColor(0.2, 0.85, 0.35)`).
+  - **Sprint Drain Rate**: Consumes $18.0\text{ units/s}$ during tactical sprint ($720\text{ cm/s}$).
+  - **Regeneration Rate**: Recovers at $28.0\text{ units/s}$ after a $0.8\text{ s}$ delay when stationary or moving at standard combat speed ($450\text{ cm/s}$).
+  - **Exhaustion Safety Lock**: When stamina reaches $0.0$, the operator becomes exhausted (`bIsStaminaExhausted = true`), disabling tactical sprint until stamina recovers to $\ge 15.0\text{ units}$.
+
+### 9.4. Bottom-Right Digital Ammo & Weapon HUD
+- **Loadout Telemetry**: Displays active weapon name (`NF-98 TACTICAL CARBINE`) and fire mode descriptor (`[FULL-AUTO 750 RPM]`).
+- **Magazine Readout**: High-contrast $30\text{ pt}$ digital font displaying remaining chambered rounds, alongside reserve ammunition count (`30 / 120`).
+- **Low-Ammo Warning State**: Text shifts to pulsing emergency amber/red when current ammo drops to $\le 5$ rounds.
+- **Dynamic Reload Status**: Flashes a prominent `[>> RELOADING...]` banner during active 4-phase reload execution.
+
+### 9.5. Dynamic Center Reticle & Kinetic Hitmarkers
+- **Spread-Responsive Reticle**: 4-pip crosshair dynamically scales its gap based on current movement speed, firing bloom, and stance (crouch vs. stand).
+- **ADS Reticle Fade**: Smoothly fades out to $0.0$ opacity when transitioning to Aim-Down-Sights, preventing obstruction of the physical 3D reflex optic.
+- **Kinetic Hitmarker**: Renders a crisp $45^\circ$ diagonal hitmarker cross (`X`) with fast exponential decay upon confirmed projectile impact, wired directly from `ShooterChar->GetActiveHUDWidget()->TriggerHitmarker()`.
+
+---
+
+## 10. Why This Foundation Is an Exceptional Start
 
 1. **Architecture Before Assets**: Most failed indie shooters import gigabytes of marketplace 3D meshes before having solid networking or ballistics. When multiplayer is retrofitted, the project collapses. Noble Fermi started with 128-tick networking, dedicated server targets, and modular C++ physics first.
 2. **Procedural Level Generation**: Instead of being locked into proprietary binary map files that can only be built inside the editor GUI, Noble Fermi's competitive maps are fully specified in procedural C++. They boot instantaneously, test deterministically in headless CI/CD, and package without missing reference headaches.
 3. **Anatomical Authenticity**: By grounding hitboxes and damage models in real adult human male anthropometry (180 cm, 82 kg, 21 bones), combat feels visceral and predictable. Shots to the chest plate behave differently from shots to the lower abdomen or femoral artery.
-4. **Instant Standalone Execution**: The game compiles into a lean, self-contained standalone executable (`Packaged\Windows\NobleFermi.exe`) that boots in seconds without requiring the Unreal Editor.
-5. **Clean Codebase**: Written in modular C++ adhering to modern Unreal Engine standards, with complete separation between UI, combat simulation, body mechanics, and replication.
+4. **Hardware-Accelerated Slate HUD**: The entire tactical HUD (minimap, compass tape, health/shield/stamina vitals, ammo) is implemented in native Slate C++, achieving sub-millisecond draw overhead and zero webview/UMG garbage collection pauses.
+5. **Instant Standalone Execution**: The game compiles into a lean, self-contained standalone executable (`Packaged\Windows\NobleFermi.exe`) that boots in seconds without requiring the Unreal Editor.
+6. **Clean Codebase**: Written in modular C++ adhering to modern Unreal Engine standards, with complete separation between UI, combat simulation, body mechanics, and replication.
+

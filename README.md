@@ -33,9 +33,9 @@
                                  │
                                  ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   Interactive Start Menu & 3D Diorama                  │
+│           Interactive Start Menu, Slate Tactical HUD & 3D Diorama      │
 ├────────────────────────────────────────────────────────────────────────┤
-│ • Pure Slate C++ Military HUD (Zero webview/heavy UMG overhead)        │
+│ • Pure Slate C++ Minimap, Radar Compass Tape, Stamina & Ammo Counters  │
 │ • 360° Rotating Turntable with Live ADS Aiming Operator                │
 │ • Procedural Idle Breathing Motion & 3-Point Studio Lighting           │
 │ • Real-time Camo (Urban/Woodland/Desert/Blackout) & Gear Customization │
@@ -103,6 +103,26 @@
   - **Tactical Headgear**: FAST Ballistic Helmet, GPNVG-18 Quad-Nods (with phosphor green glow), Spec Ops Balaclava, Tactical Cap & Headset.
   - **Armor Vests**: Level IV Heavy Carrier, Lightweight JPC, Recon Tactical Rig.
   - **Stance Switching**: High-Ready ADS vs. Low-Ready Patrol.
+
+### 7. Slate Tactical In-Game HUD & Telemetry
+- **Top-Left Acoustic Minimap**:
+  - 180x180 px circular radar display with 25m and 50m range rings and 120°/s rotating phosphor radar sweep.
+  - Authoritative player forward chevron indicator and Domination flags A, B, and C with team color badges.
+  - Acoustic gunfire detection: Hostile unsuppressed gunshots ping real-time radar blips with expanding dissipation rings.
+- **Top-Center Radar Compass Tape**:
+  - 440 px horizontal tape covering a 90° tactical bearing window.
+  - Major 15° and minor 5° tick marks with bold cardinal points (`N`, `NE`, `E`, `SE`, `S`, `SW`, `W`, `NW`).
+  - Centered digital heading readout box (`[ 045° ]`).
+  - Objective badges and acoustic gunshot threat diamonds projected directly on the compass tape.
+- **Bottom-Left Operator Vitals & Tactical Stamina**:
+  - **Level IV Ceramic Armor Shield (100)**: Cobalt blue kinetic absorption bar protecting thoracic vitals (`spine_02`, `spine_03`).
+  - **Health (100 HP)**: High-contrast digital HP readout with dynamic color shift (cyan &rarr; amber &rarr; critical red).
+  - **Tactical Stamina (100)**: Emerald green sprint meter with 18.0/s sprint drain, 28.0/s rest/walk recovery, and exhaustion lock at 0 until restored to 15.
+- **Bottom-Right Digital Ammo & Loadout**:
+  - Weapon name, fire mode (`[FULL-AUTO 750 RPM]`), large 30pt digital counter with reserve (`30 / 120`), emergency low-ammo flashing ($\le 5$), and active `[>> RELOADING...]` banner.
+- **Dynamic Crosshair & Hitmarkers**:
+  - Spread-responsive 4-pip reticle that collapses during ADS for clean reflex optic sightlines.
+  - Direct confirmed bullet impact diagonal `X` hitmarkers with rapid exponential fade.
 
 ---
 

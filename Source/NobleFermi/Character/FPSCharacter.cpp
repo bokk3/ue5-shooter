@@ -46,6 +46,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	InventoryComponent->DefaultPrimaryClass = AFPSWeaponBase::StaticClass();
 	EquipmentComponent = CreateDefaultSubobject<UFPSEquipmentComponent>(TEXT("EquipmentComponent"));
 	BodyMechanicsComponent = CreateDefaultSubobject<UFPSBodyMechanicsComponent>(TEXT("BodyMechanicsComponent"));
+	HUDWidgetClass = UFPSHUDWidget::StaticClass();
 }
 
 void AFPSCharacter::BeginPlay()
@@ -56,12 +57,14 @@ void AFPSCharacter::BeginPlay()
 	FirstPersonCamera->SetFieldOfView(95.0f);
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC && HUDWidgetClass)
+	if (PC)
 	{
-		ActiveHUDWidget = CreateWidget<UFPSHUDWidget>(PC, HUDWidgetClass);
+		TSubclassOf<UFPSHUDWidget> WidgetClass = HUDWidgetClass ? HUDWidgetClass : TSubclassOf<UFPSHUDWidget>(UFPSHUDWidget::StaticClass());
+		ActiveHUDWidget = CreateWidget<UFPSHUDWidget>(PC, WidgetClass);
 		if (ActiveHUDWidget)
 		{
-			ActiveHUDWidget->AddToViewport();
+			ActiveHUDWidget->SetOwningCharacter(this);
+			ActiveHUDWidget->AddToViewport(0);
 		}
 	}
 }

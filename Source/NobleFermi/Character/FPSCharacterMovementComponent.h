@@ -76,11 +76,41 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Mantle")
 	float MinMantleHeight = 50.0f;
 
+	// Stamina System
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Stamina")
+	float MaxStamina = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Stamina")
+	float CurrentStamina = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Stamina")
+	float StaminaSprintDrainRate = 18.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Stamina")
+	float StaminaRegenRate = 28.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Stamina")
+	float StaminaRegenDelay = 0.8f;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Movement|Stamina")
+	float GetCurrentStamina() const { return CurrentStamina; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Movement|Stamina")
+	float GetMaxStamina() const { return MaxStamina; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Movement|Stamina")
+	float GetStaminaPercent() const { return MaxStamina > 0.0f ? FMath::Clamp(CurrentStamina / MaxStamina, 0.0f, 1.0f) : 0.0f; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Movement|Stamina")
+	bool IsStaminaExhausted() const { return bIsStaminaExhausted; }
+
 private:
 	UPROPERTY()
 	EFPSMovementMode CurrentFPSMode = EFPSMovementMode::Walking;
 
 	bool bWantsToSprint = false;
 	bool bIsSliding = false;
+	bool bIsStaminaExhausted = false;
+	float TimeSinceLastSprint = 0.0f;
 	FVector SlideDirection = FVector::ZeroVector;
 };

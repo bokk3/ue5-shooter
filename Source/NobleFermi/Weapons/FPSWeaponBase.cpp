@@ -8,6 +8,8 @@
 #include "Radar/FPSRadarSubsystem.h"
 #include "Multiplayer/FPSPlayerState.h"
 #include "Weapons/FPSGunsmithComponent.h"
+#include "Character/FPSCharacter.h"
+#include "UI/FPSHUDWidget.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -372,6 +374,14 @@ void AFPSWeaponBase::FireShot()
 						if (HealthComp)
 						{
 							HealthComp->ApplyDamage(BaseDamage, PawnOwner, HitResult);
+
+							// Trigger tactical hitmarker feedback on shooter's HUD
+							AFPSCharacter* ShooterChar = Cast<AFPSCharacter>(PawnOwner);
+							if (ShooterChar && ShooterChar->GetActiveHUDWidget())
+							{
+								const bool bIsHead = (HitResult.BoneName == FName(TEXT("head")));
+								ShooterChar->GetActiveHUDWidget()->TriggerHitmarker(bIsHead ? EFPSHitmarkerType::Headshot : EFPSHitmarkerType::Standard);
+							}
 						}
 					}
 				}

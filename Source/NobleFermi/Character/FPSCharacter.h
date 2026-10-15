@@ -50,6 +50,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UFPSHUDWidget> HUDWidgetClass;
 
+	UFUNCTION(BlueprintPure, Category = "FPS Character|UI")
+	UFPSHUDWidget* GetActiveHUDWidget() const { return ActiveHUDWidget; }
+
 	// Actions
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
 	void StartCookingLethal();
