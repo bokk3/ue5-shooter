@@ -53,6 +53,28 @@ public:
 	UFUNCTION(BlueprintPure, Category = "FPS Character|UI")
 	UFPSHUDWidget* GetActiveHUDWidget() const { return ActiveHUDWidget; }
 
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
+	UFPSCharacterMovementComponent* GetFPSMovementComponent() const { return FPSMovementComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
+	UFPSInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
+	class UFPSBodyMechanicsComponent* GetBodyMechanicsComponent() const { return BodyMechanicsComponent; }
+
+	// Tactical Locomotion Animations
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimIdleADS;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimWalk;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimRun;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimSprint;
+
 	// Actions
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
 	void StartCookingLethal();
@@ -105,6 +127,10 @@ private:
 	// Procedural Sway & Bobbing
 	void UpdateProceduralCameraBob(float DeltaTime);
 	void UpdateWeaponSway(float DeltaTime);
+	void UpdateLocomotionAnimation(float DeltaTime);
+
+	UPROPERTY()
+	TObjectPtr<class UAnimSequence> CurrentLocomotionAnim;
 
 	float BobTimer = 0.0f;
 	FVector DefaultCameraPos;

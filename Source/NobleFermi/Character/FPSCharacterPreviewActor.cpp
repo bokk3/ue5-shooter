@@ -8,6 +8,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "PhysicsEngine/PhysicsAsset.h"
+#include "Animation/AnimSequence.h"
 
 AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 {
@@ -111,6 +112,14 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 		BodyMesh->SetPhysicsAsset(BaseMalePhysFinder.Object);
 	}
 
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
+	if (IdleAnimFinder.Succeeded())
+	{
+		BodyMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		BodyMesh->SetAnimation(IdleAnimFinder.Object);
+		BodyMesh->Play(true);
+	}
+
 	// 6. Turntable Pedestal
 	SetupMeshComp(PedestalMesh, TEXT("PedestalMesh"), CylinderMesh, FVector(0.0f, 0.0f, -2.0f), FRotator::ZeroRotator, FVector(0.9f, 0.9f, 0.04f));
 
@@ -183,11 +192,7 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	SetupWeaponPart(WeaponMagMesh, TEXT("WeaponMagMesh"), CubeMesh, FVector(3.0f, 0.0f, -9.0f), FRotator(0.0f, 12.0f, 0.0f), FVector(0.08f, 0.04f, 0.18f));
 	SetupWeaponPart(WeaponStockMesh, TEXT("WeaponStockMesh"), CubeMesh, FVector(-18.0f, 0.0f, -1.0f), FRotator::ZeroRotator, FVector(0.16f, 0.05f, 0.08f));
 
-	// Optional external skeletal meshes
-	BodyMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BodyMesh"));
-	BodyMesh->SetupAttachment(TurntableRoot);
-	BodyMesh->SetVisibility(false);
-
+	// Optional external weapon skeletal mesh
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	WeaponMesh->SetupAttachment(TurntableRoot);
 	WeaponMesh->SetVisibility(false);
@@ -248,6 +253,8 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		HideComp(LeftCalfMesh);
 		HideComp(RightThighMesh);
 		HideComp(RightCalfMesh);
+
+		BodyMesh->SetVisibility(true);
 
 		UMaterialInstanceDynamic* BodyMID = BodyMesh->CreateDynamicMaterialInstance(0);
 		if (BodyMID)

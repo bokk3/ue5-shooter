@@ -10,6 +10,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "PhysicsEngine/PhysicsAsset.h"
+#include "Animation/AnimSequence.h"
 #include "GameFramework/PlayerController.h"
 
 AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
@@ -65,6 +66,40 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	GetMesh()->SetCollisionObjectType(ECC_Pawn);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
+	// Tactical Locomotion Animations
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
+	if (IdleAnimFinder.Succeeded())
+	{
+		AnimIdleADS = IdleAnimFinder.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> WalkAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk.Anim_BaseMale_Walk"));
+	if (WalkAnimFinder.Succeeded())
+	{
+		AnimWalk = WalkAnimFinder.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> RunAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Run.Anim_BaseMale_Run"));
+	if (RunAnimFinder.Succeeded())
+	{
+		AnimRun = RunAnimFinder.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> SprintAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Sprint.Anim_BaseMale_Sprint"));
+	if (SprintAnimFinder.Succeeded())
+	{
+		AnimSprint = SprintAnimFinder.Object;
+	}
+
+	// Default to tactical high-ready idle animation with natural thoracic breathing
+	if (AnimIdleADS)
+	{
+		GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		GetMesh()->SetAnimation(AnimIdleADS);
+		CurrentLocomotionAnim = AnimIdleADS;
+		GetMesh()->Play(true);
+	}
+
 	HealthComponent = CreateDefaultSubobject<UFPSHealthComponent>(TEXT("HealthComponent"));
 	InventoryComponent = CreateDefaultSubobject<UFPSInventoryComponent>(TEXT("InventoryComponent"));
 	InventoryComponent->DefaultPrimaryClass = AFPSWeaponBase::StaticClass();
@@ -99,6 +134,7 @@ void AFPSCharacter::Tick(float DeltaTime)
 
 	UpdateProceduralCameraBob(DeltaTime);
 	UpdateWeaponSway(DeltaTime);
+	UpdateLocomotionAnimation(DeltaTime);
 
 	// Smooth FOV interpolation for ADS tactical zoom
 	const bool bIsAiming = (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights());
@@ -169,6 +205,51 @@ void AFPSCharacter::UpdateWeaponSway(float DeltaTime)
 	const FRotator SpineLean = BodyMechanicsComponent ? BodyMechanicsComponent->GetProceduralSpineRotation() : FRotator::ZeroRotator;
 
 	Mesh1P->SetRelativeRotation(CurrentWeaponSwayRot + AimPunch + FRotator(0.0f, 0.0f, SpineLean.Roll * 0.4f));
+}
+
+void AFPSCharacter::UpdateLocomotionAnimation(float DeltaTime)
+{
+	if (!GetMesh())
+	{
+		return;
+	}
+
+	const float Speed = GetVelocity().Size2D();
+	UAnimSequence* TargetAnim = AnimIdleADS;
+	float PlayRate = 1.0f;
+
+	if (FPSMovementComponent && FPSMovementComponent->IsTacticalSprinting() && Speed > 280.0f)
+	{
+		TargetAnim = AnimSprint ? AnimSprint : AnimRun;
+		PlayRate = FMath::Clamp(Speed / 520.0f, 0.85f, 1.35f);
+	}
+	else if (Speed > 260.0f)
+	{
+		TargetAnim = AnimRun ? AnimRun : AnimWalk;
+		PlayRate = FMath::Clamp(Speed / 340.0f, 0.85f, 1.25f);
+	}
+	else if (Speed > 15.0f)
+	{
+		TargetAnim = AnimWalk ? AnimWalk : AnimIdleADS;
+		PlayRate = FMath::Clamp(Speed / 180.0f, 0.75f, 1.25f);
+	}
+	else
+	{
+		TargetAnim = AnimIdleADS;
+		PlayRate = 1.0f;
+	}
+
+	if (TargetAnim && TargetAnim != CurrentLocomotionAnim)
+	{
+		CurrentLocomotionAnim = TargetAnim;
+		GetMesh()->SetAnimation(TargetAnim);
+		GetMesh()->SetPlayRate(PlayRate);
+		GetMesh()->Play(true);
+	}
+	else if (CurrentLocomotionAnim)
+	{
+		GetMesh()->SetPlayRate(PlayRate);
+	}
 }
 
 void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
