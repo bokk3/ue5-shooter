@@ -7,6 +7,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "PhysicsEngine/PhysicsAsset.h"
 
 AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 {
@@ -102,6 +103,12 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	if (BaseMaleFinder.Succeeded())
 	{
 		BodyMesh->SetSkeletalMesh(BaseMaleFinder.Object);
+	}
+
+	static ConstructorHelpers::FObjectFinder<UPhysicsAsset> BaseMalePhysFinder(TEXT("/Game/Characters/BaseMale/SK_BaseMale_PhysicsAsset.SK_BaseMale_PhysicsAsset"));
+	if (BaseMalePhysFinder.Succeeded())
+	{
+		BodyMesh->SetPhysicsAsset(BaseMalePhysFinder.Object);
 	}
 
 	// 6. Turntable Pedestal

@@ -281,6 +281,7 @@ void UFPSBodyMechanicsComponent::TriggerDeathRagdoll(const FVector& ImpactImpuls
 	// Enable physical ragdoll simulation on skeletal mesh
 	if (OwnerSkeletalMesh)
 	{
+		OwnerSkeletalMesh->SetOwnerNoSee(false);
 		OwnerSkeletalMesh->SetCollisionProfileName(TEXT("Ragdoll"));
 		OwnerSkeletalMesh->SetAllBodiesSimulatePhysics(true);
 		OwnerSkeletalMesh->SetSimulatePhysics(true);

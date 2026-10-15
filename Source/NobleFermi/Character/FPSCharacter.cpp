@@ -9,6 +9,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "PhysicsEngine/PhysicsAsset.h"
 #include "GameFramework/PlayerController.h"
 
 AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
@@ -50,6 +51,19 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		GetMesh()->SetSkeletalMesh(BaseMaleMeshFinder.Object);
 	}
+
+	static ConstructorHelpers::FObjectFinder<UPhysicsAsset> BaseMalePhysFinder(TEXT("/Game/Characters/BaseMale/SK_BaseMale_PhysicsAsset.SK_BaseMale_PhysicsAsset"));
+	if (BaseMalePhysFinder.Succeeded())
+	{
+		GetMesh()->SetPhysicsAsset(BaseMalePhysFinder.Object);
+	}
+
+	// Ballistic collision routing: root movement capsule ignores visibility trace so bullet line traces strike anatomical bone capsules directly
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetMesh()->SetCollisionObjectType(ECC_Pawn);
+	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
 	HealthComponent = CreateDefaultSubobject<UFPSHealthComponent>(TEXT("HealthComponent"));
 	InventoryComponent = CreateDefaultSubobject<UFPSInventoryComponent>(TEXT("InventoryComponent"));
