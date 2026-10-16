@@ -147,6 +147,14 @@ noble-fermi/
 
 ---
 
+## In-Game Showcase // 3rd-Person Tactical Gameplay
+
+![Noble Fermi - Tactical 3rd-Person Over-the-Shoulder Gameplay on Rust Tactical](Docs/images/gameplay_3rd_person_rust_tactical.png)
+
+*Live in-engine capture of the 21-bone tactical operator (`SK_BaseMale`) holding the 3D `SM_AK47` rifle in over-the-shoulder perspective on Rust Tactical, featuring the holographic AR visor HUD (acoustic gunfire radar minimap, compass ticker, Level IV ceramic plate vitals, kinetic stamina, and the 128-tick Fermi Dive chrono field telemetry).*
+
+---
+
 ## Detailed Documentation
 
 - [**Player Locomotion, Weapon Stances & Kinematics Plan**](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Docs/PLAYER_LOCOMOTION_AND_STANCES_PLAN.md): Step-by-step roadmap, Blender animation pipeline, mathematical formulas, and state machine architecture for weapon lowering/aiming, 8-way locomotion, jumping, crouching, and tactical sliding.
