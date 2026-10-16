@@ -9,12 +9,19 @@
 #include "GameFramework/PlayerController.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Rendering/DrawElements.h"
+#include "Rendering/RenderingCommon.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/AppStyle.h"
 
 /**
- * Native Slate Tactical HUD Widget
- * Renders Minimap, Top Radar Compass, Health/Armor, Stamina, Ammo Counter, and Dynamic Crosshair
+ * AAA Future-Warfare Holographic Tactical HUD (MW4 / Battlefield 6 Aesthetic)
+ * Pure Slate C++ custom vertex & vector renderer featuring:
+ * - Frameless floating AR visor elements with inertial camera-lag parallax
+ * - True circular 36-segment radar minimap with FOV cone, phosphor sweep fan & orbiting North indicator
+ * - Vignette-faded horizontal compass tape with cosine edge falloff & chamfered bearing pill
+ * - Skewed parallelogram vitals bars with 4-plate Level IV armor cells, damage ghost bar & live ECG waveform
+ * - 30-round individual bullet pip matrix, vector carbine schematic & oversized floating digital counters
+ * - Contrast-shadowed T-bracket dynamic reticle, radial 4-phase reload progress ring & 3D damage arcs
  */
 class SFPSHUDWidget : public SCompoundWidget
 {
@@ -43,376 +50,880 @@ public:
 		const FVector2f ScreenSize = AllottedGeometry.GetLocalSize();
 		const float ScreenW = ScreenSize.X;
 		const float ScreenH = ScreenSize.Y;
-		if (ScreenW <= 20.0f || ScreenH <= 20.0f) return LayerId;
+		if (ScreenW <= 40.0f || ScreenH <= 40.0f) return LayerId;
 
 		const FSlateBrush* WhiteBrush = FAppStyle::Get().GetBrush("WhiteBrush");
+		const FSlateResourceHandle ResourceHandle = WhiteBrush->GetRenderingResource();
+		const FSlateRenderTransform& RenderTransform = AllottedGeometry.ToPaintGeometry().GetAccumulatedRenderTransform();
 
-		// Fonts
-		const FSlateFontInfo FontSmall = FCoreStyle::GetDefaultFontStyle("Bold", 8);
-		const FSlateFontInfo FontMedium = FCoreStyle::GetDefaultFontStyle("Bold", 11);
-		const FSlateFontInfo FontBold = FCoreStyle::GetDefaultFontStyle("Bold", 13);
-		const FSlateFontInfo FontBigAmmo = FCoreStyle::GetDefaultFontStyle("Bold", 30);
-		const FSlateFontInfo FontCardinal = FCoreStyle::GetDefaultFontStyle("Bold", 10);
+		// Visor Inertial Lag Offset (applied to peripheral HUD elements for 3D helmet-visor feel)
+		const float VX = OwningHUD->VisorLagOffset.X;
+		const float VY = OwningHUD->VisorLagOffset.Y;
+		const float TimeSec = OwningHUD->HUDTimeSeconds;
 
-		// Drawing Lambdas
-		auto DrawBox = [&](float X, float Y, float W, float H, const FLinearColor& Tint)
+		// Future-Warfare Color Palette (Battlefield 6 Electric Teal + MW4 Tactical Cyan)
+		const FLinearColor TealPrimary(0.0f, 0.94f, 0.86f, 1.0f);       // #00F0DC Electric BF6 Teal
+		const FLinearColor CyanTactical(0.18f, 0.80f, 1.0f, 1.0f);      // #2ECCFF MW4 Ice Cyan
+		const FLinearColor CobaltArmor(0.20f, 0.58f, 1.0f, 1.0f);       // #3394FF Level IV Plate Blue
+		const FLinearColor EmeraldStamina(0.05f, 0.95f, 0.62f, 1.0f);   // #0DF29E Kinetic Sprint Green
+		const FLinearColor AmberWarn(1.0f, 0.70f, 0.08f, 1.0f);         // #FFB314 Tactical Warning
+		const FLinearColor CrimsonAlert(1.0f, 0.14f, 0.22f, 1.0f);      // #FF2438 Critical / Hostile
+		const FLinearColor HudWhite(0.95f, 0.99f, 1.0f, 0.96f);         // Crisp HUD White
+
+		// Typography
+		const FSlateFontInfo FontMicro    = FCoreStyle::GetDefaultFontStyle("Bold", 7);
+		const FSlateFontInfo FontSmall    = FCoreStyle::GetDefaultFontStyle("Bold", 9);
+		const FSlateFontInfo FontMedium   = FCoreStyle::GetDefaultFontStyle("Bold", 11);
+		const FSlateFontInfo FontBold     = FCoreStyle::GetDefaultFontStyle("Bold", 13);
+		const FSlateFontInfo FontCardinal = FCoreStyle::GetDefaultFontStyle("Bold", 11);
+		const FSlateFontInfo FontHealth   = FCoreStyle::GetDefaultFontStyle("Bold", 24);
+		const FSlateFontInfo FontBigAmmo  = FCoreStyle::GetDefaultFontStyle("Bold", 34);
+
+		// =========================================================================
+		// LOW-LEVEL GPU VERTEX & VECTOR DRAWING PRIMITIVES
+		// =========================================================================
+
+		// Draw arbitrary 4-corner quad (supports skewed parallelograms, trapezoids & smooth per-corner gradients)
+		auto DrawQuad = [&](FVector2f P0, FVector2f P1, FVector2f P2, FVector2f P3,
+		                    const FLinearColor& C0, const FLinearColor& C1, const FLinearColor& C2, const FLinearColor& C3,
+		                    int32 SubLayer = 0)
 		{
-			FPaintGeometry Geom = AllottedGeometry.ToPaintGeometry(FVector2f(W, H), FSlateLayoutTransform(FVector2f(X, Y)));
-			FSlateDrawElement::MakeBox(OutDrawElements, LayerId, Geom, WhiteBrush, ESlateDrawEffect::None, Tint);
+			TArray<FSlateVertex> Verts;
+			Verts.SetNumUninitialized(4);
+			Verts[0] = FSlateVertex::Make<ESlateVertexRounding::Disabled>(RenderTransform, P0, FVector2f(0.0f, 0.0f), C0.ToFColor(true));
+			Verts[1] = FSlateVertex::Make<ESlateVertexRounding::Disabled>(RenderTransform, P1, FVector2f(1.0f, 0.0f), C1.ToFColor(true));
+			Verts[2] = FSlateVertex::Make<ESlateVertexRounding::Disabled>(RenderTransform, P2, FVector2f(1.0f, 1.0f), C2.ToFColor(true));
+			Verts[3] = FSlateVertex::Make<ESlateVertexRounding::Disabled>(RenderTransform, P3, FVector2f(0.0f, 1.0f), C3.ToFColor(true));
+
+			TArray<SlateIndex> Indices = { 0, 1, 2, 0, 2, 3 };
+			FSlateDrawElement::MakeCustomVerts(OutDrawElements, LayerId + SubLayer, ResourceHandle, Verts, Indices, nullptr, 0, 0);
 		};
 
-		auto DrawBorder = [&](float X, float Y, float W, float H, float Thickness, const FLinearColor& Tint)
+		// Draw forward-slanted parallelogram (SkewX > 0 slants top edge to the right like BF6 / MW4 bars)
+		auto DrawSkewedRect = [&](float X, float Y, float W, float H, float SkewX,
+		                          const FLinearColor& LeftColor, const FLinearColor& RightColor, int32 SubLayer = 0)
 		{
-			DrawBox(X, Y, W, Thickness, Tint);
-			DrawBox(X, Y + H - Thickness, W, Thickness, Tint);
-			DrawBox(X, Y, Thickness, H, Tint);
-			DrawBox(X + W - Thickness, Y, Thickness, H, Tint);
+			DrawQuad(
+				FVector2f(X + SkewX, Y),
+				FVector2f(X + W + SkewX, Y),
+				FVector2f(X + W, Y + H),
+				FVector2f(X, Y + H),
+				LeftColor, RightColor, RightColor, LeftColor, SubLayer);
 		};
 
-		auto DrawText = [&](float X, float Y, const FString& Text, const FSlateFontInfo& Font, const FLinearColor& Tint)
+		// Draw filled circular or polygonal triangle fan (for circular radar disc, FOV cones & sweep fans)
+		auto DrawSectorFan = [&](float CX, float CY, float Radius, float StartRad, float EndRad,
+		                         const FLinearColor& CenterColor, const FLinearColor& EdgeColor, int32 NumSteps = 32, int32 SubLayer = 0)
 		{
-			FPaintGeometry Geom = AllottedGeometry.ToPaintGeometry(FSlateLayoutTransform(FVector2f(X, Y)));
-			FSlateDrawElement::MakeText(OutDrawElements, LayerId, Geom, Text, Font, ESlateDrawEffect::None, Tint);
+			TArray<FSlateVertex> Verts;
+			Verts.Reserve(NumSteps + 2);
+			Verts.Add(FSlateVertex::Make<ESlateVertexRounding::Disabled>(RenderTransform, FVector2f(CX, CY), FVector2f(0.5f, 0.5f), CenterColor.ToFColor(true)));
+
+			const FColor EdgeFColor = EdgeColor.ToFColor(true);
+			for (int32 i = 0; i <= NumSteps; ++i)
+			{
+				const float Alpha = (float)i / (float)NumSteps;
+				const float Angle = FMath::Lerp(StartRad, EndRad, Alpha);
+				const FVector2f Pt(CX + FMath::Cos(Angle) * Radius, CY + FMath::Sin(Angle) * Radius);
+				Verts.Add(FSlateVertex::Make<ESlateVertexRounding::Disabled>(RenderTransform, Pt, FVector2f(0.5f, 0.5f), EdgeFColor));
+			}
+
+			TArray<SlateIndex> Indices;
+			Indices.Reserve(NumSteps * 3);
+			for (int32 i = 1; i <= NumSteps; ++i)
+			{
+				Indices.Add(0);
+				Indices.Add(i);
+				Indices.Add(i + 1);
+			}
+			FSlateDrawElement::MakeCustomVerts(OutDrawElements, LayerId + SubLayer, ResourceHandle, Verts, Indices, nullptr, 0, 0);
 		};
 
-		auto DrawLine = [&](float X1, float Y1, float X2, float Y2, float Thickness, const FLinearColor& Tint)
+		auto DrawLine = [&](float X1, float Y1, float X2, float Y2, float Thickness, const FLinearColor& Tint, int32 SubLayer = 2)
+		{
+			TArray<FVector2f> Points = { FVector2f(X1, Y1), FVector2f(X2, Y2) };
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + SubLayer, AllottedGeometry.ToPaintGeometry(), MoveTemp(Points), ESlateDrawEffect::None, Tint, true, Thickness);
+		};
+
+		auto DrawGradientLine = [&](float X1, float Y1, float X2, float Y2, float Thickness, const FLinearColor& C1, const FLinearColor& C2, int32 SubLayer = 2)
+		{
+			TArray<FVector2f> Points = { FVector2f(X1, Y1), FVector2f(X2, Y2) };
+			TArray<FLinearColor> Colors = { C1, C2 };
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + SubLayer, AllottedGeometry.ToPaintGeometry(), MoveTemp(Points), MoveTemp(Colors), ESlateDrawEffect::None, FLinearColor::White, true, Thickness);
+		};
+
+		auto DrawArc = [&](float CX, float CY, float Radius, float StartDeg, float EndDeg, float Thickness, const FLinearColor& Tint, int32 Segments = 28, int32 SubLayer = 2)
 		{
 			TArray<FVector2f> Points;
-			Points.Add(FVector2f(X1, Y1));
-			Points.Add(FVector2f(X2, Y2));
-			FSlateDrawElement::MakeLines(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), Points, ESlateDrawEffect::None, Tint, true, Thickness);
+			Points.Reserve(Segments + 1);
+			for (int32 i = 0; i <= Segments; ++i)
+			{
+				const float Deg = FMath::Lerp(StartDeg, EndDeg, (float)i / (float)Segments);
+				const float Rad = FMath::DegreesToRadians(Deg);
+				Points.Add(FVector2f(CX + FMath::Cos(Rad) * Radius, CY + FMath::Sin(Rad) * Radius));
+			}
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + SubLayer, AllottedGeometry.ToPaintGeometry(), MoveTemp(Points), ESlateDrawEffect::None, Tint, true, Thickness);
 		};
 
-		auto DrawDiamond = [&](float CX, float CY, float Radius, const FLinearColor& Tint)
+		auto DrawDiamond = [&](float CX, float CY, float Radius, float Thickness, const FLinearColor& Tint, bool bFilled = false, int32 SubLayer = 3)
 		{
-			TArray<FVector2f> Points;
-			Points.Add(FVector2f(CX, CY - Radius));
-			Points.Add(FVector2f(CX + Radius, CY));
-			Points.Add(FVector2f(CX, CY + Radius));
-			Points.Add(FVector2f(CX - Radius, CY));
-			Points.Add(FVector2f(CX, CY - Radius));
-			FSlateDrawElement::MakeLines(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), Points, ESlateDrawEffect::None, Tint, true, 1.5f);
+			if (bFilled)
+			{
+				DrawQuad(
+					FVector2f(CX, CY - Radius),
+					FVector2f(CX + Radius, CY),
+					FVector2f(CX, CY + Radius),
+					FVector2f(CX - Radius, CY),
+					Tint, Tint, Tint, Tint, SubLayer - 1);
+			}
+			TArray<FVector2f> Points = {
+				FVector2f(CX, CY - Radius),
+				FVector2f(CX + Radius, CY),
+				FVector2f(CX, CY + Radius),
+				FVector2f(CX - Radius, CY),
+				FVector2f(CX, CY - Radius)
+			};
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + SubLayer, AllottedGeometry.ToPaintGeometry(), MoveTemp(Points), ESlateDrawEffect::None, Tint, true, Thickness);
+		};
+
+		// Crisp Floating Text with Drop-Shadow & Subtle Holographic Back-Glow (no opaque box needed!)
+		auto DrawGlowText = [&](float X, float Y, const FString& Text, const FSlateFontInfo& Font, const FLinearColor& Tint, float ShadowOpacity = 0.65f, int32 SubLayer = 4)
+		{
+			if (ShadowOpacity > 0.01f)
+			{
+				const FLinearColor ShadowColor(0.0f, 0.01f, 0.03f, Tint.A * ShadowOpacity);
+				FPaintGeometry ShadowGeom = AllottedGeometry.ToPaintGeometry(FSlateLayoutTransform(FVector2f(X + 1.5f, Y + 1.5f)));
+				FSlateDrawElement::MakeText(OutDrawElements, LayerId + SubLayer - 1, ShadowGeom, Text, Font, ESlateDrawEffect::None, ShadowColor);
+			}
+			FPaintGeometry TextGeom = AllottedGeometry.ToPaintGeometry(FSlateLayoutTransform(FVector2f(X, Y)));
+			FSlateDrawElement::MakeText(OutDrawElements, LayerId + SubLayer, TextGeom, Text, Font, ESlateDrawEffect::None, Tint);
 		};
 
 		// =========================================================================
-		// 1. TOP RADAR COMPASS
+		// 0. AR HELMET VISOR PERIPHERAL BRACKETS & TOP-RIGHT TELEMETRY
 		// =========================================================================
-		const float CenterCompassX = ScreenW * 0.5f;
-		const float TopY = 16.0f;
-		const float CompassW = 440.0f;
-		const float CompassH = 34.0f;
-		const float HalfW = 190.0f;
-		const float PixelsPerDeg = HalfW / 45.0f;
+		{
+			const float Margin = 18.0f;
+			const float CornerLen = 22.0f;
+			const FLinearColor VisorFrameTint(0.0f, 0.90f, 0.85f, 0.18f);
 
-		// Background & Border
-		DrawBox(CenterCompassX - CompassW * 0.5f, TopY, CompassW, CompassH, FLinearColor(0.02f, 0.03f, 0.05f, 0.75f));
-		DrawBorder(CenterCompassX - CompassW * 0.5f, TopY, CompassW, CompassH, 1.0f, FLinearColor(0.12f, 0.65f, 0.85f, 0.35f));
+			// Top-Left & Top-Right peripheral visor ticks
+			DrawLine(Margin + VX * 0.4f, Margin + VY * 0.4f, Margin + CornerLen + VX * 0.4f, Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+			DrawLine(Margin + VX * 0.4f, Margin + VY * 0.4f, Margin + VX * 0.4f, Margin + CornerLen + VY * 0.4f, 1.2f, VisorFrameTint, 1);
 
-		// Compass Bearing Calculations
-		float Yaw = OwningHUD->CameraYaw;
-		float NormYaw = FMath::Fmod(Yaw, 360.0f);
+			DrawLine(ScreenW - Margin - CornerLen + VX * 0.4f, Margin + VY * 0.4f, ScreenW - Margin + VX * 0.4f, Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+			DrawLine(ScreenW - Margin + VX * 0.4f, Margin + VY * 0.4f, ScreenW - Margin + VX * 0.4f, Margin + CornerLen + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+
+			// Bottom-Left & Bottom-Right peripheral visor ticks
+			DrawLine(Margin + VX * 0.4f, ScreenH - Margin + VY * 0.4f, Margin + CornerLen + VX * 0.4f, ScreenH - Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+			DrawLine(Margin + VX * 0.4f, ScreenH - Margin - CornerLen + VY * 0.4f, Margin + VX * 0.4f, ScreenH - Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+
+			DrawLine(ScreenW - Margin - CornerLen + VX * 0.4f, ScreenH - Margin + VY * 0.4f, ScreenW - Margin + VX * 0.4f, ScreenH - Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+			DrawLine(ScreenW - Margin + VX * 0.4f, ScreenH - Margin - CornerLen + VY * 0.4f, ScreenW - Margin + VX * 0.4f, ScreenH - Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+
+			// Top-Right Floating AR Telemetry Link (Frameless)
+			const float TeleX = ScreenW - 195.0f + VX * 0.6f;
+			const float TeleY = 24.0f + VY * 0.6f;
+			DrawSkewedRect(TeleX - 10.0f, TeleY - 3.0f, 175.0f, 34.0f, -8.0f,
+				FLinearColor(0.0f, 0.08f, 0.12f, 0.0f),
+				FLinearColor(0.0f, 0.16f, 0.22f, 0.22f), 0);
+			DrawLine(TeleX + 162.0f, TeleY - 3.0f, TeleX + 154.0f, TeleY + 31.0f, 2.0f, TealPrimary * FLinearColor(1, 1, 1, 0.65f), 2);
+
+			DrawGlowText(TeleX, TeleY, TEXT("AR-VISOR // TAC-LINK 128HZ"), FontMicro, TealPrimary * FLinearColor(1, 1, 1, 0.80f), 0.5f);
+			const float SpeedMetersPerSec = OwningHUD->PlayerSpeed / 100.0f;
+			DrawGlowText(TeleX + 18.0f, TeleY + 13.0f,
+				FString::Printf(TEXT("VEL: %04.1f M/S  //  SYNC: OK"), SpeedMetersPerSec),
+				FontMicro, FLinearColor(0.75f, 0.88f, 0.95f, 0.60f), 0.5f);
+		}
+
+		// =========================================================================
+		// 1. TOP-CENTER FRAMELESS HOLOGRAPHIC COMPASS TAPE (MW4 / BF6 Style)
+		// =========================================================================
+		const float CenterCompassX = ScreenW * 0.5f + VX * 0.5f;
+		const float TopY = 20.0f + VY * 0.5f;
+		const float HalfW = 240.0f;
+		const float PixelsPerDeg = HalfW / 50.0f; // 100-degree field of view along tape
+
+		// Soft frameless horizontal vignette backing (0.0 alpha at edges -> 0.20 at center -> 0.0 at right)
+		DrawQuad(
+			FVector2f(CenterCompassX - HalfW, TopY),
+			FVector2f(CenterCompassX, TopY),
+			FVector2f(CenterCompassX, TopY + 30.0f),
+			FVector2f(CenterCompassX - HalfW, TopY + 30.0f),
+			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f),
+			FLinearColor(0.0f, 0.08f, 0.14f, 0.22f),
+			FLinearColor(0.0f, 0.04f, 0.08f, 0.04f),
+			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f), 0);
+
+		DrawQuad(
+			FVector2f(CenterCompassX, TopY),
+			FVector2f(CenterCompassX + HalfW, TopY),
+			FVector2f(CenterCompassX + HalfW, TopY + 30.0f),
+			FVector2f(CenterCompassX, TopY + 30.0f),
+			FLinearColor(0.0f, 0.08f, 0.14f, 0.22f),
+			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f),
+			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f),
+			FLinearColor(0.0f, 0.04f, 0.08f, 0.04f), 0);
+
+		// Razor-thin top horizon line with edge fade
+		DrawGradientLine(CenterCompassX - HalfW, TopY, CenterCompassX, TopY, 1.2f,
+			FLinearColor(0.0f, 0.94f, 0.86f, 0.0f), FLinearColor(0.0f, 0.94f, 0.86f, 0.55f), 1);
+		DrawGradientLine(CenterCompassX, TopY, CenterCompassX + HalfW, TopY, 1.2f,
+			FLinearColor(0.0f, 0.94f, 0.86f, 0.55f), FLinearColor(0.0f, 0.94f, 0.86f, 0.0f), 1);
+
+		// Normalize Camera Yaw [0, 360)
+		float NormYaw = FMath::Fmod(OwningHUD->CameraYaw, 360.0f);
 		if (NormYaw < 0.0f) NormYaw += 360.0f;
 
+		// Render Ticks & Cardinals with Cosine Edge Vignette
 		for (int32 deg = 0; deg < 360; deg += 5)
 		{
-			float Delta = FRotator::NormalizeAxis((float)deg - NormYaw);
-			if (FMath::Abs(Delta) <= 45.0f)
+			const float Delta = FRotator::NormalizeAxis((float)deg - NormYaw);
+			if (FMath::Abs(Delta) <= 50.0f)
 			{
-				float TickX = CenterCompassX + Delta * PixelsPerDeg;
+				const float TickX = CenterCompassX + Delta * PixelsPerDeg;
+				// Smooth cosine vignette fade so elements dissolve organically at the ends
+				const float EdgeFade = FMath::Cos((Delta / 50.0f) * (PI * 0.5f));
+
 				if (deg % 45 == 0)
 				{
 					FString Cardinal;
-					if (deg == 0) Cardinal = TEXT("N");
-					else if (deg == 45) Cardinal = TEXT("NE");
-					else if (deg == 90) Cardinal = TEXT("E");
-					else if (deg == 135) Cardinal = TEXT("SE");
-					else if (deg == 180) Cardinal = TEXT("S");
-					else if (deg == 225) Cardinal = TEXT("SW");
-					else if (deg == 270) Cardinal = TEXT("W");
-					else if (deg == 315) Cardinal = TEXT("NW");
+					bool bPrimaryCardinal = false;
+					if (deg == 0)        { Cardinal = TEXT("N"); bPrimaryCardinal = true; }
+					else if (deg == 45)  { Cardinal = TEXT("NE"); }
+					else if (deg == 90)  { Cardinal = TEXT("E"); bPrimaryCardinal = true; }
+					else if (deg == 135) { Cardinal = TEXT("SE"); }
+					else if (deg == 180) { Cardinal = TEXT("S"); bPrimaryCardinal = true; }
+					else if (deg == 225) { Cardinal = TEXT("SW"); }
+					else if (deg == 270) { Cardinal = TEXT("W"); bPrimaryCardinal = true; }
+					else if (deg == 315) { Cardinal = TEXT("NW"); }
 
-					DrawLine(TickX, TopY + 2.0f, TickX, TopY + 12.0f, 1.5f, FLinearColor(1.0f, 0.85f, 0.2f, 0.9f));
-					DrawText(TickX - 5.0f, TopY + 14.0f, Cardinal, FontCardinal, FLinearColor(1.0f, 0.85f, 0.2f, 0.95f));
+					const FLinearColor CardColor = (deg == 0)
+						? FLinearColor(1.0f, 0.78f, 0.15f, 0.98f * EdgeFade)
+						: (bPrimaryCardinal ? FLinearColor(0.0f, 0.96f, 0.88f, 0.95f * EdgeFade) : FLinearColor(0.85f, 0.95f, 1.0f, 0.82f * EdgeFade));
+
+					DrawLine(TickX, TopY, TickX, TopY + 11.0f, bPrimaryCardinal ? 2.0f : 1.5f, CardColor, 2);
+					const float TextOffset = (Cardinal.Len() == 1) ? 4.0f : 7.5f;
+					DrawGlowText(TickX - TextOffset, TopY + 13.0f, Cardinal, FontCardinal, CardColor, 0.7f);
 				}
 				else if (deg % 15 == 0)
 				{
-					DrawLine(TickX, TopY + 4.0f, TickX, TopY + 12.0f, 1.0f, FLinearColor(0.7f, 0.75f, 0.8f, 0.6f));
-					DrawText(TickX - 7.0f, TopY + 15.0f, FString::Printf(TEXT("%02d"), deg / 10), FontSmall, FLinearColor(0.7f, 0.75f, 0.8f, 0.6f));
+					const FLinearColor MajColor(0.75f, 0.88f, 0.96f, 0.62f * EdgeFade);
+					DrawLine(TickX, TopY, TickX, TopY + 8.0f, 1.2f, MajColor, 2);
+					DrawGlowText(TickX - 8.0f, TopY + 11.0f, FString::Printf(TEXT("%03d"), deg), FontMicro, MajColor * FLinearColor(1, 1, 1, 0.85f), 0.5f);
 				}
 				else
 				{
-					DrawLine(TickX, TopY + 7.0f, TickX, TopY + 12.0f, 1.0f, FLinearColor(0.5f, 0.55f, 0.6f, 0.4f));
+					DrawLine(TickX, TopY, TickX, TopY + 5.0f, 1.0f, FLinearColor(0.5f, 0.72f, 0.85f, 0.35f * EdgeFade), 2);
 				}
 			}
 		}
 
-		// Center Indicator Mark
-		DrawLine(CenterCompassX - 4.0f, TopY, CenterCompassX + 4.0f, TopY, 2.0f, FLinearColor(0.15f, 0.85f, 1.0f));
-		DrawLine(CenterCompassX, TopY, CenterCompassX, TopY + 7.0f, 2.0f, FLinearColor(0.15f, 0.85f, 1.0f));
+		// Center Inverted Lubber Chevron (V) & Chamfered Digital Bearing Pill
+		DrawLine(CenterCompassX - 5.0f, TopY - 6.0f, CenterCompassX, TopY - 1.0f, 2.0f, TealPrimary, 3);
+		DrawLine(CenterCompassX + 5.0f, TopY - 6.0f, CenterCompassX, TopY - 1.0f, 2.0f, TealPrimary, 3);
+		DrawLine(CenterCompassX, TopY, CenterCompassX, TopY + 10.0f, 1.8f, TealPrimary, 3);
 
-		// Heading Readout Pill
-		FString HeadingStr = FString::Printf(TEXT("[ %03.0f° ]"), NormYaw);
-		DrawText(CenterCompassX - 22.0f, TopY + CompassH + 3.0f, HeadingStr, FontSmall, FLinearColor(0.15f, 0.85f, 1.0f, 0.85f));
+		// Determine current cardinal string for readout
+		const TCHAR* DirNames[] = { TEXT("N"), TEXT("NE"), TEXT("E"), TEXT("SE"), TEXT("S"), TEXT("SW"), TEXT("W"), TEXT("NW") };
+		const int32 DirIdx = FMath::RoundToInt(NormYaw / 45.0f) % 8;
+		const FString BearingPillText = FString::Printf(TEXT("%03.0f° %s"), NormYaw, DirNames[DirIdx]);
+
+		// Subtle chamfered pill under center of compass
+		DrawSkewedRect(CenterCompassX - 28.0f, TopY + 29.0f, 56.0f, 15.0f, -4.0f,
+			FLinearColor(0.0f, 0.14f, 0.20f, 0.45f), FLinearColor(0.0f, 0.22f, 0.30f, 0.45f), 1);
+		DrawLine(CenterCompassX - 28.0f, TopY + 29.0f, CenterCompassX + 24.0f, TopY + 29.0f, 1.2f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
+		DrawGlowText(CenterCompassX - 21.0f, TopY + 30.5f, BearingPillText, FontSmall, HudWhite, 0.8f);
+
+		// Objectives Definition (Flags A, B, C)
+		const struct { FVector Loc; const TCHAR* Name; FLinearColor Color; } Objectives[] = {
+			{ FVector(-1200.0f, -800.0f, 0.0f), TEXT("A"), FLinearColor(0.15f, 0.78f, 1.0f, 0.95f) },
+			{ FVector(0.0f, 0.0f, 0.0f),        TEXT("B"), FLinearColor(1.0f, 0.75f, 0.15f, 0.95f) },
+			{ FVector(1200.0f, 800.0f, 0.0f),   TEXT("C"), FLinearColor(0.0f, 0.95f, 0.78f, 0.95f) }
+		};
+
+		for (const auto& Obj : Objectives)
+		{
+			const FVector Dir = Obj.Loc - OwningHUD->PlayerLocation;
+			const float DistMeters = Dir.Size2D() / 100.0f;
+			const float ObjBearing = FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X));
+			const float DeltaObj = FRotator::NormalizeAxis(ObjBearing - NormYaw);
+			if (FMath::Abs(DeltaObj) <= 46.0f)
+			{
+				const float ObjX = CenterCompassX + DeltaObj * PixelsPerDeg;
+				const float EdgeFade = FMath::Cos((DeltaObj / 50.0f) * (PI * 0.5f));
+				FLinearColor C = Obj.Color;
+				C.A *= EdgeFade;
+				DrawDiamond(ObjX, TopY - 7.0f, 5.5f, 1.5f, C, true, 3);
+				DrawGlowText(ObjX - 3.0f, TopY - 12.0f, Obj.Name, FontMicro, FLinearColor(0.02f, 0.04f, 0.06f, EdgeFade), 0.0f, 4);
+			}
+		}
 
 		// Gunfire Acoustic Radar Threat Pings on Compass
 		UWorld* World = OwningHUD->GetWorld();
 		if (World)
 		{
-			UFPSRadarSubsystem* Radar = World->GetSubsystem<UFPSRadarSubsystem>();
-			if (Radar)
+			if (UFPSRadarSubsystem* Radar = World->GetSubsystem<UFPSRadarSubsystem>())
 			{
 				TArray<FFPSRadarPing> Pings = Radar->GetVisiblePingsForTeam(EFPSPlayerTeam::Alpha);
 				for (const FFPSRadarPing& Ping : Pings)
 				{
-					FVector Dir = Ping.WorldLocation - OwningHUD->PlayerLocation;
-					float PingBearing = FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X));
-					float DeltaPing = FRotator::NormalizeAxis(PingBearing - NormYaw);
-					if (FMath::Abs(DeltaPing) <= 45.0f)
-					{
-						float PingX = CenterCompassX + DeltaPing * PixelsPerDeg;
-						float Pulse = 1.0f + 0.3f * FMath::Sin(Ping.LifetimeRemaining * 10.0f);
-						DrawDiamond(PingX, TopY + 11.0f, 5.0f * Pulse, FLinearColor(1.0f, 0.15f, 0.15f, 0.95f));
-						DrawBox(PingX - 1.5f, TopY + 9.5f, 3.0f, 3.0f, FLinearColor(1.0f, 0.8f, 0.8f, 1.0f));
-					}
-					else
-					{
-						float EdgeX = DeltaPing > 0 ? (CenterCompassX + HalfW - 6.0f) : (CenterCompassX - HalfW + 6.0f);
-						DrawDiamond(EdgeX, TopY + 11.0f, 3.5f, FLinearColor(1.0f, 0.2f, 0.2f, 0.7f));
-					}
+					const FVector Dir = Ping.WorldLocation - OwningHUD->PlayerLocation;
+					const float PingBearing = FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X));
+					const float DeltaPing = FRotator::NormalizeAxis(PingBearing - NormYaw);
+					const float ClampedDelta = FMath::Clamp(DeltaPing, -48.0f, 48.0f);
+					const float PingX = CenterCompassX + ClampedDelta * PixelsPerDeg;
+					const float Pulse = 1.0f + 0.35f * FMath::Sin(TimeSec * 14.0f);
+					DrawDiamond(PingX, TopY + 6.0f, 5.5f * Pulse, 1.8f, CrimsonAlert, true, 4);
 				}
 			}
 		}
 
-		// Objectives on Compass (Flags A, B, C)
-		const struct { FVector Loc; const TCHAR* Name; } Objectives[] = {
-			{ FVector(-1200.0f, -800.0f, 0.0f), TEXT("A") },
-			{ FVector(0.0f, 0.0f, 0.0f), TEXT("B") },
-			{ FVector(1200.0f, 800.0f, 0.0f), TEXT("C") }
-		};
-
-		for (const auto& Obj : Objectives)
-		{
-			FVector Dir = Obj.Loc - OwningHUD->PlayerLocation;
-			float ObjBearing = FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X));
-			float DeltaObj = FRotator::NormalizeAxis(ObjBearing - NormYaw);
-			if (FMath::Abs(DeltaObj) <= 45.0f)
-			{
-				float ObjX = CenterCompassX + DeltaObj * PixelsPerDeg;
-				DrawDiamond(ObjX, TopY + 11.0f, 5.0f, FLinearColor(0.2f, 0.75f, 1.0f, 0.85f));
-				DrawText(ObjX - 3.0f, TopY + 14.0f, Obj.Name, FontSmall, FLinearColor(0.2f, 0.75f, 1.0f, 0.9f));
-			}
-		}
-
 		// =========================================================================
-		// 2. TACTICAL MINIMAP (Top-Left)
+		// 2. TOP-LEFT TRUE CIRCULAR HOLOGRAPHIC MINIMAP (No Square Box!)
 		// =========================================================================
-		const float MapX = 24.0f;
-		const float MapY = 24.0f;
-		const float MapW = 180.0f;
-		const float MapH = 180.0f;
-		const float RCX = MapX + MapW * 0.5f;
-		const float RCY = MapY + MapH * 0.5f + 8.0f;
-		const float MapRadius = 64.0f;
+		const float MapRadius = 82.0f;
+		const float RCX = 32.0f + MapRadius + VX * 0.75f;
+		const float RCY = 32.0f + MapRadius + VY * 0.75f;
 
-		// Map Background & Chamfered Frame
-		DrawBox(MapX, MapY, MapW, MapH, FLinearColor(0.02f, 0.03f, 0.05f, 0.78f));
-		DrawBorder(MapX, MapY, MapW, MapH, 1.0f, FLinearColor(0.12f, 0.65f, 0.85f, 0.4f));
+		// 2.1 Radial Translucent Holographic Disc (Dark center -> Glowing Teal Rim, ZERO square box!)
+		DrawSectorFan(RCX, RCY, MapRadius + 4.0f, 0.0f, 2.0f * PI,
+			FLinearColor(0.0f, 0.05f, 0.09f, 0.42f),
+			FLinearColor(0.0f, 0.18f, 0.26f, 0.12f), 40, 0);
 
-		// Cyan Corner Ticks
-		DrawBox(MapX, MapY, 8.0f, 2.0f, FLinearColor(0.15f, 0.85f, 1.0f));
-		DrawBox(MapX, MapY, 2.0f, 8.0f, FLinearColor(0.15f, 0.85f, 1.0f));
-		DrawBox(MapX + MapW - 8.0f, MapY, 8.0f, 2.0f, FLinearColor(0.15f, 0.85f, 1.0f));
-		DrawBox(MapX + MapW - 2.0f, MapY, 2.0f, 8.0f, FLinearColor(0.15f, 0.85f, 1.0f));
+		DrawSectorFan(RCX, RCY, MapRadius, 0.0f, 2.0f * PI,
+			FLinearColor(0.01f, 0.04f, 0.07f, 0.36f),
+			FLinearColor(0.0f, 0.32f, 0.42f, 0.26f), 40, 0);
 
-		DrawText(MapX + 8.0f, MapY + 6.0f, TEXT("TAC-MAP // RUST 60M"), FontSmall, FLinearColor(0.15f, 0.85f, 1.0f, 0.85f));
+		// 2.2 Camera FOV View Cone Wedge (Pointing Upward from Center Player Chevron: -125 deg to -55 deg)
+		DrawSectorFan(RCX, RCY, MapRadius - 2.0f,
+			FMath::DegreesToRadians(-125.0f), FMath::DegreesToRadians(-55.0f),
+			FLinearColor(0.0f, 0.94f, 0.86f, 0.18f),
+			FLinearColor(0.0f, 0.94f, 0.86f, 0.01f), 16, 1);
 
-		// Concentric Range Rings (25m and 50m)
-		const int32 NumSegments = 24;
-		TArray<FVector2f> RingPoints50;
-		TArray<FVector2f> RingPoints25;
-		for (int32 i = 0; i <= NumSegments; ++i)
+		// Crisp FOV Wedge Boundary Lines
+		DrawGradientLine(RCX, RCY,
+			RCX + FMath::Cos(FMath::DegreesToRadians(-125.0f)) * (MapRadius - 2.0f),
+			RCY + FMath::Sin(FMath::DegreesToRadians(-125.0f)) * (MapRadius - 2.0f),
+			1.2f, FLinearColor(0.0f, 0.94f, 0.86f, 0.45f), FLinearColor(0.0f, 0.94f, 0.86f, 0.05f), 2);
+		DrawGradientLine(RCX, RCY,
+			RCX + FMath::Cos(FMath::DegreesToRadians(-55.0f)) * (MapRadius - 2.0f),
+			RCY + FMath::Sin(FMath::DegreesToRadians(-55.0f)) * (MapRadius - 2.0f),
+			1.2f, FLinearColor(0.0f, 0.94f, 0.86f, 0.45f), FLinearColor(0.0f, 0.94f, 0.86f, 0.05f), 2);
+
+		// 2.3 Rotating Phosphor Radar Sweep Sector Fan
 		{
-			float Angle = ((float)i / (float)NumSegments) * 2.0f * PI;
-			RingPoints50.Add(FVector2f(RCX + FMath::Cos(Angle) * MapRadius, RCY + FMath::Sin(Angle) * MapRadius));
-			RingPoints25.Add(FVector2f(RCX + FMath::Cos(Angle) * (MapRadius * 0.5f), RCY + FMath::Sin(Angle) * (MapRadius * 0.5f)));
+			const float SweepDeg = FMath::Fmod(TimeSec * 110.0f, 360.0f);
+			const float SweepRad = FMath::DegreesToRadians(SweepDeg);
+			const float TrailRad = FMath::DegreesToRadians(SweepDeg - 32.0f);
+			DrawSectorFan(RCX, RCY, MapRadius - 2.0f, TrailRad, SweepRad,
+				FLinearColor(0.0f, 0.94f, 0.86f, 0.12f),
+				FLinearColor(0.0f, 0.94f, 0.86f, 0.02f), 10, 1);
+			DrawLine(RCX, RCY, RCX + FMath::Cos(SweepRad) * (MapRadius - 2.0f), RCY + FMath::Sin(SweepRad) * (MapRadius - 2.0f),
+				1.3f, FLinearColor(0.0f, 0.96f, 0.88f, 0.42f), 2);
 		}
-		FSlateDrawElement::MakeLines(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), RingPoints50, ESlateDrawEffect::None, FLinearColor(0.12f, 0.65f, 0.85f, 0.25f), true, 1.0f);
-		FSlateDrawElement::MakeLines(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), RingPoints25, ESlateDrawEffect::None, FLinearColor(0.12f, 0.65f, 0.85f, 0.15f), true, 1.0f);
 
-		// Rotating Radar Sweep Line
-		if (World)
+		// 2.4 Concentric Range Rings & Subtle Axis Hairlines
+		DrawArc(RCX, RCY, MapRadius, 0.0f, 360.0f, 1.6f, FLinearColor(0.0f, 0.94f, 0.86f, 0.55f), 40, 2);
+		DrawArc(RCX, RCY, MapRadius + 4.0f, -60.0f, 60.0f, 1.2f, FLinearColor(0.18f, 0.80f, 1.0f, 0.30f), 16, 2);
+		DrawArc(RCX, RCY, MapRadius + 4.0f, 120.0f, 240.0f, 1.2f, FLinearColor(0.18f, 0.80f, 1.0f, 0.30f), 16, 2);
+		DrawArc(RCX, RCY, MapRadius * 0.62f, 0.0f, 360.0f, 1.0f, FLinearColor(0.0f, 0.85f, 0.85f, 0.18f), 32, 1);
+		DrawArc(RCX, RCY, MapRadius * 0.31f, 0.0f, 360.0f, 1.0f, FLinearColor(0.0f, 0.85f, 0.85f, 0.12f), 24, 1);
+
+		// Outer Bezel Degree Micro-Ticks (every 15 degrees)
+		for (int32 deg = 0; deg < 360; deg += 15)
 		{
-			float SweepAngle = FMath::Fmod(World->GetTimeSeconds() * 120.0f, 360.0f);
-			float SweepRad = FMath::DegreesToRadians(SweepAngle);
-			DrawLine(RCX, RCY, RCX + FMath::Cos(SweepRad) * MapRadius, RCY + FMath::Sin(SweepRad) * MapRadius, 1.0f, FLinearColor(0.15f, 0.85f, 1.0f, 0.35f));
+			const float Rad = FMath::DegreesToRadians((float)deg - NormYaw - 90.0f);
+			const float InnerR = (deg % 90 == 0) ? (MapRadius - 5.0f) : (MapRadius - 2.5f);
+			const float OuterR = MapRadius;
+			const FLinearColor TickCol = (deg == 0)
+				? FLinearColor(1.0f, 0.78f, 0.15f, 0.9f)
+				: FLinearColor(0.0f, 0.94f, 0.86f, (deg % 90 == 0) ? 0.65f : 0.28f);
+			DrawLine(RCX + FMath::Cos(Rad) * InnerR, RCY + FMath::Sin(Rad) * InnerR,
+			         RCX + FMath::Cos(Rad) * OuterR, RCY + FMath::Sin(Rad) * OuterR,
+			         (deg % 90 == 0) ? 1.6f : 1.0f, TickCol, 2);
 		}
 
-		// Objectives on Minimap
+		// Orbiting North ('N') Indicator on Outer Rim of Minimap
+		{
+			const float NorthRad = FMath::DegreesToRadians(-NormYaw - 90.0f);
+			const float NX = RCX + FMath::Cos(NorthRad) * (MapRadius + 10.0f);
+			const float NY = RCY + FMath::Sin(NorthRad) * (MapRadius + 10.0f);
+			DrawDiamond(NX, NY, 6.5f, 1.2f, FLinearColor(0.02f, 0.08f, 0.12f, 0.85f), true, 3);
+			DrawDiamond(NX, NY, 6.5f, 1.2f, FLinearColor(1.0f, 0.78f, 0.15f, 0.90f), false, 3);
+			DrawGlowText(NX - 3.5f, NY - 5.5f, TEXT("N"), FontMicro, FLinearColor(1.0f, 0.82f, 0.2f, 1.0f), 0.6f, 4);
+		}
+
+		// 2.5 Objectives on Minimap (Flags A, B, C)
 		const float YawRad = FMath::DegreesToRadians(NormYaw);
 		for (const auto& Obj : Objectives)
 		{
-			FVector Delta = Obj.Loc - OwningHUD->PlayerLocation;
-			float Fwd = Delta.X * FMath::Cos(-YawRad) - Delta.Y * FMath::Sin(-YawRad);
-			float Right = Delta.X * FMath::Sin(-YawRad) + Delta.Y * FMath::Cos(-YawRad);
+			const FVector Delta = Obj.Loc - OwningHUD->PlayerLocation;
+			const float Fwd = Delta.X * FMath::Cos(-YawRad) - Delta.Y * FMath::Sin(-YawRad);
+			const float Right = Delta.X * FMath::Sin(-YawRad) + Delta.Y * FMath::Cos(-YawRad);
 
-			float ScreenDX = (Right / 5000.0f) * MapRadius;
-			float ScreenDY = -(Fwd / 5000.0f) * MapRadius;
+			float ScreenDX = (Right / 4500.0f) * MapRadius;
+			float ScreenDY = -(Fwd / 4500.0f) * MapRadius;
 
-			// Clamp to radar radius
-			float Dist = FMath::Sqrt(ScreenDX * ScreenDX + ScreenDY * ScreenDY);
-			if (Dist > MapRadius - 4.0f)
+			const float Dist = FMath::Sqrt(ScreenDX * ScreenDX + ScreenDY * ScreenDY);
+			const float MaxObjR = MapRadius - 9.0f;
+			if (Dist > MaxObjR)
 			{
-				ScreenDX = (ScreenDX / Dist) * (MapRadius - 4.0f);
-				ScreenDY = (ScreenDY / Dist) * (MapRadius - 4.0f);
+				ScreenDX = (ScreenDX / Dist) * MaxObjR;
+				ScreenDY = (ScreenDY / Dist) * MaxObjR;
 			}
 
-			DrawDiamond(RCX + ScreenDX, RCY + ScreenDY, 4.0f, FLinearColor(0.2f, 0.75f, 1.0f, 0.85f));
-			DrawText(RCX + ScreenDX - 3.0f, RCY + ScreenDY - 5.0f, Obj.Name, FontSmall, FLinearColor(1.0f, 1.0f, 1.0f, 0.95f));
+			const float OX = RCX + ScreenDX;
+			const float OY = RCY + ScreenDY;
+			DrawDiamond(OX, OY, 6.5f, 1.5f, FLinearColor(0.01f, 0.05f, 0.09f, 0.85f), true, 3);
+			DrawDiamond(OX, OY, 6.5f, 1.5f, Obj.Color, false, 3);
+			DrawGlowText(OX - 3.0f, OY - 5.0f, Obj.Name, FontMicro, HudWhite, 0.7f, 4);
 		}
 
-		// Acoustic Gunfire Radar Pings on Minimap
+		// 2.6 Acoustic Gunfire Radar Pings on Minimap (with expanding soundwave ring!)
 		if (World)
 		{
-			UFPSRadarSubsystem* Radar = World->GetSubsystem<UFPSRadarSubsystem>();
-			if (Radar)
+			if (UFPSRadarSubsystem* Radar = World->GetSubsystem<UFPSRadarSubsystem>())
 			{
 				TArray<FFPSRadarPing> Pings = Radar->GetVisiblePingsForTeam(EFPSPlayerTeam::Alpha);
 				for (const FFPSRadarPing& Ping : Pings)
 				{
-					FVector Delta = Ping.WorldLocation - OwningHUD->PlayerLocation;
-					float Fwd = Delta.X * FMath::Cos(-YawRad) - Delta.Y * FMath::Sin(-YawRad);
-					float Right = Delta.X * FMath::Sin(-YawRad) + Delta.Y * FMath::Cos(-YawRad);
+					const FVector Delta = Ping.WorldLocation - OwningHUD->PlayerLocation;
+					const float Fwd = Delta.X * FMath::Cos(-YawRad) - Delta.Y * FMath::Sin(-YawRad);
+					const float Right = Delta.X * FMath::Sin(-YawRad) + Delta.Y * FMath::Cos(-YawRad);
 
-					float ScreenDX = (Right / 5000.0f) * MapRadius;
-					float ScreenDY = -(Fwd / 5000.0f) * MapRadius;
+					float ScreenDX = (Right / 4500.0f) * MapRadius;
+					float ScreenDY = -(Fwd / 4500.0f) * MapRadius;
 
-					float Dist = FMath::Sqrt(ScreenDX * ScreenDX + ScreenDY * ScreenDY);
-					if (Dist > MapRadius - 3.0f)
+					const float Dist = FMath::Sqrt(ScreenDX * ScreenDX + ScreenDY * ScreenDY);
+					if (Dist > MapRadius - 6.0f)
 					{
-						ScreenDX = (ScreenDX / Dist) * (MapRadius - 3.0f);
-						ScreenDY = (ScreenDY / Dist) * (MapRadius - 3.0f);
+						ScreenDX = (ScreenDX / Dist) * (MapRadius - 6.0f);
+						ScreenDY = (ScreenDY / Dist) * (MapRadius - 6.0f);
 					}
 
-					float Alpha = FMath::Clamp(Ping.LifetimeRemaining / Ping.InitialLifetime, 0.0f, 1.0f);
-					DrawBox(RCX + ScreenDX - 2.5f, RCY + ScreenDY - 2.5f, 5.0f, 5.0f, FLinearColor(1.0f, 0.15f, 0.15f, Alpha));
+					const float LifeRatio = FMath::Clamp(Ping.LifetimeRemaining / FMath::Max(0.1f, Ping.InitialLifetime), 0.0f, 1.0f);
+					const float PX = RCX + ScreenDX;
+					const float PY = RCY + ScreenDY;
+
+					// Expanding ripple ring + glowing hostile diamond
+					const float RippleR = 3.0f + (1.0f - LifeRatio) * 14.0f;
+					DrawArc(PX, PY, RippleR, 0.0f, 360.0f, 1.2f, FLinearColor(1.0f, 0.15f, 0.22f, LifeRatio * 0.85f), 16, 3);
+					DrawDiamond(PX, PY, 3.8f, 1.5f, FLinearColor(1.0f, 0.2f, 0.25f, LifeRatio), true, 4);
 				}
 			}
 		}
 
-		// Center Player Chevron (Forward pointing UP)
-		DrawLine(RCX - 5.0f, RCY + 5.0f, RCX, RCY - 5.0f, 2.0f, FLinearColor(0.15f, 0.85f, 1.0f));
-		DrawLine(RCX + 5.0f, RCY + 5.0f, RCX, RCY - 5.0f, 2.0f, FLinearColor(0.15f, 0.85f, 1.0f));
-		DrawLine(RCX - 3.0f, RCY + 2.0f, RCX + 3.0f, RCY + 2.0f, 1.5f, FLinearColor(0.15f, 0.85f, 1.0f));
+		// 2.7 Center Player Tactical Arrowhead Chevron
+		DrawQuad(
+			FVector2f(RCX, RCY - 7.0f),
+			FVector2f(RCX + 5.5f, RCY + 5.5f),
+			FVector2f(RCX, RCY + 2.0f),
+			FVector2f(RCX - 5.5f, RCY + 5.5f),
+			HudWhite, TealPrimary, TealPrimary, TealPrimary, 4);
 
-		// Position Readout
-		FString CoordStr = FString::Printf(TEXT("GRID: [%.0f, %.0f]"), OwningHUD->PlayerLocation.X / 100.0f, OwningHUD->PlayerLocation.Y / 100.0f);
-		DrawText(MapX + 8.0f, MapY + MapH - 16.0f, CoordStr, FontSmall, FLinearColor(0.5f, 0.6f, 0.7f, 0.6f));
-
-		// =========================================================================
-		// 3. OPERATOR VITALS & LEVEL IV SHIELD & STAMINA (Bottom-Left)
-		// =========================================================================
-		const float VitX = 24.0f;
-		const float VitY = ScreenH - 120.0f;
-		const float VitW = 270.0f;
-		const float VitH = 96.0f;
-
-		DrawBox(VitX, VitY, VitW, VitH, FLinearColor(0.02f, 0.03f, 0.05f, 0.75f));
-		DrawBorder(VitX, VitY, VitW, VitH, 1.0f, FLinearColor(0.12f, 0.65f, 0.85f, 0.35f));
-
-		// Vitals Header
-		DrawText(VitX + 10.0f, VitY + 6.0f, TEXT("OPERATOR // TF-141 [ONLINE]"), FontSmall, FLinearColor(0.15f, 0.85f, 1.0f, 0.85f));
-
-		// 1. Stamina Meter
-		float StaminaPct = OwningHUD->MaxStamina > 0.0f ? FMath::Clamp(OwningHUD->CurrentStamina / OwningHUD->MaxStamina, 0.0f, 1.0f) : 0.0f;
-		DrawBox(VitX + 10.0f, VitY + 22.0f, 180.0f, 8.0f, FLinearColor(0.05f, 0.08f, 0.1f, 0.8f));
-		FLinearColor StaminaColor = OwningHUD->bIsStaminaExhausted ? FLinearColor(1.0f, 0.2f, 0.2f) : (StaminaPct < 0.3f ? FLinearColor(1.0f, 0.75f, 0.1f) : FLinearColor(0.2f, 0.88f, 0.45f));
-		DrawBox(VitX + 10.0f, VitY + 22.0f, 180.0f * StaminaPct, 8.0f, StaminaColor);
-		FString StaminaLabel = OwningHUD->bIsStaminaExhausted ? TEXT("EXHAUSTED") : FString::Printf(TEXT("STAMINA: %.0f%%"), StaminaPct * 100.0f);
-		DrawText(VitX + 196.0f, VitY + 21.0f, StaminaLabel, FontSmall, StaminaColor);
-
-		// 2. Health Bar
-		float HealthPct = OwningHUD->MaxHealth > 0.0f ? FMath::Clamp(OwningHUD->CurrentHealth / OwningHUD->MaxHealth, 0.0f, 1.0f) : 0.0f;
-		DrawBox(VitX + 10.0f, VitY + 42.0f, 180.0f, 12.0f, FLinearColor(0.05f, 0.08f, 0.1f, 0.8f));
-		FLinearColor HealthColor = HealthPct < 0.3f ? FLinearColor(1.0f, 0.15f, 0.15f) : (HealthPct < 0.6f ? FLinearColor(1.0f, 0.75f, 0.15f) : FLinearColor(0.12f, 0.82f, 0.92f));
-		DrawBox(VitX + 10.0f, VitY + 42.0f, 180.0f * HealthPct, 12.0f, HealthColor);
-		FString HealthLabel = FString::Printf(TEXT("%.0f / %.0f HP"), OwningHUD->CurrentHealth, OwningHUD->MaxHealth);
-		DrawText(VitX + 196.0f, VitY + 42.0f, HealthLabel, FontBold, HealthColor);
-
-		// 3. Level IV Ceramic Armor Shield
-		float ShieldPct = OwningHUD->MaxShield > 0.0f ? FMath::Clamp(OwningHUD->CurrentShield / OwningHUD->MaxShield, 0.0f, 1.0f) : 0.0f;
-		DrawBox(VitX + 10.0f, VitY + 66.0f, 180.0f, 10.0f, FLinearColor(0.05f, 0.08f, 0.1f, 0.8f));
-		FLinearColor ShieldColor = FLinearColor(0.2f, 0.55f, 1.0f);
-		DrawBox(VitX + 10.0f, VitY + 66.0f, 180.0f * ShieldPct, 10.0f, ShieldColor);
-		FString ShieldLabel = FString::Printf(TEXT("ARMOR: %.0f [LVL IV]"), OwningHUD->CurrentShield);
-		DrawText(VitX + 196.0f, VitY + 65.0f, ShieldLabel, FontSmall, ShieldColor);
+		// 2.8 Frameless Floating Sector & Grid Callout Below Circular Radar
+		const float CalloutX = RCX - MapRadius + 4.0f;
+		const float CalloutY = RCY + MapRadius + 12.0f;
+		DrawSkewedRect(CalloutX - 4.0f, CalloutY - 2.0f, 165.0f, 18.0f, -5.0f,
+			FLinearColor(0.0f, 0.16f, 0.22f, 0.30f), FLinearColor(0.0f, 0.08f, 0.12f, 0.0f), 0);
+		DrawLine(CalloutX - 6.0f, CalloutY - 2.0f, CalloutX - 11.0f, CalloutY + 16.0f, 2.0f, TealPrimary, 2);
+		DrawGlowText(CalloutX, CalloutY,
+			FString::Printf(TEXT("RUST TACTICAL // [%+03.0fm, %+03.0fm]"), OwningHUD->PlayerLocation.X / 100.0f, OwningHUD->PlayerLocation.Y / 100.0f),
+			FontMicro, FLinearColor(0.78f, 0.92f, 0.98f, 0.82f), 0.7f);
 
 		// =========================================================================
-		// 4. AMMO & WEAPON LOADOUT (Bottom-Right)
+		// 3. BOTTOM-LEFT FLOATING VITALS, 4-PLATE ARMOR & LIVE ECG (BF6 / MW4)
 		// =========================================================================
-		const float AmmoX = ScreenW - 294.0f;
-		const float AmmoW = 270.0f;
-		const float AmmoH = 96.0f;
+		const float VitX = 36.0f + VX * 0.85f;
+		const float VitY = ScreenH - 122.0f + VY * 0.85f;
+		const float BarSkew = 7.0f; // Forward tactical shear
 
-		DrawBox(AmmoX, VitY, AmmoW, AmmoH, FLinearColor(0.02f, 0.03f, 0.05f, 0.75f));
-		DrawBorder(AmmoX, VitY, AmmoW, AmmoH, 1.0f, FLinearColor(0.12f, 0.65f, 0.85f, 0.35f));
+		// Translucent frameless glass gradient strip (fades completely to 0.0 alpha on the right!)
+		DrawSkewedRect(VitX - 12.0f, VitY - 8.0f, 310.0f, 92.0f, BarSkew,
+			FLinearColor(0.0f, 0.09f, 0.14f, 0.28f),
+			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f), 0);
 
-		// Weapon Name & Fire Mode
-		FString WeaponStr = OwningHUD->ActiveWeaponName.IsEmpty() ? TEXT("NF-98 CARBINE // 5.56 NATO") : OwningHUD->ActiveWeaponName.ToString();
-		DrawText(AmmoX + 10.0f, VitY + 6.0f, WeaponStr, FontSmall, FLinearColor(0.15f, 0.85f, 1.0f, 0.85f));
-		DrawText(AmmoX + 10.0f, VitY + 22.0f, OwningHUD->FireModeString, FontSmall, FLinearColor(0.7f, 0.75f, 0.8f, 0.65f));
+		// Glowing Left Spine Accent Bracket
+		DrawLine(VitX - 12.0f + BarSkew, VitY - 8.0f, VitX - 12.0f, VitY + 84.0f, 2.5f, TealPrimary, 2);
+		DrawLine(VitX - 12.0f + BarSkew, VitY - 8.0f, VitX + 26.0f + BarSkew, VitY - 8.0f, 1.5f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
+		DrawLine(VitX - 12.0f, VitY + 84.0f, VitX + 18.0f, VitY + 84.0f, 1.5f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
 
-		// Digital Ammo Readout
-		FString ClipStr = FString::Printf(TEXT("%02d"), OwningHUD->AmmoInClip);
-		FLinearColor AmmoColor = OwningHUD->AmmoInClip <= 5 ? FLinearColor(1.0f, 0.25f, 0.15f) : FLinearColor(0.95f, 0.98f, 1.0f);
-		DrawText(AmmoX + 12.0f, VitY + 36.0f, ClipStr, FontBigAmmo, AmmoColor);
-		DrawText(AmmoX + 66.0f, VitY + 44.0f, TEXT("/"), FontMedium, FLinearColor(0.45f, 0.5f, 0.55f, 0.7f));
-		FString ReserveStr = FString::Printf(TEXT("%d"), OwningHUD->AmmoReserve);
-		DrawText(AmmoX + 80.0f, VitY + 46.0f, ReserveStr, FontMedium, FLinearColor(0.7f, 0.75f, 0.8f, 0.8f));
+		// 3.1 Segmented 4-Plate Level IV Ceramic Armor Row
+		const float ShieldPct = OwningHUD->MaxShield > 0.0f ? FMath::Clamp(OwningHUD->CurrentShield / OwningHUD->MaxShield, 0.0f, 1.0f) : 0.0f;
+		const float ShieldGhostPct = OwningHUD->MaxShield > 0.0f ? FMath::Clamp(OwningHUD->DisplayedShieldGhost / OwningHUD->MaxShield, 0.0f, 1.0f) : 0.0f;
+		const int32 NumPlates = 4;
+		const float PlateW = 49.0f;
+		const float PlateGap = 5.0f;
+		const float PlateY = VitY + 14.0f;
+		const float PlateH = 9.0f;
 
-		// Tactical State Line
-		if (OwningHUD->bIsReloading)
+		DrawGlowText(VitX + 4.0f, VitY - 3.0f, TEXT("LVL-IV CERAMIC PLATES"), FontMicro, CobaltArmor * FLinearColor(1, 1, 1, 0.90f), 0.7f);
+		DrawGlowText(VitX + 165.0f, VitY - 3.0f, FString::Printf(TEXT("%03.0f"), OwningHUD->CurrentShield), FontSmall,
+			ShieldPct > 0.01f ? CobaltArmor : FLinearColor(0.5f, 0.6f, 0.7f, 0.5f), 0.7f);
+
+		for (int32 p = 0; p < NumPlates; ++p)
 		{
-			DrawText(AmmoX + 10.0f, VitY + 74.0f, TEXT("[>> RELOADING...]"), FontBold, FLinearColor(1.0f, 0.8f, 0.1f));
-		}
-		else if (OwningHUD->bIsADS)
-		{
-			DrawText(AmmoX + 10.0f, VitY + 74.0f, TEXT("[OPTIC: REFLEX RED-DOT ACTIVE]"), FontSmall, FLinearColor(0.15f, 0.85f, 1.0f, 0.8f));
-		}
-		else
-		{
-			DrawText(AmmoX + 10.0f, VitY + 74.0f, TEXT("CALIBER: 5.56x45 NATO [MATCH]"), FontSmall, FLinearColor(0.5f, 0.55f, 0.6f, 0.6f));
+			const float PX = VitX + p * (PlateW + PlateGap);
+			const float PlateStartPct = (float)p / (float)NumPlates;
+			const float PlateEndPct = (float)(p + 1) / (float)NumPlates;
+			const float LocalFill = FMath::Clamp((ShieldPct - PlateStartPct) / (PlateEndPct - PlateStartPct), 0.0f, 1.0f);
+			const float LocalGhost = FMath::Clamp((ShieldGhostPct - PlateStartPct) / (PlateEndPct - PlateStartPct), 0.0f, 1.0f);
+
+			// Empty Plate Track
+			DrawSkewedRect(PX, PlateY, PlateW, PlateH, 4.0f,
+				FLinearColor(0.02f, 0.08f, 0.16f, 0.35f), FLinearColor(0.02f, 0.08f, 0.16f, 0.22f), 1);
+
+			// Trailing Shield Damage Ghost
+			if (LocalGhost > LocalFill + 0.01f)
+			{
+				DrawSkewedRect(PX, PlateY, PlateW * LocalGhost, PlateH, 4.0f,
+					FLinearColor(0.8f, 0.95f, 1.0f, 0.55f), FLinearColor(0.4f, 0.8f, 1.0f, 0.55f), 1);
+			}
+
+			// Active Ceramic Plate Fill
+			if (LocalFill > 0.005f)
+			{
+				DrawSkewedRect(PX, PlateY, PlateW * LocalFill, PlateH, 4.0f,
+					FLinearColor(0.12f, 0.48f, 0.98f, 0.92f), FLinearColor(0.28f, 0.78f, 1.0f, 0.96f), 2);
+				// Bright top specular edge
+				DrawLine(PX + 4.0f, PlateY, PX + 4.0f + PlateW * LocalFill, PlateY, 1.4f, FLinearColor(0.65f, 0.92f, 1.0f, 0.9f), 3);
+			}
+
+			// Crisp subtle plate outline
+			DrawLine(PX + 4.0f, PlateY, PX + 4.0f + PlateW, PlateY, 1.0f, FLinearColor(0.2f, 0.6f, 1.0f, 0.35f), 2);
+			DrawLine(PX, PlateY + PlateH, PX + PlateW, PlateY + PlateH, 1.0f, FLinearColor(0.2f, 0.6f, 1.0f, 0.25f), 2);
 		}
 
+		// 3.2 Sleek Skewed Health Bar with Trailing Damage Ghost & Live ECG Waveform
+		const float HealthPct = OwningHUD->MaxHealth > 0.0f ? FMath::Clamp(OwningHUD->CurrentHealth / OwningHUD->MaxHealth, 0.0f, 1.0f) : 0.0f;
+		const float HealthGhostPct = OwningHUD->MaxHealth > 0.0f ? FMath::Clamp(OwningHUD->DisplayedHealthGhost / OwningHUD->MaxHealth, 0.0f, 1.0f) : 0.0f;
+		const float HBarX = VitX;
+		const float HBarY = VitY + 34.0f;
+		const float HBarW = 211.0f;
+		const float HBarH = 12.0f;
+
+		const FLinearColor HealthMainColor = (HealthPct < 0.30f)
+			? CrimsonAlert
+			: ((HealthPct < 0.60f) ? AmberWarn : TealPrimary);
+		const FLinearColor HealthBrightColor = (HealthPct < 0.30f)
+			? FLinearColor(1.0f, 0.45f, 0.45f, 1.0f)
+			: ((HealthPct < 0.60f) ? FLinearColor(1.0f, 0.90f, 0.4f, 1.0f) : FLinearColor(0.65f, 1.0f, 0.98f, 1.0f));
+
+		// Translucent Health Track
+		DrawSkewedRect(HBarX, HBarY, HBarW, HBarH, 5.0f,
+			FLinearColor(0.02f, 0.06f, 0.09f, 0.38f), FLinearColor(0.02f, 0.06f, 0.09f, 0.22f), 1);
+
+		// Trailing Damage Ghost Bar
+		if (HealthGhostPct > HealthPct + 0.005f)
+		{
+			DrawSkewedRect(HBarX, HBarY, HBarW * HealthGhostPct, HBarH, 5.0f,
+				FLinearColor(1.0f, 0.25f, 0.25f, 0.65f), FLinearColor(1.0f, 0.85f, 0.85f, 0.80f), 1);
+		}
+
+		// Primary Health Fill
+		if (HealthPct > 0.005f)
+		{
+			DrawSkewedRect(HBarX, HBarY, HBarW * HealthPct, HBarH, 5.0f,
+				HealthMainColor * FLinearColor(0.85f, 0.85f, 0.85f, 0.92f), HealthBrightColor, 2);
+			DrawLine(HBarX + 5.0f, HBarY, HBarX + 5.0f + HBarW * HealthPct, HBarY, 1.5f, HudWhite, 3);
+		}
+
+		// 20-HP Micro-Subdivision Notches
+		for (int32 n = 1; n < 5; ++n)
+		{
+			const float NX = HBarX + (HBarW * 0.2f * n);
+			DrawLine(NX + 5.0f, HBarY, NX, HBarY + HBarH, 1.2f, FLinearColor(0.0f, 0.04f, 0.07f, 0.55f), 3);
+		}
+
+		// Oversized Floating Numeric Health Readout + Medical Cross on Right of Bars
+		const float NumHPX = VitX + 222.0f;
+		const float NumHPY = VitY + 18.0f;
+		// Mini glowing medical cross icon '+'
+		DrawLine(NumHPX, NumHPY + 5.0f, NumHPX + 8.0f, NumHPY + 5.0f, 2.0f, HealthMainColor, 3);
+		DrawLine(NumHPX + 4.0f, NumHPY + 1.0f, NumHPX + 4.0f, NumHPY + 9.0f, 2.0f, HealthMainColor, 3);
+		DrawGlowText(NumHPX + 12.0f, NumHPY - 3.0f, TEXT("BPM // BIO"), FontMicro, FLinearColor(0.7f, 0.88f, 0.95f, 0.65f), 0.6f);
+		DrawGlowText(NumHPX, NumHPY + 9.0f, FString::Printf(TEXT("%03.0f"), OwningHUD->CurrentHealth), FontHealth, HealthBrightColor, 0.85f);
+
+		// Live Animated ECG Heartbeat Waveform under HP Number
+		{
+			TArray<FVector2f> EcgPts;
+			const int32 NumEcg = 18;
+			EcgPts.Reserve(NumEcg);
+			const float EcgStartX = NumHPX + 2.0f;
+			const float EcgBaseY = VitY + 62.0f;
+			const float EcgSpeed = (HealthPct < 0.4f || OwningHUD->bIsStaminaExhausted) ? 9.0f : 4.5f;
+			for (int32 i = 0; i < NumEcg; ++i)
+			{
+				const float NormI = (float)i / (float)(NumEcg - 1);
+				const float Phase = FMath::Fmod(NormI * 2.0f - TimeSec * EcgSpeed + 100.0f, 1.0f);
+				float Deflection = 0.0f;
+				if (Phase > 0.42f && Phase < 0.48f) Deflection = -8.0f;
+				else if (Phase >= 0.48f && Phase < 0.54f) Deflection = 6.0f;
+				else if (Phase >= 0.54f && Phase < 0.60f) Deflection = -2.5f;
+				EcgPts.Add(FVector2f(EcgStartX + NormI * 56.0f, EcgBaseY + Deflection));
+			}
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + 3, AllottedGeometry.ToPaintGeometry(), MoveTemp(EcgPts), ESlateDrawEffect::None, HealthMainColor * FLinearColor(1, 1, 1, 0.75f), true, 1.3f);
+		}
+
+		// 3.3 12-Cell Skewed Stamina Kinetic Meter
+		const float StaminaPct = OwningHUD->MaxStamina > 0.0f ? FMath::Clamp(OwningHUD->CurrentStamina / OwningHUD->MaxStamina, 0.0f, 1.0f) : 0.0f;
+		const int32 StaminaCells = 12;
+		const float SCellW = 14.5f;
+		const float SCellGap = 3.2f;
+		const float SCellY = VitY + 56.0f;
+		const float SCellH = 6.0f;
+
+		const FLinearColor StaminaCol = OwningHUD->bIsStaminaExhausted
+			? CrimsonAlert
+			: ((StaminaPct < 0.30f) ? AmberWarn : EmeraldStamina);
+
+		for (int32 c = 0; c < StaminaCells; ++c)
+		{
+			const float CXPos = VitX + c * (SCellW + SCellGap);
+			const float CellThreshold = (float)(c + 1) / (float)StaminaCells;
+			const bool bCellActive = StaminaPct >= (CellThreshold - 0.04f);
+
+			DrawSkewedRect(CXPos, SCellY, SCellW, SCellH, 3.0f,
+				bCellActive ? StaminaCol : FLinearColor(0.02f, 0.07f, 0.10f, 0.28f),
+				bCellActive ? (StaminaCol * 1.2f) : FLinearColor(0.02f, 0.07f, 0.10f, 0.20f), 2);
+		}
+
+		const FString StaminaStatus = OwningHUD->bIsStaminaExhausted
+			? TEXT("SPRINT LOCKED // EXHAUSTED")
+			: FString::Printf(TEXT("KINETIC STAMINA // %03.0f%%"), StaminaPct * 100.0f);
+		DrawGlowText(VitX, VitY + 67.0f, StaminaStatus, FontMicro,
+			OwningHUD->bIsStaminaExhausted ? CrimsonAlert : FLinearColor(0.65f, 0.92f, 0.85f, 0.72f), 0.6f);
+
 		// =========================================================================
-		// 5. DYNAMIC CENTER RETICLE & HITMARKER
+		// 4. BOTTOM-RIGHT FLOATING WEAPON SCHEMATIC & 30-ROUND PIP MATRIX
+		// =========================================================================
+		const float AmmoW = 315.0f;
+		const float AmmoX = ScreenW - AmmoW - 36.0f + VX * 0.85f;
+		const float AmmoY = ScreenH - 122.0f + VY * 0.85f;
+
+		// Right-to-Left Translucent Glass Gradient Strip (0.0 alpha on left -> 0.28 on right)
+		DrawSkewedRect(AmmoX, AmmoY - 8.0f, AmmoW + 12.0f, 92.0f, -BarSkew,
+			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f),
+			FLinearColor(0.0f, 0.09f, 0.14f, 0.28f), 0);
+
+		// Glowing Right Spine Accent Bracket
+		const float RightSpineX = AmmoX + AmmoW + 12.0f;
+		DrawLine(RightSpineX - BarSkew, AmmoY - 8.0f, RightSpineX, AmmoY + 84.0f, 2.5f, TealPrimary, 2);
+		DrawLine(RightSpineX - BarSkew - 28.0f, AmmoY - 8.0f, RightSpineX - BarSkew, AmmoY - 8.0f, 1.5f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
+		DrawLine(RightSpineX - 20.0f, AmmoY + 84.0f, RightSpineX, AmmoY + 84.0f, 1.5f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
+
+		// 4.1 Procedural Vector Carbine Silhouette (Top-Right of Weapon Panel)
+		{
+			const float GunX = AmmoX + 185.0f;
+			const float GunY = AmmoY + 4.0f;
+			const FLinearColor GunLineCol = OwningHUD->bIsADS ? TealPrimary : FLinearColor(0.55f, 0.88f, 0.98f, 0.72f);
+
+			// Buttstock
+			DrawQuad(FVector2f(GunX + 78.0f, GunY + 4.0f), FVector2f(GunX + 104.0f, GunY + 3.0f),
+			         FVector2f(GunX + 104.0f, GunY + 15.0f), FVector2f(GunX + 82.0f, GunY + 10.0f),
+			         GunLineCol * 0.5f, GunLineCol * 0.5f, GunLineCol * 0.5f, GunLineCol * 0.5f, 2);
+			// Upper & Lower Receiver
+			DrawSkewedRect(GunX + 38.0f, GunY + 3.0f, 40.0f, 9.0f, -2.0f, GunLineCol * 0.75f, GunLineCol * 0.65f, 2);
+			// M-LOK Handguard
+			DrawSkewedRect(GunX + 12.0f, GunY + 4.0f, 26.0f, 6.0f, -1.0f, GunLineCol * 0.65f, GunLineCol * 0.75f, 2);
+			// Rifled Barrel & Compensator
+			DrawLine(GunX - 8.0f, GunY + 6.5f, GunX + 12.0f, GunY + 6.5f, 2.2f, GunLineCol, 3);
+			DrawLine(GunX - 11.0f, GunY + 5.5f, GunX - 6.0f, GunY + 5.5f, 3.0f, GunLineCol, 3);
+			// Reflex Red-Dot Optic Hood
+			DrawLine(GunX + 48.0f, GunY + 3.0f, GunX + 50.0f, GunY - 2.5f, 1.5f, TealPrimary, 3);
+			DrawLine(GunX + 50.0f, GunY - 2.5f, GunX + 60.0f, GunY - 2.5f, 1.5f, TealPrimary, 3);
+			DrawLine(GunX + 60.0f, GunY - 2.5f, GunX + 61.0f, GunY + 3.0f, 1.5f, TealPrimary, 3);
+			// Swept Pistol Grip
+			DrawLine(GunX + 68.0f, GunY + 11.0f, GunX + 73.0f, GunY + 22.0f, 3.2f, GunLineCol * 0.7f, 2);
+			// Curved 30-Round STANAG Magazine
+			DrawLine(GunX + 46.0f, GunY + 12.0f, GunX + 41.0f, GunY + 25.0f, 4.2f,
+				OwningHUD->AmmoInClip <= 5 ? CrimsonAlert : (GunLineCol * 0.85f), 2);
+		}
+
+		// 4.2 Oversized Floating Digital Ammo Readout (Left Side of Weapon Panel)
+		const bool bLowAmmo = (OwningHUD->AmmoInClip <= 5);
+		const FLinearColor ClipTextColor = bLowAmmo
+			? (FMath::Sin(TimeSec * 12.0f) > 0.0f ? CrimsonAlert : AmberWarn)
+			: HudWhite;
+
+		DrawGlowText(AmmoX + 14.0f, AmmoY - 4.0f, FString::Printf(TEXT("%02d"), OwningHUD->AmmoInClip), FontBigAmmo, ClipTextColor, 0.9f);
+		DrawLine(AmmoX + 84.0f, AmmoY + 6.0f, AmmoX + 76.0f, AmmoY + 38.0f, 1.8f, TealPrimary * FLinearColor(1, 1, 1, 0.55f), 2);
+		DrawGlowText(AmmoX + 88.0f, AmmoY + 4.0f, TEXT("RESERVE"), FontMicro, FLinearColor(0.6f, 0.82f, 0.92f, 0.65f), 0.5f);
+		DrawGlowText(AmmoX + 88.0f, AmmoY + 15.0f, FString::Printf(TEXT("%03d"), OwningHUD->AmmoReserve), FontBold, FLinearColor(0.78f, 0.92f, 0.98f, 0.90f), 0.8f);
+
+		// 4.3 30-Round Individual Bullet Pip Matrix
+		const int32 MagCap = FMath::Clamp(OwningHUD->MagazineCapacity, 1, 40);
+		const float PipStartX = AmmoX + 16.0f;
+		const float PipY = AmmoY + 48.0f;
+		const float TotalPipW = 280.0f;
+		const float PipStep = TotalPipW / (float)MagCap;
+		const float PipW = FMath::Max(2.5f, PipStep - 2.6f);
+		const float PipH = 11.0f;
+
+		for (int32 b = 0; b < MagCap; ++b)
+		{
+			const float BX = PipStartX + b * PipStep;
+			const bool bLoaded = (b < OwningHUD->AmmoInClip);
+			const bool bTracerRound = (b < 5); // First 5 rounds at bottom of mag are low-ammo tracers
+
+			FLinearColor PipCol;
+			if (!bLoaded)
+			{
+				PipCol = FLinearColor(0.05f, 0.12f, 0.18f, 0.25f);
+			}
+			else if (bTracerRound && OwningHUD->AmmoInClip <= 8)
+			{
+				PipCol = CrimsonAlert;
+			}
+			else if (bTracerRound)
+			{
+				PipCol = AmberWarn * FLinearColor(1, 1, 1, 0.92f);
+			}
+			else
+			{
+				PipCol = (b == OwningHUD->AmmoInClip - 1) ? HudWhite : TealPrimary * FLinearColor(1, 1, 1, 0.90f);
+			}
+
+			DrawSkewedRect(BX, PipY, PipW, PipH, -2.5f, PipCol, PipCol * 1.15f, 2);
+		}
+
+		// 4.4 Weapon Title, 3-Mode Fire Selector & Tactical Equipment Slots
+		const FString WeaponTitle = OwningHUD->ActiveWeaponName.IsEmpty()
+			? TEXT("NF-98 TACTICAL // 5.56 NATO")
+			: OwningHUD->ActiveWeaponName.ToString().ToUpper();
+		DrawGlowText(AmmoX + 16.0f, AmmoY + 65.0f, WeaponTitle, FontSmall, TealPrimary, 0.75f);
+
+		// Fire Selector Pills: [ AUTO ]  BURST  SEMI
+		const TCHAR* Modes[] = { TEXT("AUTO"), TEXT("BURST"), TEXT("SEMI") };
+		for (int32 m = 0; m < 3; ++m)
+		{
+			const float MX = AmmoX + 188.0f + m * 38.0f;
+			const float MY = AmmoY + 65.0f;
+			const bool bActiveMode = (OwningHUD->ActiveFireModeIndex == m);
+			if (bActiveMode)
+			{
+				DrawSkewedRect(MX - 4.0f, MY - 1.0f, 34.0f, 13.0f, -3.0f,
+					FLinearColor(0.0f, 0.94f, 0.86f, 0.28f), FLinearColor(0.0f, 0.94f, 0.86f, 0.14f), 1);
+				DrawLine(MX - 4.0f, MY + 12.0f, MX + 30.0f, MY + 12.0f, 1.5f, TealPrimary, 2);
+			}
+			DrawGlowText(MX, MY, Modes[m], FontMicro,
+				bActiveMode ? HudWhite : FLinearColor(0.5f, 0.65f, 0.75f, 0.45f), bActiveMode ? 0.8f : 0.0f);
+		}
+
+		// Lethal & Tactical Ordance Micro-Badges Above Panel
+		DrawGlowText(AmmoX + 180.0f, AmmoY - 22.0f, TEXT("[G] FRAG x1   //   [Q] FLASH x2"), FontMicro, FLinearColor(0.75f, 0.90f, 0.98f, 0.68f), 0.6f);
+
+		// =========================================================================
+		// 5. CENTER MULTI-LAYER RETICLE, RADIAL RELOAD RING & 3D DAMAGE ARCS
 		// =========================================================================
 		const float CX = ScreenW * 0.5f;
 		const float CY = ScreenH * 0.5f;
 
-		if (!OwningHUD->bIsADS)
+		// 5.1 Dynamic Multi-Layer Contrast Reticle (Fades smoothly during ADS)
+		const float CrosshairAlpha = FMath::Clamp(1.0f - OwningHUD->ADSAlpha * 1.25f, 0.0f, 1.0f);
+		if (CrosshairAlpha > 0.02f && !OwningHUD->bIsReloading)
 		{
-			float Gap = FMath::Clamp(OwningHUD->CurrentSpreadRadius, 8.0f, 40.0f);
-			float Len = 8.0f;
-			FLinearColor CrosshairTint(1.0f, 1.0f, 1.0f, 0.75f);
+			const float Gap = FMath::Clamp(OwningHUD->CurrentSpreadRadius, 7.0f, 42.0f);
+			const float Len = 9.0f;
+			const float TBracket = 3.0f;
 
-			DrawLine(CX, CY - Gap - Len, CX, CY - Gap, 1.5f, CrosshairTint);
-			DrawLine(CX, CY + Gap, CX, CY + Gap + Len, 1.5f, CrosshairTint);
-			DrawLine(CX - Gap - Len, CY, CX - Gap, CY, 1.5f, CrosshairTint);
-			DrawLine(CX + Gap, CY, CX + Gap + Len, CY, 1.5f, CrosshairTint);
-			DrawBox(CX - 1.0f, CY - 1.0f, 2.0f, 2.0f, FLinearColor(1.0f, 1.0f, 1.0f, 0.5f));
+			const FLinearColor DarkOutline(0.0f, 0.02f, 0.04f, 0.52f * CrosshairAlpha);
+			const FLinearColor BrightCore(0.92f, 0.99f, 1.0f, 0.92f * CrosshairAlpha);
+			const FLinearColor TealTip(0.0f, 0.94f, 0.86f, 0.88f * CrosshairAlpha);
+
+			// Dark Contrast Backing Lines
+			DrawLine(CX, CY - Gap - Len - 1.0f, CX, CY - Gap + 1.0f, 3.0f, DarkOutline, 2);
+			DrawLine(CX, CY + Gap - 1.0f, CX, CY + Gap + Len + 1.0f, 3.0f, DarkOutline, 2);
+			DrawLine(CX - Gap - Len - 1.0f, CY, CX - Gap + 1.0f, CY, 3.0f, DarkOutline, 2);
+			DrawLine(CX + Gap - 1.0f, CY, CX + Gap + Len + 1.0f, CY, 3.0f, DarkOutline, 2);
+
+			// Crisp Bright Core Pips
+			DrawLine(CX, CY - Gap - Len, CX, CY - Gap, 1.4f, BrightCore, 3);
+			DrawLine(CX, CY + Gap, CX, CY + Gap + Len, 1.4f, BrightCore, 3);
+			DrawLine(CX - Gap - Len, CY, CX - Gap, CY, 1.4f, BrightCore, 3);
+			DrawLine(CX + Gap, CY, CX + Gap + Len, CY, 1.4f, BrightCore, 3);
+
+			// Inner Tactical T-Brackets on Pip Tips
+			DrawLine(CX - TBracket, CY - Gap, CX + TBracket, CY - Gap, 1.2f, TealTip, 3);
+			DrawLine(CX - TBracket, CY + Gap, CX + TBracket, CY + Gap, 1.2f, TealTip, 3);
+			DrawLine(CX - Gap, CY - TBracket, CX - Gap, CY + TBracket, 1.2f, TealTip, 3);
+			DrawLine(CX + Gap, CY - TBracket, CX + Gap, CY + TBracket, 1.2f, TealTip, 3);
+
+			// Precision Center Micro-Dot
+			DrawDiamond(CX, CY, 1.6f, 1.0f, TealTip, true, 3);
 		}
 
+		// 5.2 Center Radial 4-Phase Reload Progress Ring
+		if (OwningHUD->bIsReloading)
+		{
+			const float RRadius = 26.0f;
+			const float Prog = FMath::Clamp(OwningHUD->ReloadProgress, 0.0f, 1.0f);
+
+			// Background Ring Track
+			DrawArc(CX, CY, RRadius, 0.0f, 360.0f, 2.2f, FLinearColor(0.0f, 0.12f, 0.18f, 0.45f), 36, 2);
+			// Active Sweeping Progress Arc (-90 deg top clockwise)
+			DrawArc(CX, CY, RRadius, -90.0f, -90.0f + Prog * 360.0f, 2.8f, AmberWarn, 36, 3);
+
+			// 4-Phase Stage Label
+			const TCHAR* PhaseStr = (Prog < 0.20f) ? TEXT("PHASE 1 // CANT")
+			                      : (Prog < 0.42f) ? TEXT("PHASE 2 // MAG DROP")
+			                      : (Prog < 0.76f) ? TEXT("PHASE 3 // MAG LOCK")
+			                                       : TEXT("PHASE 4 // BOLT SNAP");
+			DrawGlowText(CX - 48.0f, CY + RRadius + 8.0f, PhaseStr, FontMicro, AmberWarn, 0.85f);
+		}
+		else if (OwningHUD->AmmoInClip <= 5)
+		{
+			const float PulseAlpha = 0.55f + 0.40f * FMath::Sin(TimeSec * 10.0f);
+			DrawGlowText(CX - 38.0f, CY + 34.0f,
+				OwningHUD->AmmoInClip == 0 ? TEXT("[ R ] EMPTY // RELOAD") : TEXT("[ R ] LOW AMMO"),
+				FontMicro, FLinearColor(1.0f, 0.35f, 0.15f, PulseAlpha), 0.8f);
+		}
+
+		// 5.3 Animated Kinetic Hitmarker (Expands on impact, Crimson + Outer Diamond on Headshot)
 		if (OwningHUD->HitmarkerTimer > 0.0f)
 		{
-			float Alpha = FMath::Clamp(OwningHUD->HitmarkerTimer / 0.25f, 0.0f, 1.0f);
-			FLinearColor HColor = (OwningHUD->CurrentHitmarker == EFPSHitmarkerType::Headshot) ? FLinearColor(1.0f, 0.1f, 0.1f, Alpha) : FLinearColor(1.0f, 1.0f, 1.0f, Alpha);
-			DrawLine(CX - 12.0f, CY - 12.0f, CX - 5.0f, CY - 5.0f, 2.0f, HColor);
-			DrawLine(CX + 12.0f, CY - 12.0f, CX + 5.0f, CY - 5.0f, 2.0f, HColor);
-			DrawLine(CX - 12.0f, CY + 12.0f, CX - 5.0f, CY + 5.0f, 2.0f, HColor);
-			DrawLine(CX + 12.0f, CY + 12.0f, CX + 5.0f, CY + 5.0f, 2.0f, HColor);
+			const float NormHit = FMath::Clamp(OwningHUD->HitmarkerTimer / 0.25f, 0.0f, 1.0f);
+			const float Expand = (1.0f - NormHit) * 5.0f;
+			const float InnerR = 5.0f + Expand * 0.4f;
+			const float OuterR = 13.0f + Expand;
+
+			const bool bHeadshot = (OwningHUD->CurrentHitmarker == EFPSHitmarkerType::Headshot);
+			const FLinearColor HitCol = bHeadshot
+				? FLinearColor(1.0f, 0.12f, 0.20f, NormHit)
+				: FLinearColor(0.95f, 1.0f, 1.0f, NormHit);
+
+			// Dark Shadow Underlay
+			const FLinearColor HitShadow(0.0f, 0.0f, 0.0f, NormHit * 0.6f);
+			DrawLine(CX - OuterR, CY - OuterR, CX - InnerR, CY - InnerR, 3.2f, HitShadow, 3);
+			DrawLine(CX + OuterR, CY - OuterR, CX + InnerR, CY - InnerR, 3.2f, HitShadow, 3);
+			DrawLine(CX - OuterR, CY + OuterR, CX - InnerR, CY + InnerR, 3.2f, HitShadow, 3);
+			DrawLine(CX + OuterR, CY + OuterR, CX + InnerR, CY + InnerR, 3.2f, HitShadow, 3);
+
+			// Primary Hitmarker Cross
+			DrawLine(CX - OuterR, CY - OuterR, CX - InnerR, CY - InnerR, 1.8f, HitCol, 4);
+			DrawLine(CX + OuterR, CY - OuterR, CX + InnerR, CY - InnerR, 1.8f, HitCol, 4);
+			DrawLine(CX - OuterR, CY + OuterR, CX - InnerR, CY + InnerR, 1.8f, HitCol, 4);
+			DrawLine(CX + OuterR, CY + OuterR, CX + InnerR, CY + InnerR, 1.8f, HitCol, 4);
+
+			// Double-tick lethal accent for headshots
+			if (bHeadshot)
+			{
+				DrawDiamond(CX, CY, OuterR * 0.85f, 1.4f, FLinearColor(1.0f, 0.4f, 0.1f, NormHit * 0.85f), false, 4);
+			}
 		}
 
-		return LayerId + 10;
+		// 5.4 3D Directional Damage Indicator Arc
+		if (OwningHUD->DamageIndicatorTimer > 0.0f)
+		{
+			const float DmgAlpha = FMath::Clamp(OwningHUD->DamageIndicatorTimer / 1.2f, 0.0f, 1.0f);
+			const float CenterDeg = OwningHUD->DamageIndicatorAngle - 90.0f;
+			const float DmgRadius = 78.0f;
+			DrawArc(CX, CY, DmgRadius, CenterDeg - 26.0f, CenterDeg + 26.0f, 4.0f, FLinearColor(1.0f, 0.10f, 0.18f, DmgAlpha * 0.85f), 18, 3);
+			DrawArc(CX, CY, DmgRadius + 4.0f, CenterDeg - 14.0f, CenterDeg + 14.0f, 2.0f, FLinearColor(1.0f, 0.55f, 0.55f, DmgAlpha * 0.95f), 12, 4);
+		}
+
+		return LayerId + 8;
 	}
 
 private:
@@ -451,18 +962,23 @@ void UFPSHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
+	HUDTimeSeconds += InDeltaTime;
+
 	if (HitmarkerTimer > 0.0f)
 	{
 		HitmarkerTimer = FMath::Max(0.0f, HitmarkerTimer - InDeltaTime);
 	}
 
+	if (DamageIndicatorTimer > 0.0f)
+	{
+		DamageIndicatorTimer = FMath::Max(0.0f, DamageIndicatorTimer - InDeltaTime);
+	}
+
 	if (!OwningCharacter.IsValid())
 	{
-		APlayerController* PC = GetOwningPlayer();
-		if (PC)
+		if (APlayerController* PC = GetOwningPlayer())
 		{
-			AFPSCharacter* FPSChar = Cast<AFPSCharacter>(PC->GetPawn());
-			if (FPSChar)
+			if (AFPSCharacter* FPSChar = Cast<AFPSCharacter>(PC->GetPawn()))
 			{
 				SetOwningCharacter(FPSChar);
 			}
@@ -473,16 +989,34 @@ void UFPSHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	{
 		AFPSCharacter* Char = OwningCharacter.Get();
 
-		// Vitals (Health & Level IV Shield)
+		// 1. Vitals & Smooth Trailing Damage Ghost Bars
 		if (Char->HealthComponent)
 		{
 			CurrentHealth = Char->HealthComponent->GetCurrentHealth();
 			MaxHealth = Char->HealthComponent->MaxHealth;
 			CurrentShield = Char->HealthComponent->GetCurrentShield();
 			MaxShield = Char->HealthComponent->MaxShield;
+
+			if (CurrentHealth > DisplayedHealthGhost)
+			{
+				DisplayedHealthGhost = CurrentHealth;
+			}
+			else
+			{
+				DisplayedHealthGhost = FMath::FInterpTo(DisplayedHealthGhost, CurrentHealth, InDeltaTime, 3.2f);
+			}
+
+			if (CurrentShield > DisplayedShieldGhost)
+			{
+				DisplayedShieldGhost = CurrentShield;
+			}
+			else
+			{
+				DisplayedShieldGhost = FMath::FInterpTo(DisplayedShieldGhost, CurrentShield, InDeltaTime, 3.8f);
+			}
 		}
 
-		// Stamina System
+		// 2. Stamina System
 		if (Char->FPSMovementComponent)
 		{
 			CurrentStamina = Char->FPSMovementComponent->GetCurrentStamina();
@@ -490,37 +1024,59 @@ void UFPSHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 			bIsStaminaExhausted = Char->FPSMovementComponent->IsStaminaExhausted();
 		}
 
-		// Weapon & Ammo
+		// 3. Weapon, Individual Pip Matrix & Reload Progress
 		if (Char->InventoryComponent)
 		{
-			AFPSWeaponBase* Weapon = Char->InventoryComponent->GetActiveWeapon();
-			if (Weapon)
+			if (AFPSWeaponBase* Weapon = Char->InventoryComponent->GetActiveWeapon())
 			{
 				AmmoInClip = Weapon->GetCurrentAmmo();
+				MagazineCapacity = Weapon->GetMagazineCapacity();
 				AmmoReserve = Weapon->GetReserveAmmo();
 				ActiveWeaponName = Weapon->WeaponDisplayName;
 				bIsReloading = Weapon->IsReloading();
+				ReloadProgress = Weapon->GetReloadProgress();
 				bIsADS = Weapon->IsAimingDownSights();
+				ADSAlpha = Weapon->GetADSAlpha();
 
 				switch (Weapon->FireMode)
 				{
 				case EFPSFireMode::FullAuto:
-					FireModeString = TEXT("FULL AUTO - 750 RPM");
+					FireModeString = TEXT("FULL AUTO // 750 RPM");
+					ActiveFireModeIndex = 0;
 					break;
 				case EFPSFireMode::Burst:
 					FireModeString = TEXT("3-ROUND BURST");
+					ActiveFireModeIndex = 1;
 					break;
 				case EFPSFireMode::SemiAuto:
 				default:
 					FireModeString = TEXT("SEMI-AUTO");
+					ActiveFireModeIndex = 2;
 					break;
 				}
 			}
 		}
 
-		// Pose & Orientation
+		// 4. Pose, Velocity & Helmet Visor Inertial Lag Parallax
 		PlayerLocation = Char->GetActorLocation();
-		CameraYaw = Char->GetControlRotation().Yaw;
+		PlayerSpeed = Char->GetVelocity().Size2D();
+
+		const FRotator ControlRot = Char->GetControlRotation();
+		CameraYaw = ControlRot.Yaw;
+		CameraPitch = ControlRot.Pitch;
+
+		const float DeltaYaw = FRotator::NormalizeAxis(CameraYaw - LastCameraYaw);
+		const float DeltaPitch = FRotator::NormalizeAxis(CameraPitch - LastCameraPitch);
+		LastCameraYaw = CameraYaw;
+		LastCameraPitch = CameraPitch;
+
+		// Subtle breathing + movement + angular turn sway on the AR visor
+		const float WalkBobY = (PlayerSpeed > 20.0f) ? FMath::Sin(HUDTimeSeconds * 9.5f) * 2.2f : FMath::Sin(HUDTimeSeconds * 2.0f) * 0.8f;
+		const float TargetLagX = FMath::Clamp(-DeltaYaw * 2.8f, -14.0f, 14.0f);
+		const float TargetLagY = FMath::Clamp(DeltaPitch * 2.4f + WalkBobY, -12.0f, 12.0f);
+
+		VisorLagOffset.X = FMath::FInterpTo(VisorLagOffset.X, TargetLagX, InDeltaTime, 10.0f);
+		VisorLagOffset.Y = FMath::FInterpTo(VisorLagOffset.Y, TargetLagY, InDeltaTime, 10.0f);
 	}
 }
 
@@ -542,6 +1098,9 @@ void UFPSHUDWidget::TriggerDamageIndicator(FVector DamageSourceLocation, FVector
 
 	float AngleRad = FMath::Atan2(RightDot, ForwardDot);
 	float AngleDeg = FMath::RadiansToDegrees(AngleRad);
+
+	DamageIndicatorAngle = AngleDeg;
+	DamageIndicatorTimer = 1.2f;
 
 	OnShowDamageIndicator(AngleDeg);
 }

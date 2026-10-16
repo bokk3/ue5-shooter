@@ -80,25 +80,40 @@ public:
 	// Telemetry data consumed by the native Slate HUD
 	float CurrentHealth = 100.0f;
 	float MaxHealth = 100.0f;
+	float DisplayedHealthGhost = 100.0f;
 	float CurrentShield = 100.0f;
 	float MaxShield = 100.0f;
+	float DisplayedShieldGhost = 100.0f;
 	float CurrentStamina = 100.0f;
 	float MaxStamina = 100.0f;
 	bool bIsStaminaExhausted = false;
 
 	int32 AmmoInClip = 30;
+	int32 MagazineCapacity = 30;
 	int32 AmmoReserve = 180;
 	FText ActiveWeaponName;
 	FString FireModeString = TEXT("FULL AUTO");
+	uint8 ActiveFireModeIndex = 0; // 0=Auto, 1=Burst, 2=Semi
 	bool bIsReloading = false;
+	float ReloadProgress = 0.0f;
 	bool bIsADS = false;
+	float ADSAlpha = 0.0f;
 
 	float CurrentSpreadRadius = 12.0f;
 	float HitmarkerTimer = 0.0f;
 	EFPSHitmarkerType CurrentHitmarker = EFPSHitmarkerType::Standard;
 
+	float DamageIndicatorTimer = 0.0f;
+	float DamageIndicatorAngle = 0.0f;
+
 	float CameraYaw = 0.0f;
+	float CameraPitch = 0.0f;
+	float LastCameraYaw = 0.0f;
+	float LastCameraPitch = 0.0f;
+	FVector2f VisorLagOffset = FVector2f::ZeroVector;
 	FVector PlayerLocation = FVector::ZeroVector;
+	float PlayerSpeed = 0.0f;
+	float HUDTimeSeconds = 0.0f;
 
 private:
 	UPROPERTY()

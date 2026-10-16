@@ -136,6 +136,12 @@ public:
 	bool IsReloading() const { return CurrentState == EFPSWeaponState::Reloading; }
 
 	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
+	float GetReloadProgress() const { return (CurrentState == EFPSWeaponState::Reloading && ReloadDuration > 0.01f) ? FMath::Clamp(ReloadElapsedTime / ReloadDuration, 0.0f, 1.0f) : 0.0f; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
+	int32 GetMagazineCapacity() const { return MagazineCapacity; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
 	float GetADSAlpha() const { return CurrentADSAlpha; }
 
 	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
