@@ -80,6 +80,9 @@ public:
 	TObjectPtr<class UAnimSequence> AnimIdleADS;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimLowReady;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
 	TObjectPtr<class UAnimSequence> AnimWalk;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
@@ -87,6 +90,21 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
 	TObjectPtr<class UAnimSequence> AnimSprint;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimJumpLoop;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimCrouchIdle;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimCrouchWalk;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimSlide;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimWalkBackwards;
 
 	// Tactical 3rd-Person Over-The-Shoulder (OTS) Camera Settings (Phase 8A Spec)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")

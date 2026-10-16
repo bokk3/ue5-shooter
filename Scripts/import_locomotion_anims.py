@@ -19,11 +19,21 @@ anim_names = [
     "Anim_BaseMale_Walk",
     "Anim_BaseMale_Run",
     "Anim_BaseMale_Sprint",
+    "Anim_BaseMale_Jump_Loop",
+    "Anim_BaseMale_Crouch_Idle",
+    "Anim_BaseMale_Crouch_Walk",
+    "Anim_BaseMale_Slide",
+    "Anim_BaseMale_Walk_Backwards",
     "Anim_Operator_Idle_ADS",
     "Anim_Operator_LowReady",
     "Anim_Operator_Walk",
     "Anim_Operator_Run",
-    "Anim_Operator_Sprint"
+    "Anim_Operator_Sprint",
+    "Anim_Operator_Jump_Loop",
+    "Anim_Operator_Crouch_Idle",
+    "Anim_Operator_Crouch_Walk",
+    "Anim_Operator_Slide",
+    "Anim_Operator_Walk_Backwards"
 ]
 
 anims_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi\Content\Characters\BaseMale\Animations"

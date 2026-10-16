@@ -183,6 +183,10 @@ void AFPSCharacter::BeginPlay()
 		{
 			AnimIdleADS = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
 		}
+		if (!AnimLowReady)
+		{
+			AnimLowReady = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_LowReady.Anim_BaseMale_LowReady"));
+		}
 		if (!AnimWalk)
 		{
 			AnimWalk = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk.Anim_BaseMale_Walk"));
@@ -195,12 +199,33 @@ void AFPSCharacter::BeginPlay()
 		{
 			AnimSprint = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Sprint.Anim_BaseMale_Sprint"));
 		}
+		if (!AnimJumpLoop)
+		{
+			AnimJumpLoop = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Jump_Loop.Anim_BaseMale_Jump_Loop"));
+		}
+		if (!AnimCrouchIdle)
+		{
+			AnimCrouchIdle = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Crouch_Idle.Anim_BaseMale_Crouch_Idle"));
+		}
+		if (!AnimCrouchWalk)
+		{
+			AnimCrouchWalk = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Crouch_Walk.Anim_BaseMale_Crouch_Walk"));
+		}
+		if (!AnimSlide)
+		{
+			AnimSlide = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Slide.Anim_BaseMale_Slide"));
+		}
+		if (!AnimWalkBackwards)
+		{
+			AnimWalkBackwards = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk_Backwards.Anim_BaseMale_Walk_Backwards"));
+		}
 
-		if (AnimIdleADS && !CurrentLocomotionAnim)
+		UAnimSequence* InitialAnim = AnimLowReady ? AnimLowReady : AnimIdleADS;
+		if (InitialAnim && !CurrentLocomotionAnim)
 		{
 			GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-			GetMesh()->SetAnimation(AnimIdleADS);
-			CurrentLocomotionAnim = AnimIdleADS;
+			GetMesh()->SetAnimation(InitialAnim);
+			CurrentLocomotionAnim = InitialAnim;
 			GetMesh()->Play(true);
 		}
 
@@ -476,11 +501,26 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 		TargetMeshRot = FRotator(TargetPitch, -90.0f, TargetRoll);
 		TargetZOffset = FPSMovementComponent->IsInDiveLandingSlide() ? -68.0f : -58.0f;
 	}
+	else if (FPSMovementComponent && FPSMovementComponent->IsSliding())
+	{
+		// Tactical knee slide: Reclined torso, mesh aligned with reduced slide capsule
+		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
+		TargetMeshRot = FRotator(0.0f, -90.0f, -18.0f + FMath::Clamp(-AimPitch * 0.25f, -15.0f, 15.0f));
+		TargetZOffset = -42.0f;
+	}
+	else if (FPSMovementComponent && FPSMovementComponent->IsCrouching())
+	{
+		// Crouched: Capsule half-height drops to 48 cm, mesh Z-offset -48 cm maintains ground contact
+		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
+		TargetMeshRot = FRotator(0.0f, -90.0f, 6.0f + FMath::Clamp(-AimPitch * 0.35f, -20.0f, 20.0f));
+		TargetZOffset = -48.0f;
+	}
 	else
 	{
-		// Subtle upper-body pitch inclination when aiming up/down in standard stance
+		// Standing posture: Full upper-torso pitch aiming
 		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
-		TargetMeshRot = FRotator(0.0f, -90.0f, FMath::Clamp(-AimPitch * 0.18f, -12.0f, 12.0f));
+		TargetMeshRot = FRotator(0.0f, -90.0f, FMath::Clamp(-AimPitch * 0.55f, -42.0f, 42.0f));
+		TargetZOffset = -96.0f;
 	}
 
 	CurrentDiveMeshRotation = FMath::RInterpTo(CurrentDiveMeshRotation, TargetMeshRot, DeltaTime, 14.0f);
@@ -803,11 +843,42 @@ void AFPSCharacter::UpdateLocomotionAnimation(float DeltaTime)
 	UAnimSequence* TargetAnim = AnimIdleADS;
 	float PlayRate = 1.0f;
 
+	// Evaluate directional heading relative to character forward facing
+	const FVector Velocity2D = GetVelocity().GetSafeNormal2D();
+	const FVector Forward2D = GetActorForwardVector().GetSafeNormal2D();
+	const float ForwardDot = Velocity2D.IsNearlyZero() ? 1.0f : FVector::DotProduct(Velocity2D, Forward2D);
+	const bool bIsMovingBackwards = (ForwardDot < -0.35f);
+
 	if (IsBallisticDiving())
 	{
 		// Lock upper body and hands into high-ready aimed posture during mid-air ballistic dive
 		TargetAnim = AnimIdleADS;
 		PlayRate = 0.5f;
+	}
+	else if (FPSMovementComponent && FPSMovementComponent->IsFalling())
+	{
+		// Airborne jump tuck / apex suspension holding weapon stabilized
+		TargetAnim = AnimJumpLoop ? AnimJumpLoop : AnimIdleADS;
+		PlayRate = 1.0f;
+	}
+	else if (FPSMovementComponent && FPSMovementComponent->IsSliding())
+	{
+		// High-speed tactical knee slide
+		TargetAnim = AnimSlide ? AnimSlide : AnimCrouchIdle;
+		PlayRate = FMath::Clamp(Speed / 550.0f, 0.85f, 1.45f);
+	}
+	else if (FPSMovementComponent && FPSMovementComponent->IsCrouching())
+	{
+		if (Speed > 15.0f)
+		{
+			TargetAnim = AnimCrouchWalk ? AnimCrouchWalk : (AnimWalk ? AnimWalk : AnimIdleADS);
+			PlayRate = FMath::Clamp(Speed / 220.0f, 0.75f, 1.35f);
+		}
+		else
+		{
+			TargetAnim = AnimCrouchIdle ? AnimCrouchIdle : (AnimLowReady ? AnimLowReady : AnimIdleADS);
+			PlayRate = 1.0f;
+		}
 	}
 	else if (FPSMovementComponent && FPSMovementComponent->IsTacticalSprinting() && Speed > 280.0f)
 	{
@@ -816,18 +887,59 @@ void AFPSCharacter::UpdateLocomotionAnimation(float DeltaTime)
 	}
 	else if (Speed > 260.0f)
 	{
-		TargetAnim = AnimRun ? AnimRun : AnimWalk;
-		PlayRate = FMath::Clamp(Speed / 340.0f, 0.85f, 1.25f);
+		if (bIsMovingBackwards)
+		{
+			if (AnimWalkBackwards)
+			{
+				TargetAnim = AnimWalkBackwards;
+				PlayRate = FMath::Clamp(Speed / 260.0f, 0.85f, 1.35f);
+			}
+			else
+			{
+				TargetAnim = AnimRun ? AnimRun : AnimWalk;
+				PlayRate = -FMath::Clamp(Speed / 260.0f, 0.75f, 1.25f);
+			}
+		}
+		else
+		{
+			TargetAnim = AnimRun ? AnimRun : AnimWalk;
+			PlayRate = FMath::Clamp(Speed / 340.0f, 0.85f, 1.25f);
+		}
 	}
 	else if (Speed > 15.0f)
 	{
-		TargetAnim = AnimWalk ? AnimWalk : AnimIdleADS;
-		PlayRate = FMath::Clamp(Speed / 180.0f, 0.75f, 1.25f);
+		if (bIsMovingBackwards)
+		{
+			if (AnimWalkBackwards)
+			{
+				TargetAnim = AnimWalkBackwards;
+				PlayRate = FMath::Clamp(Speed / 180.0f, 0.75f, 1.25f);
+			}
+			else
+			{
+				TargetAnim = AnimWalk ? AnimWalk : AnimIdleADS;
+				PlayRate = -FMath::Clamp(Speed / 180.0f, 0.75f, 1.25f);
+			}
+		}
+		else
+		{
+			TargetAnim = AnimWalk ? AnimWalk : (IsAiming() ? AnimIdleADS : (AnimLowReady ? AnimLowReady : AnimIdleADS));
+			PlayRate = FMath::Clamp(Speed / 180.0f, 0.75f, 1.25f);
+		}
 	}
 	else
 	{
-		TargetAnim = AnimIdleADS;
-		PlayRate = 1.0f;
+		// Stationary stance: Aimed ADS when aiming, Low Ready when idle/hipfire
+		if (IsAiming())
+		{
+			TargetAnim = AnimIdleADS;
+			PlayRate = 1.0f;
+		}
+		else
+		{
+			TargetAnim = AnimLowReady ? AnimLowReady : AnimIdleADS;
+			PlayRate = 1.0f;
+		}
 	}
 
 	if (TargetAnim && TargetAnim != CurrentLocomotionAnim)

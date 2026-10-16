@@ -544,10 +544,204 @@ def pose_sprint(phase, pelvis_rest_loc):
     ak_obj.location = (-0.060 + 0.015 * sL, -0.30, 1.36 - 0.022 * math.cos(2.0 * phase))
     ak_obj.rotation_euler = (math.radians(18.0 - 2.5 * math.cos(2.0 * phase)), math.radians(-6.0), math.radians(14.0 + 5.0 * sL))
 
+# -------------------------------------------------------------------------
+# 6. Jump_Loop (24 frames @ 30fps) - Airborne Apex Tuck with Stable Weapon
+# -------------------------------------------------------------------------
+def pose_jump_loop(phase, pelvis_rest_loc):
+    wobble = math.sin(phase)
+    pb['pelvis'].matrix.translation = pelvis_rest_loc + Vector((0.0, 0.02, 0.04 + 0.006 * wobble))
+    bpy.context.view_layer.update()
+
+    rotate_bone_world(pb['pelvis'], Euler((math.radians(10.0), 0.0, math.radians(-6.0)), 'XYZ'))
+
+    rotate_bone_world(pb['spine_01'], Euler((math.radians(7.0), 0.0, math.radians(2.0)), 'XYZ'))
+    rotate_bone_world(pb['spine_02'], Euler((math.radians(7.0), 0.0, math.radians(2.0)), 'XYZ'))
+    rotate_bone_world(pb['spine_03'], Euler((math.radians(5.0), 0.0, math.radians(3.0)), 'XYZ'))
+
+    rotate_bone_world(pb['clavicle_r'], Euler((0.0, 0.0, math.radians(8.0)), 'XYZ'))
+    rotate_bone_world(pb['clavicle_l'], Euler((0.0, math.radians(-4.0), math.radians(-20.0)), 'XYZ'))
+
+    rotate_bone_world(pb['neck_01'], Euler((math.radians(2.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['head'], Euler((math.radians(2.0), 0.0, 0.0), 'XYZ'))
+
+    # Both legs tucked in mid-air
+    rotate_bone_world(pb['thigh_l'], Euler((math.radians(-32.0), 0.0, math.radians(5.0)), 'XYZ'))
+    rotate_bone_world(pb['calf_l'], Euler((math.radians(58.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_l'], Euler((math.radians(8.0), 0.0, 0.0), 'XYZ'))
+
+    rotate_bone_world(pb['thigh_r'], Euler((math.radians(-26.0), 0.0, math.radians(-5.0)), 'XYZ'))
+    rotate_bone_world(pb['calf_r'], Euler((math.radians(50.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_r'], Euler((math.radians(6.0), 0.0, 0.0), 'XYZ'))
+
+    ak_obj.location = (-0.080, -0.33, 1.48 + 0.005 * wobble)
+    ak_obj.rotation_euler = (math.radians(-2.0), 0.0, math.radians(-5.0))
+
+# -------------------------------------------------------------------------
+# 7. Crouch_Idle (30 frames @ 30fps) - Low Tactical Crouch Stance
+# -------------------------------------------------------------------------
+def pose_crouch_idle(phase, pelvis_rest_loc):
+    breath = math.sin(phase)
+    # Pelvis drops 46cm down
+    pb['pelvis'].matrix.translation = pelvis_rest_loc + Vector((-0.02, 0.05, -0.46 + 0.003 * breath))
+    bpy.context.view_layer.update()
+
+    rotate_bone_world(pb['pelvis'], Euler((math.radians(10.0), 0.0, math.radians(-14.0)), 'XYZ'))
+
+    rotate_bone_world(pb['spine_01'], Euler((math.radians(12.0), 0.0, math.radians(3.0)), 'XYZ'))
+    rotate_bone_world(pb['spine_02'], Euler((math.radians(10.0 + 0.4 * breath), 0.0, math.radians(3.0)), 'XYZ'))
+    rotate_bone_world(pb['spine_03'], Euler((math.radians(8.0 + 0.5 * breath), 0.0, math.radians(3.0)), 'XYZ'))
+
+    rotate_bone_world(pb['clavicle_r'], Euler((0.0, 0.0, math.radians(6.0)), 'XYZ'))
+    rotate_bone_world(pb['clavicle_l'], Euler((0.0, math.radians(-4.0), math.radians(-18.0)), 'XYZ'))
+
+    rotate_bone_world(pb['neck_01'], Euler((math.radians(-8.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['head'], Euler((math.radians(-10.0), 0.0, 0.0), 'XYZ'))
+
+    # Left leg forward knee support, right leg tucked low
+    rotate_bone_world(pb['thigh_l'], Euler((math.radians(-72.0), 0.0, math.radians(8.0)), 'XYZ'))
+    rotate_bone_world(pb['calf_l'], Euler((math.radians(82.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_l'], Euler((math.radians(-10.0), 0.0, 0.0), 'XYZ'))
+
+    rotate_bone_world(pb['thigh_r'], Euler((math.radians(18.0), 0.0, math.radians(-12.0)), 'XYZ'))
+    rotate_bone_world(pb['calf_r'], Euler((math.radians(92.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_r'], Euler((math.radians(-32.0), 0.0, 0.0), 'XYZ'))
+
+    ak_obj.location = (-0.075, -0.32, 1.02 + 0.004 * breath)
+    ak_obj.rotation_euler = (math.radians(4.0), math.radians(-2.0), math.radians(-4.0))
+
+# -------------------------------------------------------------------------
+# 8. Crouch_Walk (30 frames @ 30fps) - Low-Profile Stalk Walk
+# -------------------------------------------------------------------------
+def pose_crouch_walk(phase, pelvis_rest_loc):
+    sL = math.sin(phase)
+    cL = math.cos(phase)
+    sR = -sL
+    cR = -cL
+
+    bounce_z = -0.42 - 0.012 * math.cos(2.0 * phase)
+    sway_x = -0.012 * sL
+    pb['pelvis'].matrix.translation = pelvis_rest_loc + Vector((sway_x, 0.02, bounce_z))
+    bpy.context.view_layer.update()
+
+    rotate_bone_world(pb['pelvis'], Euler((math.radians(12.0), math.radians(2.0 * sL), math.radians(-10.0 - 3.0 * cL)), 'XYZ'))
+
+    rotate_bone_world(pb['spine_01'], Euler((math.radians(12.0), math.radians(-1.0 * sL), math.radians(2.0 + 1.0 * cL)), 'XYZ'))
+    rotate_bone_world(pb['spine_02'], Euler((math.radians(10.0), math.radians(-1.0 * sL), math.radians(2.0 + 1.0 * cL)), 'XYZ'))
+    rotate_bone_world(pb['spine_03'], Euler((math.radians(8.0), 0.0, math.radians(2.0 + 1.0 * cL)), 'XYZ'))
+
+    rotate_bone_world(pb['clavicle_r'], Euler((0.0, 0.0, math.radians(6.0)), 'XYZ'))
+    rotate_bone_world(pb['clavicle_l'], Euler((0.0, math.radians(-4.0), math.radians(-18.0)), 'XYZ'))
+
+    rotate_bone_world(pb['neck_01'], Euler((math.radians(-8.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['head'], Euler((math.radians(-10.0), 0.0, 0.0), 'XYZ'))
+
+    thigh_pitch_l = -52.0 - 14.0 * cL
+    thigh_pitch_r = -52.0 - 14.0 * cR
+    knee_bend_l = 58.0 + (24.0 * sL if sL > 0.0 else 8.0 * (-sL))
+    knee_bend_r = 58.0 + (24.0 * sR if sR > 0.0 else 8.0 * (-sR))
+    ankle_pitch_l = -4.0 + 8.0 * cL
+    ankle_pitch_r = -4.0 + 8.0 * cR
+
+    rotate_bone_world(pb['thigh_l'], Euler((math.radians(thigh_pitch_l), 0.0, math.radians(5.0)), 'XYZ'))
+    rotate_bone_world(pb['calf_l'], Euler((math.radians(knee_bend_l), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_l'], Euler((math.radians(ankle_pitch_l), 0.0, 0.0), 'XYZ'))
+
+    rotate_bone_world(pb['thigh_r'], Euler((math.radians(thigh_pitch_r), 0.0, math.radians(-5.0)), 'XYZ'))
+    rotate_bone_world(pb['calf_r'], Euler((math.radians(knee_bend_r), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_r'], Euler((math.radians(ankle_pitch_r), 0.0, 0.0), 'XYZ'))
+
+    ak_obj.location = (-0.075 + 0.006 * sL, -0.32, 1.05 - 0.008 * math.cos(2.0 * phase))
+    ak_obj.rotation_euler = (math.radians(4.0 - 1.0 * math.cos(2.0 * phase)), 0.0, math.radians(-4.0))
+
+# -------------------------------------------------------------------------
+# 9. Slide (20 frames @ 30fps) - Tactical Knee Slide with Reclined Torso
+# -------------------------------------------------------------------------
+def pose_slide(phase, pelvis_rest_loc):
+    shiver = math.sin(phase)
+    # Pelvis drops 52cm and translates backward into slide recline
+    pb['pelvis'].matrix.translation = pelvis_rest_loc + Vector((-0.03, 0.12, -0.52 + 0.004 * shiver))
+    bpy.context.view_layer.update()
+
+    rotate_bone_world(pb['pelvis'], Euler((math.radians(-22.0), 0.0, math.radians(-16.0)), 'XYZ'))
+
+    rotate_bone_world(pb['spine_01'], Euler((math.radians(-10.0), 0.0, math.radians(3.0)), 'XYZ'))
+    rotate_bone_world(pb['spine_02'], Euler((math.radians(-6.0), 0.0, math.radians(3.0)), 'XYZ'))
+    rotate_bone_world(pb['spine_03'], Euler((math.radians(6.0), 0.0, math.radians(3.0)), 'XYZ'))
+
+    rotate_bone_world(pb['clavicle_r'], Euler((0.0, 0.0, math.radians(8.0)), 'XYZ'))
+    rotate_bone_world(pb['clavicle_l'], Euler((0.0, math.radians(-4.0), math.radians(-20.0)), 'XYZ'))
+
+    rotate_bone_world(pb['neck_01'], Euler((math.radians(14.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['head'], Euler((math.radians(16.0), 0.0, 0.0), 'XYZ'))
+
+    # Left leg extended forward skimming floor, right knee folded underneath
+    rotate_bone_world(pb['thigh_l'], Euler((math.radians(-80.0), 0.0, math.radians(4.0)), 'XYZ'))
+    rotate_bone_world(pb['calf_l'], Euler((math.radians(16.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_l'], Euler((math.radians(14.0), 0.0, 0.0), 'XYZ'))
+
+    rotate_bone_world(pb['thigh_r'], Euler((math.radians(14.0), 0.0, math.radians(-20.0)), 'XYZ'))
+    rotate_bone_world(pb['calf_r'], Euler((math.radians(112.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_r'], Euler((math.radians(-28.0), 0.0, 0.0), 'XYZ'))
+
+    ak_obj.location = (-0.080, -0.34, 0.98 + 0.005 * shiver)
+    ak_obj.rotation_euler = (math.radians(-2.0), 0.0, math.radians(-5.0))
+
+# -------------------------------------------------------------------------
+# 10. Walk_Backwards (30 frames @ 30fps) - Tactical Backward Step Cycle
+# -------------------------------------------------------------------------
+def pose_walk_backwards(phase, pelvis_rest_loc):
+    phase_rev = -phase
+    sL = math.sin(phase_rev)
+    cL = math.cos(phase_rev)
+    sR = -sL
+    cR = -cL
+
+    bounce_z = -0.025 - 0.015 * math.cos(2.0 * phase)
+    sway_x = -0.014 * sL
+    pb['pelvis'].matrix.translation = pelvis_rest_loc + Vector((sway_x, 0.0, bounce_z))
+    bpy.context.view_layer.update()
+
+    rotate_bone_world(pb['pelvis'], Euler((math.radians(-3.0), math.radians(-2.0 * sL), math.radians(-6.0 + 3.5 * cL)), 'XYZ'))
+
+    rotate_bone_world(pb['spine_01'], Euler((math.radians(3.0), math.radians(1.0 * sL), math.radians(2.0 - 1.0 * cL)), 'XYZ'))
+    rotate_bone_world(pb['spine_02'], Euler((math.radians(3.0), math.radians(1.0 * sL), math.radians(2.0 - 1.0 * cL)), 'XYZ'))
+    rotate_bone_world(pb['spine_03'], Euler((math.radians(3.0), 0.0, math.radians(2.0 - 1.0 * cL)), 'XYZ'))
+
+    rotate_bone_world(pb['clavicle_r'], Euler((0.0, 0.0, math.radians(8.0)), 'XYZ'))
+    rotate_bone_world(pb['clavicle_l'], Euler((0.0, math.radians(-5.0), math.radians(-22.0)), 'XYZ'))
+
+    rotate_bone_world(pb['neck_01'], Euler((math.radians(3.0), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['head'], Euler((math.radians(4.0), 0.0, 0.0), 'XYZ'))
+
+    thigh_pitch_l = 18.0 * cL + 2.0
+    thigh_pitch_r = 18.0 * cR + 2.0
+    knee_bend_l = 8.0 + (26.0 * (-sL) if sL < 0.0 else 8.0 * sL)
+    knee_bend_r = 8.0 + (26.0 * (-sR) if sR < 0.0 else 8.0 * sR)
+    ankle_pitch_l = -10.0 * cL + (10.0 * (-sL) if sL < 0.0 else -5.0 * sL)
+    ankle_pitch_r = -10.0 * cR + (10.0 * (-sR) if sR < 0.0 else -5.0 * sR)
+
+    rotate_bone_world(pb['thigh_l'], Euler((math.radians(thigh_pitch_l), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['calf_l'], Euler((math.radians(knee_bend_l), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_l'], Euler((math.radians(ankle_pitch_l), 0.0, 0.0), 'XYZ'))
+
+    rotate_bone_world(pb['thigh_r'], Euler((math.radians(thigh_pitch_r), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['calf_r'], Euler((math.radians(knee_bend_r), 0.0, 0.0), 'XYZ'))
+    rotate_bone_world(pb['foot_r'], Euler((math.radians(ankle_pitch_r), 0.0, 0.0), 'XYZ'))
+
+    ak_obj.location = (-0.085 + 0.005 * sL, -0.34, 1.455 - 0.008 * math.cos(2.0 * phase))
+    ak_obj.rotation_euler = (math.radians(-0.5 * math.cos(2.0 * phase)), 0.0, math.radians(-5.0))
+
+# Bake all 10 animation sequences
 bake_and_export_anim("Idle_ADS", 60, pose_idle_ads)
 bake_and_export_anim("LowReady", 60, pose_low_ready)
 bake_and_export_anim("Walk", 30, pose_walk)
 bake_and_export_anim("Run", 20, pose_run)
 bake_and_export_anim("Sprint", 16, pose_sprint)
+bake_and_export_anim("Jump_Loop", 24, pose_jump_loop)
+bake_and_export_anim("Crouch_Idle", 30, pose_crouch_idle)
+bake_and_export_anim("Crouch_Walk", 30, pose_crouch_walk)
+bake_and_export_anim("Slide", 20, pose_slide)
+bake_and_export_anim("Walk_Backwards", 30, pose_walk_backwards)
 
-print(">>> ALL 5 TACTICAL STANCES & LOCOMOTION ANIMATIONS GENERATED SUCCESSFULLY! <<<")
+print(">>> ALL 10 TACTICAL STANCES & LOCOMOTION ANIMATIONS GENERATED SUCCESSFULLY! <<<")
+
