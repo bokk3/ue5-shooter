@@ -232,6 +232,9 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_Controller() override;
+	void InitializeHUD();
 
 private:
 	UPROPERTY()
@@ -260,6 +263,8 @@ private:
 	float QuantumSwapFlashTimer = 0.0f;
 	float LastCrouchPressTime = -10.0f;
 	bool bIsHoldingCrouchKey = false;
+	bool bShouldCaptureHUD = false;
+	int32 CaptureHUDFrameCounter = 0;
 
 	float BobTimer = 0.0f;
 	FVector DefaultCameraPos;

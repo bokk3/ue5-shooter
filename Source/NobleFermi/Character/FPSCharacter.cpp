@@ -21,6 +21,11 @@
 #include "Engine/World.h"
 #include "Audio/FPSAudioSubsystem.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
+#include "UnrealClient.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Paths.h"
+#include "GenericPlatform/GenericPlatformMisc.h"
+#include "TimerManager.h"
 
 AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UFPSCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -160,17 +165,7 @@ void AFPSCharacter::BeginPlay()
 		HealthComponent->OnDeath.AddDynamic(this, &AFPSCharacter::HandleOnDeath);
 	}
 
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC)
-	{
-		TSubclassOf<UFPSHUDWidget> WidgetClass = HUDWidgetClass ? HUDWidgetClass : TSubclassOf<UFPSHUDWidget>(UFPSHUDWidget::StaticClass());
-		ActiveHUDWidget = CreateWidget<UFPSHUDWidget>(PC, WidgetClass);
-		if (ActiveHUDWidget)
-		{
-			ActiveHUDWidget->SetOwningCharacter(this);
-			ActiveHUDWidget->AddToViewport(0);
-		}
-	}
+	InitializeHUD();
 
 	// Tactical Operator Mesh & Animation Runtime Fallbacks + Material Configuration
 	if (GetMesh())
@@ -268,9 +263,66 @@ void AFPSCharacter::BeginPlay()
 	}
 }
 
+void AFPSCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	InitializeHUD();
+}
+
+void AFPSCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+	InitializeHUD();
+}
+
+void AFPSCharacter::InitializeHUD()
+{
+	if (ActiveHUDWidget)
+	{
+		return;
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC && PC->IsLocalController())
+	{
+		TSubclassOf<UFPSHUDWidget> WidgetClass = HUDWidgetClass ? HUDWidgetClass : TSubclassOf<UFPSHUDWidget>(UFPSHUDWidget::StaticClass());
+		ActiveHUDWidget = CreateWidget<UFPSHUDWidget>(PC, WidgetClass);
+		if (ActiveHUDWidget)
+		{
+			ActiveHUDWidget->SetOwningCharacter(this);
+			ActiveHUDWidget->AddToViewport(0);
+			UE_LOG(LogTemp, Warning, TEXT("[FPSCharacter] InitializeHUD: Created and added UFPSHUDWidget to viewport for %s"), *GetNameSafe(this));
+
+			if (FParse::Param(FCommandLine::Get(), TEXT("CaptureHUD")))
+			{
+				bShouldCaptureHUD = true;
+				CaptureHUDFrameCounter = 0;
+				UE_LOG(LogTemp, Warning, TEXT("[CaptureHUD] CaptureHUD enabled on local player pawn. Will capture at frame 60."));
+			}
+		}
+	}
+}
+
 void AFPSCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (bShouldCaptureHUD)
+	{
+		CaptureHUDFrameCounter++;
+		if (CaptureHUDFrameCounter == 60)
+		{
+			FString ScreenshotPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots"), TEXT("HUD_In_Action.png"));
+			FScreenshotRequest::RequestScreenshot(ScreenshotPath, true, false);
+			UE_LOG(LogTemp, Warning, TEXT("[CaptureHUD] Screenshot requested at frame 60 to: %s"), *ScreenshotPath);
+		}
+		else if (CaptureHUDFrameCounter >= 120)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[CaptureHUD] Completed capture! Requesting clean exit at frame %d"), CaptureHUDFrameCounter);
+			bShouldCaptureHUD = false;
+			FGenericPlatformMisc::RequestExit(false, TEXT("CaptureHUD Complete"));
+		}
+	}
 
 	// Track real-world cooldowns independent of CustomTimeDilation
 	const float RealDeltaTime = DeltaTime / FMath::Max(0.05f, CustomTimeDilation);
