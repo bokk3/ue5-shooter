@@ -299,22 +299,38 @@ void AFPSCombatArenaMapActor::BeginPlay()
 		}
 	};
 
-	// Ground: Desert Industrial Asphalt
-	SetColor(GroundFloorMesh, FLinearColor(0.38f, 0.35f, 0.28f));
+	// Ground: Desert Industrial Asphalt / Concrete
+	if (GroundFloorMesh)
+	{
+		GroundFloorMesh->ComponentTags.Add(FName(TEXT("Concrete")));
+		SetColor(GroundFloorMesh, FLinearColor(0.38f, 0.35f, 0.28f));
+	}
 
 	// Blast Walls: Reinforced Concrete
 	for (UStaticMeshComponent* Wall : PerimeterWalls)
 	{
-		SetColor(Wall, FLinearColor(0.48f, 0.49f, 0.50f));
+		if (Wall)
+		{
+			Wall->ComponentTags.Add(FName(TEXT("Concrete")));
+			SetColor(Wall, FLinearColor(0.48f, 0.49f, 0.50f));
+		}
 	}
 
 	// Derrick: Industrial Rust Steel
 	for (UStaticMeshComponent* DerrickPart : DerrickComponents)
 	{
-		SetColor(DerrickPart, FLinearColor(0.25f, 0.22f, 0.18f));
+		if (DerrickPart)
+		{
+			DerrickPart->ComponentTags.Add(FName(TEXT("Metal")));
+			SetColor(DerrickPart, FLinearColor(0.25f, 0.22f, 0.18f));
+		}
 	}
 
-	// Containers: Distinct Tactical Colors
+	// Containers: Distinct Tactical Metal
+	for (UStaticMeshComponent* Comp : ContainerComponents)
+	{
+		if (Comp) Comp->ComponentTags.Add(FName(TEXT("Metal")));
+	}
 	if (ContainerComponents.IsValidIndex(0)) SetColor(ContainerComponents[0], FLinearColor(0.12f, 0.28f, 0.55f)); // Blue
 	if (ContainerComponents.IsValidIndex(1)) SetColor(ContainerComponents[1], FLinearColor(0.55f, 0.14f, 0.10f)); // Red
 	if (ContainerComponents.IsValidIndex(2)) SetColor(ContainerComponents[2], FLinearColor(0.22f, 0.30f, 0.18f)); // Olive
@@ -326,13 +342,21 @@ void AFPSCombatArenaMapActor::BeginPlay()
 	// Pipeline: Industrial Dark Metal
 	for (UStaticMeshComponent* Pipe : PipelineComponents)
 	{
-		SetColor(Pipe, FLinearColor(0.18f, 0.19f, 0.21f));
+		if (Pipe)
+		{
+			Pipe->ComponentTags.Add(FName(TEXT("Metal")));
+			SetColor(Pipe, FLinearColor(0.18f, 0.19f, 0.21f));
+		}
 	}
 
 	// Barriers & Vehicle
 	for (UStaticMeshComponent* Barrier : BarrierComponents)
 	{
-		SetColor(Barrier, FLinearColor(0.42f, 0.43f, 0.45f));
+		if (Barrier)
+		{
+			Barrier->ComponentTags.Add(FName(TEXT("Concrete")));
+			SetColor(Barrier, FLinearColor(0.42f, 0.43f, 0.45f));
+		}
 	}
 
 	// Objectives

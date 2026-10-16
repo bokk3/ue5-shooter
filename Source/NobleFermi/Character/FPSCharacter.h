@@ -201,6 +201,25 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
 	void OnJumpOrDivePressed();
 
+	// Surface Footstep Audio Assets (Concrete, Wood, Sand/Dirt, Water/Puddle, Metal)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Audio|Footsteps")
+	TArray<TObjectPtr<USoundBase>> FootstepConcreteSounds;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Audio|Footsteps")
+	TArray<TObjectPtr<USoundBase>> FootstepWoodSounds;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Audio|Footsteps")
+	TArray<TObjectPtr<USoundBase>> FootstepSandSounds;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Audio|Footsteps")
+	TArray<TObjectPtr<USoundBase>> FootstepWaterSounds;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Audio|Footsteps")
+	TArray<TObjectPtr<USoundBase>> FootstepMetalSounds;
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Audio|Footsteps")
+	void TriggerSurfaceFootstep(float VolumeScale);
+
 	// Death Handling
 	UFUNCTION()
 	void HandleOnDeath(AActor* KillerActor);
@@ -247,4 +266,7 @@ private:
 	FRotator LastControlRotation;
 	FRotator CurrentWeaponSwayRot;
 	bool bIsDead = false;
+
+	float FootstepDistanceTraveled = 0.0f;
+	int32 FootstepAlternator = 0;
 };

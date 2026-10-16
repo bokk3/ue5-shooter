@@ -7,16 +7,26 @@ HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 
 # Curated high-fidelity assets from Sonniss GDC archives on gamesounds.xyz
 AUDIO_TARGETS = [
-    # 1. Gunshots & Firearms
+    # 1. Gunshots & Firearms (STRICTLY ONE SINGLE SHOT PER SAMPLE)
     {
         "category": "Weapons/Fire",
-        "filename": "A_Carbine_556_Fire_Unsuppressed.wav",
-        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Fascinated%20Sound%20-%20The%20Gun%20Locker%20SFX%20Pack/Assault%20Rifle%20-%20M4%20-%2003%20-%20Burst%2003.wav"
+        "filename": "A_Carbine_556_Single_Shot.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Audiobeast%20-%20The%20London%20Warehouse%20Firearms%20Library/Audiobeast_Small_Room_H%26K_416_5.56_Assault_Rifle_05m_LS5_001_Single_Shot_x1.wav"
     },
     {
         "category": "Weapons/Fire",
-        "filename": "A_Submachine_Auto_Fire.wav",
-        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202018%20-%20Game%20Audio%20Bundle/Gamemaster%20Audio%20-%20Guns%2C%20Bullets%20and%20Explosions/gun_submachine_auto_shot_00_automatic_preview_01.wav"
+        "filename": "A_Sniper_Heavy_Single_Shot.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202017%20-%20Game%20Audio%20Bundle/Gamemaster%20Audio%20-%20%20Gun%20Sound%20Pack/gun_rifle_sniper_shot_01.wav"
+    },
+    {
+        "category": "Weapons/Fire",
+        "filename": "A_Pistol_Revolver_Single_Shot.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202017%20-%20Game%20Audio%20Bundle/Gamemaster%20Audio%20-%20%20Gun%20Sound%20Pack/gun_revolver_pistol_shot_04.wav"
+    },
+    {
+        "category": "Weapons/Fire",
+        "filename": "A_Shotgun_Single_Shot.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202020%20-%20Game%20Audio%20Bundle/Wav%20Junction%20Sound%20Effects%20-%20Shotguns/0003_Shotgun_Fire_3.wav"
     },
     {
         "category": "Weapons/Fire",
@@ -93,6 +103,72 @@ AUDIO_TARGETS = [
         "category": "Ambience/Rain",
         "filename": "A_Rain_MetalPlate_Asynchronous_Drips_Loop.wav",
         "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202020%20-%20Game%20Audio%20Bundle/Articulated%20Sounds%20-%20Moody%20Rain%20Loops/WEATHER%20Rain%2C%20Small%2C%20Designed%2C%20Metal%20Plate%2C%20Asynchronous%20Drips%2C%20LOOP.wav"
+    },
+
+    # 5. Authentic Physical Surface Footsteps
+    # Surface: Concrete / Asphalt
+    {
+        "category": "Footsteps/Concrete",
+        "filename": "FS_Concrete_01.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Levan%20Nadashvili%20-%20Soldier%20Footsteps/FS%20Concrete%20Soldier%20Crouch%20N02.wav"
+    },
+    {
+        "category": "Footsteps/Concrete",
+        "filename": "FS_Concrete_02.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Levan%20Nadashvili%20-%20Soldier%20Footsteps/FS%20Concrete%20Soldier%20Crouch%20N05.wav"
+    },
+    {
+        "category": "Footsteps/Concrete",
+        "filename": "FS_Concrete_Run.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202017%20-%20Game%20Audio%20Bundle/Tovusound%20-%20Edward%20%E2%80%93%20Foleyart%20Collection%20Add-On%20Extended%20Footsteps/015_Foley_Footsteps_Asphalt_Boot_Walk_Fast_Run_Jog_Close.wav"
+    },
+
+    # Surface: Wood
+    {
+        "category": "Footsteps/Wood",
+        "filename": "FS_Wood_01.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Levan%20Nadashvili%20-%20Civilian%20Footsteps/FS%20Wood%20Civilian%20Crouch%20N03.wav"
+    },
+    {
+        "category": "Footsteps/Wood",
+        "filename": "FS_Wood_02.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Levan%20Nadashvili%20-%20Civilian%20Footsteps/FS%20Wood%20Civilian%20Crouch%20N05.wav"
+    },
+
+    # Surface: Sand / Dirt
+    {
+        "category": "Footsteps/Sand",
+        "filename": "FS_Sand_01.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Levan%20Nadashvili%20-%20Civilian%20Footsteps/FS%20Ground%20Civilian%20Walk%20N03.wav"
+    },
+    {
+        "category": "Footsteps/Sand",
+        "filename": "FS_Sand_02.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Levan%20Nadashvili%20-%20Civilian%20Footsteps/FS%20Ground%20Civilian%20Walk%20N05.wav"
+    },
+    {
+        "category": "Footsteps/Sand",
+        "filename": "FS_Sand_Jump.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202017%20-%20Game%20Audio%20Bundle/Tovusound%20-%20Edward%20%E2%80%93%20Foleyart%20Collection%20Add-On%20Extended%20Footsteps/289_Foley_Footsteps_Rocks_Sneaker_Jump_Land_On_Two_Feet_Close.wav"
+    },
+
+    # Surface: Water / Puddle
+    {
+        "category": "Footsteps/Water",
+        "filename": "FS_Water_Puddle_01.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202020%20-%20Game%20Audio%20Bundle/Wav%20Junction%20Sound%20Effects%20-%20Footsteps/0014_Footsteps_water_puddle_single_splashes.wav"
+    },
+
+    # Surface: Metal
+    {
+        "category": "Footsteps/Metal",
+        "filename": "FS_Metal_01.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Levan%20Nadashvili%20-%20Soldier%20Footsteps/FS%20Metal%20Soldier%20Walk%20N01.wav"
+    },
+    {
+        "category": "Footsteps/Metal",
+        "filename": "FS_Metal_02.wav",
+        "url": "https://gamesounds.xyz/Sonniss.com%20-%20GDC%202016%20-%20Game%20Audio%20Bundle/Levan%20Nadashvili%20-%20Soldier%20Footsteps/FS%20Metal%20Soldier%20Walk%20N05.wav"
     }
 ]
 
@@ -101,16 +177,24 @@ def download_all():
     print(f"Downloading {len(AUDIO_TARGETS)} curated royalty-free audio tracks into {base_dir}...\n")
     
     downloaded = 0
+    skipped = 0
     total_bytes = 0
     for item in AUDIO_TARGETS:
         target_dir = os.path.join(base_dir, item["category"])
         os.makedirs(target_dir, exist_ok=True)
         dest_path = os.path.join(target_dir, item["filename"])
         
+        # Skip if already downloaded and non-empty
+        if os.path.exists(dest_path) and os.path.getsize(dest_path) > 1000:
+            print(f"[{item['category']}] -> {item['filename']} (Already exists: {os.path.getsize(dest_path):,} bytes)")
+            skipped += 1
+            total_bytes += os.path.getsize(dest_path)
+            continue
+            
         print(f"[{item['category']}] -> {item['filename']}...")
         try:
             req = urllib.request.Request(item["url"], headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=30) as resp, open(dest_path, "wb") as f:
+            with urllib.request.urlopen(req, timeout=35) as resp, open(dest_path, "wb") as f:
                 data = resp.read()
                 f.write(data)
                 downloaded += 1
@@ -119,7 +203,7 @@ def download_all():
         except Exception as e:
             print(f"   [ERROR] Failed to download {item['url']}: {e}")
             
-    print(f"\nFinished! Downloaded {downloaded}/{len(AUDIO_TARGETS)} files ({total_bytes / (1024*1024):.2f} MB total).")
+    print(f"\nFinished! Processed {len(AUDIO_TARGETS)} files ({downloaded} newly downloaded, {skipped} existing). Total size: {total_bytes / (1024*1024):.2f} MB.")
 
 if __name__ == '__main__':
     download_all()

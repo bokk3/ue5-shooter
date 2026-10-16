@@ -3,6 +3,7 @@
 #include "Combat/FPSBallisticTracer.h"
 #include "Combat/FPSFermiTimeBubble.h"
 #include "Weapons/FPSDilatedBulletActor.h"
+#include "Audio/FPSAudioSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
@@ -203,6 +204,28 @@ void AFPSWeaponBase::BeginPlay()
 	CurrentState = EFPSWeaponState::Idle;
 	CurrentADSAlpha = 0.0f;
 
+	// Load authentic audio defaults if not overridden in blueprint
+	if (!FireSound)
+	{
+		FireSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Audio/Weapons/Fire/A_Carbine_556_Single_Shot.A_Carbine_556_Single_Shot"));
+		if (!FireSound)
+		{
+			FireSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Audio/Weapons/Fire/A_Carbine_556_Fire_Unsuppressed.A_Carbine_556_Fire_Unsuppressed"));
+		}
+	}
+	if (!ShellDropSound)
+	{
+		ShellDropSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Audio/Combat/A_Shell_Casing_Drop.A_Shell_Casing_Drop"));
+	}
+	if (!ReloadSound)
+	{
+		ReloadSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Audio/Weapons/Reloads/A_Reload_Phase2_MagRelease_TopCover.A_Reload_Phase2_MagRelease_TopCover"));
+	}
+	if (!DryFireSound)
+	{
+		DryFireSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Audio/Weapons/Reloads/A_Weapon_DryFire_Click.A_Weapon_DryFire_Click"));
+	}
+
 	APawn* PawnOwner = Cast<APawn>(GetOwner());
 	if (PawnOwner)
 	{
@@ -389,10 +412,29 @@ void AFPSWeaponBase::FireShot()
 	OnAmmoChanged.Broadcast(CurrentAmmo, ReserveAmmo);
 	OnWeaponFired.Broadcast();
 
-	// Weapon Audio
+	// Weapon Gunshot Audio (Strictly 1 single shot per trigger cycle with dynamic distance attenuation)
+	const FVector MuzzleWorldLoc = GetActorLocation() + GetActorForwardVector() * 48.0f + FVector(0.0f, 0.0f, 4.0f);
 	if (FireSound)
 	{
-		UGameplayStatics::PlaySound2D(this, FireSound);
+		UFPSAudioSubsystem::PlaySpatialSoundWithFalloff(
+			this,
+			FireSound,
+			MuzzleWorldLoc,
+			bIsSuppressed ? 0.45f : 0.90f,
+			250.0f,
+			GunshotMaxAudibleDistance,
+			FMath::RandRange(0.985f, 1.015f),
+			EFPSAudioChannel::SFX
+		);
+	}
+
+	// Dynamic Shell Casing Drop Audio (Attenuated brass bounce after mechanical ejection)
+	if (ShellDropSound)
+	{
+		const FVector EjectionLoc = GetActorLocation() + (GetActorRightVector() * 20.0f) + FVector(0.0f, 0.0f, 6.0f);
+		FTimerHandle ShellDropTimer;
+		FTimerDelegate ShellDropDelegate = FTimerDelegate::CreateUObject(this, &AFPSWeaponBase::PlayDelayedShellDrop, EjectionLoc);
+		GetWorldTimerManager().SetTimer(ShellDropTimer, ShellDropDelegate, FMath::RandRange(0.24f, 0.32f), false);
 	}
 
 	// Trace line calculation from Owner Camera
@@ -437,7 +479,6 @@ void AFPSWeaponBase::FireShot()
 					RadarSubsystem->ReportGunfire(PawnOwner, PawnOwner->GetActorLocation(), ShooterTeam, bIsSuppressed);
 				}
 
-				const FVector MuzzleWorldLoc = GetActorLocation() + GetActorForwardVector() * 48.0f + FVector(0.0f, 0.0f, 4.0f);
 				const bool bShooterInTimeBubble = bIsDiving
 					|| (ShooterFPSChar && ShooterFPSChar->IsFermiTimeBubbleActive())
 					|| AFPSFermiTimeBubble::IsLocationInsideAnyBubble(World, CameraLoc)
@@ -581,4 +622,32 @@ void AFPSWeaponBase::SetADS(bool bInADS)
 		return;
 	}
 	bIsAimingDownSights = bInADS;
+}
+
+void AFPSWeaponBase::PlayDelayedShellDrop(FVector DropLocation)
+{
+	if (!ShellDropSound || !GetWorld()) return;
+
+	FHitResult FloorHit;
+	FCollisionQueryParams FloorParams;
+	FloorParams.AddIgnoredActor(this);
+	if (GetOwner()) FloorParams.AddIgnoredActor(GetOwner());
+
+	FVector ContactLoc = DropLocation - FVector(0.0f, 0.0f, 85.0f);
+	if (GetWorld()->LineTraceSingleByChannel(FloorHit, DropLocation, DropLocation - FVector(0.0f, 0.0f, 250.0f), ECC_Visibility, FloorParams))
+	{
+		ContactLoc = FloorHit.ImpactPoint;
+	}
+
+	// Dynamic distance-attenuated shell drop audio (calibrated subtle metallic bounce)
+	UFPSAudioSubsystem::PlaySpatialSoundWithFalloff(
+		this,
+		ShellDropSound,
+		ContactLoc,
+		ShellDropBaseVolume,
+		ShellDropMinDistance,
+		ShellDropMaxDistance,
+		FMath::RandRange(0.94f, 1.06f),
+		EFPSAudioChannel::SFX
+	);
 }

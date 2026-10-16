@@ -39,6 +39,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FPS Audio")
 	void PlayUISound(USoundBase* SoundToPlay);
 
+	/**
+	 * Spatialized audio playback with dynamic physical distance falloff, quadratic air absorption,
+	 * channel gain modulation, and auditory occlusion culling beyond MaxDistance.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "FPS Audio", meta = (WorldContext = "WorldContextObject"))
+	static void PlaySpatialSoundWithFalloff(
+		const UObject* WorldContextObject,
+		USoundBase* Sound,
+		FVector Location,
+		float BaseVolume = 1.0f,
+		float MinDistance = 150.0f,
+		float MaxDistance = 3500.0f,
+		float PitchMultiplier = 1.0f,
+		EFPSAudioChannel Channel = EFPSAudioChannel::SFX
+	);
+
 private:
 	UPROPERTY()
 	TMap<EFPSAudioChannel, float> ChannelVolumes;

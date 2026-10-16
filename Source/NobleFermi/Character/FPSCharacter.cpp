@@ -19,6 +19,8 @@
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
 #include "Engine/World.h"
+#include "Audio/FPSAudioSubsystem.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
 
 AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UFPSCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -231,6 +233,39 @@ void AFPSCharacter::BeginPlay()
 			BodyMID->SetScalarParameterValue(TEXT("RipstopTiling"), 24.0f);
 		}
 	}
+
+	// Load authentic physical surface footstep sounds if not set in blueprint
+	auto LoadStepSound = [](const TCHAR* Path) -> USoundBase*
+	{
+		return LoadObject<USoundBase>(nullptr, Path);
+	};
+
+	if (FootstepConcreteSounds.Num() == 0)
+	{
+		if (USoundBase* S1 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Concrete/FS_Concrete_01.FS_Concrete_01"))) FootstepConcreteSounds.Add(S1);
+		if (USoundBase* S2 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Concrete/FS_Concrete_02.FS_Concrete_02"))) FootstepConcreteSounds.Add(S2);
+	}
+	if (FootstepWoodSounds.Num() == 0)
+	{
+		if (USoundBase* S1 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Wood/FS_Wood_01.FS_Wood_01"))) FootstepWoodSounds.Add(S1);
+		if (USoundBase* S2 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Wood/FS_Wood_02.FS_Wood_02"))) FootstepWoodSounds.Add(S2);
+	}
+	if (FootstepSandSounds.Num() == 0)
+	{
+		if (USoundBase* S1 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Sand/FS_Sand_01.FS_Sand_01"))) FootstepSandSounds.Add(S1);
+		if (USoundBase* S2 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Sand/FS_Sand_02.FS_Sand_02"))) FootstepSandSounds.Add(S2);
+	}
+	if (FootstepWaterSounds.Num() == 0)
+	{
+		if (USoundBase* S1 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Water/FS_Water_01.FS_Water_01"))) FootstepWaterSounds.Add(S1);
+		if (USoundBase* S2 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Water/FS_Water_02.FS_Water_02"))) FootstepWaterSounds.Add(S2);
+		if (USoundBase* S3 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Water/FS_Water_03.FS_Water_03"))) FootstepWaterSounds.Add(S3);
+	}
+	if (FootstepMetalSounds.Num() == 0)
+	{
+		if (USoundBase* S1 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Metal/FS_Metal_01.FS_Metal_01"))) FootstepMetalSounds.Add(S1);
+		if (USoundBase* S2 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Metal/FS_Metal_02.FS_Metal_02"))) FootstepMetalSounds.Add(S2);
+	}
 }
 
 void AFPSCharacter::Tick(float DeltaTime)
@@ -251,6 +286,44 @@ void AFPSCharacter::Tick(float DeltaTime)
 	UpdateThirdPersonCamera(RealDeltaTime);
 	UpdateBallisticDivePosture(RealDeltaTime);
 	UpdateLocomotionAnimation(DeltaTime);
+
+	// Physical Surface Footstep Cadence Tracking
+	if (GetCharacterMovement() && GetCharacterMovement()->IsMovingOnGround() && !bIsDead && !IsBallisticDiving())
+	{
+		const float GroundSpeed = GetVelocity().Size2D();
+		if (GroundSpeed > 25.0f)
+		{
+			float StrideThreshold = 145.0f; // Walk stride (1.45m)
+			float StepVolume = 0.42f;
+
+			if (FPSMovementComponent && FPSMovementComponent->IsTacticalSprinting() && GroundSpeed > 380.0f)
+			{
+				StrideThreshold = 215.0f; // Sprint stride (2.15m)
+				StepVolume = 0.82f;
+			}
+			else if (GroundSpeed > 280.0f)
+			{
+				StrideThreshold = 175.0f; // Jog/Run stride (1.75m)
+				StepVolume = 0.62f;
+			}
+			else if (bIsCrouched || IsAiming())
+			{
+				StrideThreshold = 115.0f; // Stealth crouch stride (1.15m)
+				StepVolume = 0.22f;
+			}
+
+			FootstepDistanceTraveled += GroundSpeed * DeltaTime;
+			if (FootstepDistanceTraveled >= StrideThreshold)
+			{
+				TriggerSurfaceFootstep(StepVolume);
+				FootstepDistanceTraveled = 0.0f;
+			}
+		}
+		else
+		{
+			FootstepDistanceTraveled = FMath::Min(FootstepDistanceTraveled, 35.0f);
+		}
+	}
 
 	// Update HUD Crosshair with current weapon spread
 	const bool bIsAiming = (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights());
@@ -948,4 +1021,88 @@ void AFPSCharacter::ReleaseLethal()
 void AFPSCharacter::ThrowTactical()
 {
 	TriggerFermiEchoOrQuantumSwap();
+}
+
+void AFPSCharacter::TriggerSurfaceFootstep(float VolumeScale)
+{
+	if (bIsDead || !GetWorld()) return;
+
+	FHitResult GroundHit;
+	FCollisionQueryParams TraceParams;
+	TraceParams.AddIgnoredActor(this);
+	TraceParams.bReturnPhysicalMaterial = true;
+
+	const FVector TraceStart = GetActorLocation();
+	const FVector TraceEnd = TraceStart - FVector(0.0f, 0.0f, 130.0f);
+
+	FVector FootstepLocation = TraceStart - FVector(0.0f, 0.0f, 90.0f);
+	FString MatName = TEXT("");
+
+	if (GetWorld()->LineTraceSingleByChannel(GroundHit, TraceStart, TraceEnd, ECC_Visibility, TraceParams))
+	{
+		FootstepLocation = GroundHit.ImpactPoint;
+		if (GroundHit.PhysMaterial.IsValid())
+		{
+			MatName = GroundHit.PhysMaterial->GetName().ToLower();
+		}
+		if (GroundHit.Component.IsValid())
+		{
+			if (GroundHit.Component->ComponentTags.Contains(TEXT("Wood"))) MatName = TEXT("wood");
+			else if (GroundHit.Component->ComponentTags.Contains(TEXT("Sand"))) MatName = TEXT("sand");
+			else if (GroundHit.Component->ComponentTags.Contains(TEXT("Water"))) MatName = TEXT("water");
+			else if (GroundHit.Component->ComponentTags.Contains(TEXT("Metal"))) MatName = TEXT("metal");
+			else if (GroundHit.Component->ComponentTags.Contains(TEXT("Concrete"))) MatName = TEXT("concrete");
+			else if (UMaterialInterface* HitMat = GroundHit.Component->GetMaterial(0))
+			{
+				MatName = HitMat->GetName().ToLower();
+			}
+		}
+	}
+
+	// Select surface sound array based on traced physical material & texture names
+	TArray<TObjectPtr<USoundBase>>* SelectedSounds = &FootstepConcreteSounds;
+
+	if (MatName.Contains(TEXT("wood")) || MatName.Contains(TEXT("plank")) || MatName.Contains(TEXT("timber")) || MatName.Contains(TEXT("board")))
+	{
+		SelectedSounds = &FootstepWoodSounds;
+	}
+	else if (MatName.Contains(TEXT("sand")) || MatName.Contains(TEXT("dirt")) || MatName.Contains(TEXT("ground")) || MatName.Contains(TEXT("gravel")) || MatName.Contains(TEXT("mud")) || MatName.Contains(TEXT("rock")) || MatName.Contains(TEXT("grass")))
+	{
+		SelectedSounds = &FootstepSandSounds;
+	}
+	else if (MatName.Contains(TEXT("water")) || MatName.Contains(TEXT("puddle")) || MatName.Contains(TEXT("pond")) || MatName.Contains(TEXT("river")) || MatName.Contains(TEXT("ocean")) || MatName.Contains(TEXT("wet")))
+	{
+		SelectedSounds = &FootstepWaterSounds;
+	}
+	else if (MatName.Contains(TEXT("metal")) || MatName.Contains(TEXT("iron")) || MatName.Contains(TEXT("steel")) || MatName.Contains(TEXT("grate")) || MatName.Contains(TEXT("vent")))
+	{
+		SelectedSounds = &FootstepMetalSounds;
+	}
+
+	// Fallback to concrete if chosen category is empty
+	if (SelectedSounds->Num() == 0)
+	{
+		SelectedSounds = &FootstepConcreteSounds;
+	}
+
+	if (SelectedSounds->Num() > 0)
+	{
+		FootstepAlternator = (FootstepAlternator + 1) % SelectedSounds->Num();
+		USoundBase* SoundToPlay = (*SelectedSounds)[FootstepAlternator];
+
+		if (SoundToPlay)
+		{
+			// Spatialized footstep with dynamic distance falloff (audible up to 24 meters)
+			UFPSAudioSubsystem::PlaySpatialSoundWithFalloff(
+				this,
+				SoundToPlay,
+				FootstepLocation,
+				VolumeScale,
+				70.0f,
+				2400.0f,
+				FMath::RandRange(0.96f, 1.04f),
+				EFPSAudioChannel::SFX
+			);
+		}
+	}
 }

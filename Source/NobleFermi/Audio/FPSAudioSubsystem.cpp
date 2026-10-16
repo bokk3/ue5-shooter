@@ -1,6 +1,9 @@
 #include "Audio/FPSAudioSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/ConfigCacheIni.h"
+#include "Engine/Engine.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 
 void UFPSAudioSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -48,6 +51,75 @@ void UFPSAudioSubsystem::PlayUISound(USoundBase* SoundToPlay)
 	{
 		float UiVol = GetChannelVolume(EFPSAudioChannel::UI) * GetChannelVolume(EFPSAudioChannel::Master);
 		UGameplayStatics::PlaySound2D(World, SoundToPlay, UiVol);
+	}
+}
+
+void UFPSAudioSubsystem::PlaySpatialSoundWithFalloff(
+	const UObject* WorldContextObject,
+	USoundBase* Sound,
+	FVector Location,
+	float BaseVolume,
+	float MinDistance,
+	float MaxDistance,
+	float PitchMultiplier,
+	EFPSAudioChannel Channel)
+{
+	if (!Sound || !WorldContextObject) return;
+
+	UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr;
+	if (!World && GEngine)
+	{
+		World = GEngine->GetCurrentPlayWorld();
+	}
+	if (!World) return;
+
+	// Calculate listener distance from active local player camera
+	FVector ListenerLoc = Location;
+	bool bFoundListener = false;
+
+	APlayerController* PC = World->GetFirstPlayerController();
+	if (PC && PC->PlayerCameraManager)
+	{
+		ListenerLoc = PC->PlayerCameraManager->GetCameraLocation();
+		bFoundListener = true;
+	}
+	else if (PC && PC->GetPawn())
+	{
+		ListenerLoc = PC->GetPawn()->GetActorLocation();
+		bFoundListener = true;
+	}
+
+	float Distance = bFoundListener ? FVector::Dist(Location, ListenerLoc) : 0.0f;
+
+	// Auditory culling: if outside max audible radius, skip playback entirely
+	if (bFoundListener && Distance > MaxDistance)
+	{
+		return;
+	}
+
+	// Dynamic physical falloff calculation (Quadratic inverse-square air dissipation)
+	float DistanceFalloff = 1.0f;
+	if (bFoundListener && Distance > MinDistance)
+	{
+		const float Alpha = (Distance - MinDistance) / FMath::Max(1.0f, MaxDistance - MinDistance);
+		const float LinearFalloff = FMath::Clamp(1.0f - Alpha, 0.0f, 1.0f);
+		DistanceFalloff = LinearFalloff * LinearFalloff; // Air absorption curve
+	}
+
+	// Channel volume modulation
+	float ChannelGain = 1.0f;
+	if (UGameInstance* GI = World->GetGameInstance())
+	{
+		if (UFPSAudioSubsystem* AudioSys = GI->GetSubsystem<UFPSAudioSubsystem>())
+		{
+			ChannelGain = AudioSys->GetChannelVolume(Channel) * AudioSys->GetChannelVolume(EFPSAudioChannel::Master);
+		}
+	}
+
+	const float EffectiveVolume = FMath::Max(0.0f, BaseVolume * DistanceFalloff * ChannelGain);
+	if (EffectiveVolume > 0.001f)
+	{
+		UGameplayStatics::PlaySoundAtLocation(WorldContextObject, Sound, Location, EffectiveVolume, PitchMultiplier);
 	}
 }
 

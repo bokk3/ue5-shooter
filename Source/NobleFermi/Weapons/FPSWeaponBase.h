@@ -253,6 +253,25 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Audio")
 	TObjectPtr<USoundBase> DryFireSound;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Audio")
+	TObjectPtr<USoundBase> ShellDropSound;
+
+	/** Calibrated subtle brass casing volume (not deafening, realistic metallic clink) */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Audio")
+	float ShellDropBaseVolume = 0.24f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Audio")
+	float ShellDropMinDistance = 80.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Audio")
+	float ShellDropMaxDistance = 1400.0f; // 14 meters max audible distance
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Audio")
+	float GunshotMaxAudibleDistance = 22000.0f; // 220 meters full combat radius
+
+	UFUNCTION()
+	void PlayDelayedShellDrop(FVector DropLocation);
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void FireShot();
