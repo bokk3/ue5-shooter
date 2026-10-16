@@ -46,11 +46,9 @@ In the start menu, click **`02. OPERATOR // CUSTOMISATION`** in the left navigat
   - `Lightweight JPC Vest`: Jumpable plate carrier optimized for sprint speed and mobility.
   - `Recon Tactical Rig`: Minimalist chest rig with magazine pouches.
 - **Stance & Turntable Inspection**:
-  - **Toggle Aiming Stance**: Switches between High-Ready ADS and Low-Ready Patrol.
+  - **3-Stance Selector (`[ AIMED ADS ]`, `[ LOW READY ]`, `[ WALK ANIM ]`)**: Switches the operator between Aimed Down Sights (with right hand on the AK-47 pistol grip and left hand cupping the wooden handguard), Low-Ready Patrol stance, and the full bipedal Aimed Tactical Walking gait cycle.
   - **Turntable Rotation**: Pause/resume rotation, toggle speed presets (`12°/s`, `24°/s`, `45°/s`), or click `RESET FRONT FACING` to align the operator directly at the camera.
   - **Biometrics Telemetry**: Displays the live 21-bone skeletal status, 180 cm standing height, 82.0 kg mass, and Level IV armor absorption stats.
-
----
 
 ---
 
@@ -60,48 +58,47 @@ Everything is launchable directly from the main menu without needing separate sc
 
 1. In the Start Menu, simply click **`DEPLOY NOW`** on the **Home** tab (or navigate to **`04. SERVER BROWSER & VPS`** and click **`HOST LISTEN ROOM`**).
 2. The game transitions directly into the **Rust Tactical** combat arena (`FPSMultiplayerGameMode`).
-3. You will spawn at one of the tactical team spawn points with weapon in hand, standing on the desert arena grounds.
+3. You will spawn at one of the tactical team spawn points with the 3D **AK-47** rifle socketed to `weapon_r`, standing on the desert arena grounds.
 
-### 3.1. Tactical Controls & Ballistics
+### 3.1. Tactical Controls & The Fermi Paradox Engine
 
 | Input | Action | Tactical Details |
 | :--- | :--- | :--- |
 | **W, A, S, D** | Move Forward / Strafe | Standard 450 cm/s tactical combat movement with stride-matched gait cycles. |
-| **Mouse X / Y** | Look & Aim | Raw input mouse look with sub-millisecond precision. |
-| **Left Click** | Fire Weapon | Full-auto 750 RPM with procedural gun kick and dynamic cone bloom. |
-| **Right Click** | Aim Down Sights (ADS) | Smooth over-the-shoulder zoom (90° &rarr; 68° FOV, 175cm &rarr; 110cm boom), 0.65x sensitivity scaling. |
-| **V / Thumb Mouse**| Shoulder Swap | Toggles tactical over-the-shoulder peek between Right (+48cm Y) and Left (-48cm Y). |
-| **Left Shift** | Tactical Sprint | High-speed forward sprint (720 cm/s) with weapon held in high-ready sprint posture. |
+| **Mouse X / Y** | Look & Aim | Raw input mouse look with inverse time-dilation compensation inside Chrono Fields. |
+| **Left Click** | Fire Weapon | Full-auto 750 RPM firing physicalized brass tracers (`2,800 cm/s` in slow-motion). |
+| **Right Click (Hold)** | Tight OTS ADS Zoom | Smooth Over-The-Shoulder zoom (`210cm` &rarr; `95cm` boom, `90°` &rarr; `62°` FOV), `0.65x` sensitivity. |
+| **Middle Click (While Aiming)** | Hybrid 1P Optic ADS Toggle | Toggles between **3rd-Person Tight OTS ADS** and **1st-Person True Optic Sightline** (`0cm` boom). |
+| **V / Thumb Mouse** | Smooth Shoulder Swap | Smoothly interpolates camera offset between Right Shoulder (`+52cm Y`) and Left (`-52cm Y`). |
+| **Left Alt** *(or Move + Double-Tap C / Ctrl+Space)* | **Max Payne Ballistic Dive + Fermi Time Bubble** | Consumes 35 Stamina. Launches an omnidirectional dive (`820 cm/s` horiz, `340 cm/s` vert) with `75°` body tilt, `0.45s` landing slide, and expands a **4.5m Chrono Field** (`0.25x` enemy speed, `0.55x` player reflex speed). |
+| **Q (Ground / No Echo)** | **Deploy Acoustic Fermi Echo** | Spawns a phosphor-cyan `SK_BaseMale` hologram sprinting at `680 cm/s` and firing simulated unsuppressed bursts to flood enemy radar/compass with red threat blips. |
+| **Q (While Echo Active / Mid-Dive)** | **Quantum Phase-Swap** | Instantly swaps world positions with your active Fermi Echo while conserving and redirecting your mid-air ballistic dive momentum along your sightline. |
+| **Left Shift** | Tactical Sprint | High-speed forward sprint (`750 cm/s`) with weapon held in sprint posture. |
 | **Space** | Jump | Physical impulse vaulting over cover. |
-| **C / Left Ctrl** | Crouch | Lowered stance for cover behind Jersey barriers and containers. |
+| **C / Left Ctrl** | Crouch / Slide | Lowered stance behind cover, or momentum slide (`950 cm/s`) when sprinting. |
 | **R** | Tactical / Empty Reload | 4-phase procedural reload animation (cant & dip, mag drop, fresh insert & palm slap). |
-| **Q / G** | Tactical / Lethal | Concussion flashbangs and fragmentation grenades. |
+| **G** | Cook & Throw Lethal | Fragmentation grenade with cookable fuse. |
 
-### 3.2. Tactical 3rd-Person Perspective & Weapon Socketing
-- **Over-the-Shoulder Camera (`CameraBoom` + `FollowCamera`)**: Primary tactical 3rd-person view with 175cm arm length, 12cm collision probe radius, and camera lag for visceral movement weight.
-- **Dynamic ADS Over-the-Shoulder Zoom**: Right-clicking contracts arm length to 110cm and narrows FOV to 68°, framing the operator's right shoulder closely for pinpoint combat focus.
-- **Direct Right-Hand Weapon Attachment**: The NF-98 Carbine is socketed directly into the operator's right hand (`hand_r`), reacting with physical recoil impulse kick and procedural 4-phase reload animations.
-- **Authoritative Ragdoll Death**: Upon zero health, the character capsule uncouples and all 21 anatomical bones enter full physical ragdoll simulation with momentum transfer, while the camera smoothly frames the falling body from its current vantage point.
-- **Procedural 4-Phase Reload**:
-  1. *Cant & Tilt (0-20%)*: Weapon cants 22° outward, presenting the magwell into clear view.
-  2. *Mag Ejection (20-42%)*: Empty magazine slides out and drops downward.
-  3. *Mag Insertion & Slap (42-76%)*: Fresh magazine slides up into the magwell with a tactile palm-slap impulse shake.
-  4. *Bolt Release & Ready (76-100%)*: Empty reload trips the bolt release snap before returning smoothly to active high-ready.
+### 3.2. The Fermi Paradox Engine & 3rd-Person Weapon Mechanics
+- **Over-The-Shoulder Camera (`CameraBoom` + `FollowCamera`)**: Primary tactical 3rd-person view (`210 cm` boom, `(0, ±52, 22)` offset) with `12 cm` collision probe radius and `18.0f` camera lag.
+- **Omnidirectional Ballistic Dive & 4.5m Chrono Bubble**: Diving in any `WASD` direction tilts the 21-bone operator `75°` into the dive vector (chest-down forward, supine on back when diving backward, side-roll left/right) with full `360°` mid-air aiming and spawns `AFPSFermiTimeBubble` (`2.4s` duration, `0.25x` enemy dilation).
+- **Acoustic Fermi Echo & Quantum Swap**: Press `Q` to send a holographic clone sprinting out to draw sniper fire and ping enemy radar, then dive and tap `Q` in slow-motion to materialize mid-air directly at the clone's position.
+- **3D AK-47 Socketing (`weapon_r`)**: `SM_AK47` attaches directly to the `weapon_r` bone socket on `SK_BaseMale`, keeping both hands locked to the pistol grip and wooden handguard across all stances and locomotion cycles.
 
 ### 3.3. Pure Dynamic Lighting (Lumen) & Exposure
 - **Zero Lightmass Baking**: Static lighting has been permanently disabled in `DefaultEngine.ini` (`r.AllowStaticLighting=False`), guaranteeing zero "Lighting needs to be rebuilt" warnings.
-- **Exposure Lock**: Manual camera exposure is locked across both the preview actor and player pawn, eliminating auto-exposure eye-adaptation screen whiteout.
+- **Exposure Lock**: Manual camera exposure (`AEM_Manual`) is locked across both the preview actor and player pawn, ensuring the Fermi Time Bubble and holographic decoy never cause screen whiteout.
 - **Golden-Hour Sun & Volumetric Dust**: Directional sun at 10.0 lux with real-time dynamic shadows, sky atmosphere, warm height fog dust haze, and a pulsating aviation hazard beacon atop the 12m central derrick.
 
-### 3.4. In-Game Tactical HUD
-- **Top-Left Minimap**: $180\times 180\text{ px}$ circular tactical radar with $25\text{ m}$ / $50\text{ m}$ range rings, $120^\circ/\text{s}$ rotating sweep line, player orientation chevron, Domination flags A/B/C, and real-time gunfire acoustic radar blips.
-- **Top-Center Radar Compass**: $440\text{ px}$ horizontal bearing tape displaying cardinal directions (`N`, `NE`, `E`, `SE`, `S`, `SW`, `W`, `NW`), $5^\circ/15^\circ$ degree ticks, center digital heading ticker `[ 045° ]`, objective waypoints, and acoustic threat diamonds.
-- **Bottom-Left Operator Vitals**:
-  - **Armor Shield (100)**: Cobalt blue bar representing Level IV ceramic plate integrity.
-  - **Health (100 HP)**: Live numerical HP readout with dynamic color shift (cyan &rarr; amber &rarr; critical red).
-  - **Tactical Stamina (100)**: Emerald green meter. Drains at $18.0/\text{s}$ during tactical sprint; regenerates at $28.0/\text{s}$ after $0.8\text{ s}$ of rest/walking. Exhaustion locks sprint at 0 until 15 stamina is restored.
-- **Bottom-Right Weapon & Ammo HUD**: Active weapon name, fire mode (`FULL-AUTO 750 RPM`), large 30pt digital counter with reserve (`30 / 120`), emergency low-ammo flashing, and `[>> RELOADING...]` sequence status.
-- **Dynamic Reticle & Hitmarker**: Bloom-scaling crosshair that collapses smoothly during ADS, plus confirmed impact diagonal `X` hitmarkers.
+### 3.4. In-Game Tactical AR Visor HUD
+- **Top-Left Minimap**: $180\times 180\text{ px}$ circular tactical radar with $25\text{ m}$ / $50\text{ m}$ range rings, $120^\circ/\text{s}$ rotating sweep line, player orientation chevron, Domination flags A/B/C, and real-time gunfire acoustic radar blips (including Fermi Echo decoy bursts).
+- **Top-Center Radar Compass & Chronometer**: $440\text{ px}$ horizontal bearing tape with cardinal points, objective waypoints, acoustic threat diamonds, and an active `CHRONO FIELD // 0.25x c` ticker during slow-motion dives.
+- **Bottom-Left Operator Vitals & Chrono Telemetry**:
+  - **Armor Shield (100)**: 4-plate Level IV ceramic armor row in cobalt blue.
+  - **Health (100 HP)**: Live numerical HP readout with trailing damage ghost bar and animated ECG waveform.
+  - **Tactical Stamina (100)**: 12-cell kinetic meter (`18.0/s` sprint drain, `28.0/s` regen).
+  - **Fermi Dive // Chrono Field Bar**: Displays `[READY - ALT / DIVE]`, `[ACTIVE // 0.25x TIME DILATION]`, or recharge status directly below Stamina.
+- **Bottom-Right Weapon, 30-Round Pip Matrix & Quantum Echo HUD**: Active weapon title (`AK-47 TACTICAL // 7.62x39MM`), 30-round individual bullet pip matrix, `[Q] DEPLOY FERMI ECHO` / `[Q] QUANTUM SWAP READY` status, and radial 4-phase reload progress ring.
 
 ---
 

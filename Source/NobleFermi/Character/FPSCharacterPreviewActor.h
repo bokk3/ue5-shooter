@@ -184,6 +184,18 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Weapon")
 	TObjectPtr<UStaticMeshComponent> WeaponStockMesh;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Weapon")
+	TObjectPtr<UStaticMeshComponent> AK47Mesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Animations")
+	TObjectPtr<class UAnimSequence> AnimIdleADS;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Animations")
+	TObjectPtr<class UAnimSequence> AnimLowReady;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Animations")
+	TObjectPtr<class UAnimSequence> AnimWalk;
+
 	// Customization Controls
 	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
 	void SetCamo(EOperatorCamo NewCamo);
@@ -196,6 +208,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
 	void SetAimingStance(bool bInAiming);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
+	void SetPreviewStance(int32 StanceIndex);
+
+	UFUNCTION(BlueprintPure, Category = "FPS Operator")
+	int32 GetPreviewStance() const { return CurrentStanceIndex; }
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
 	void SetRotationSpeed(float NewSpeed) { RotationSpeed = NewSpeed; }
@@ -238,6 +256,7 @@ private:
 	EOperatorCamo CurrentCamo = EOperatorCamo::UrbanDigital;
 	EOperatorHeadgear CurrentHeadgear = EOperatorHeadgear::BallisticHelmet;
 	EOperatorArmorVest CurrentVest = EOperatorArmorVest::HeavyPlateCarrier;
+	int32 CurrentStanceIndex = 0; // 0 = Aimed ADS, 1 = Low-Ready, 2 = Walk
 
 	void UpdateAimingPose(float DeltaTime);
 	void ApplyCamoColors();
@@ -257,3 +276,4 @@ private:
 	UPROPERTY()
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> WeaponMaterials;
 };
+

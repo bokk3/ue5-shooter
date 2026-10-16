@@ -695,6 +695,53 @@ public:
 		DrawGlowText(VitX, VitY + 67.0f, StaminaStatus, FontMicro,
 			OwningHUD->bIsStaminaExhausted ? CrimsonAlert : FLinearColor(0.65f, 0.92f, 0.85f, 0.72f), 0.6f);
 
+		// 3.4 "FERMI DIVE // CHRONO FIELD" Telemetry Bar (Below Stamina in Vitals Panel)
+		{
+			const float DiveBarY = VitY + 86.0f;
+			const float DiveBarW = 248.0f;
+			const float DiveBarH = 14.0f;
+
+			DrawSkewedRect(VitX - 6.0f, DiveBarY - 2.0f, DiveBarW + 12.0f, DiveBarH + 4.0f, 4.0f,
+				FLinearColor(0.0f, 0.10f, 0.16f, 0.36f), FLinearColor(0.0f, 0.04f, 0.08f, 0.05f), 0);
+
+			if (OwningHUD->bIsFermiTimeBubbleActive || OwningHUD->bIsBallisticDiving)
+			{
+				const float BubbleRatio = FMath::Clamp(OwningHUD->FermiBubbleTimeRemaining / 2.4f, 0.05f, 1.0f);
+				const float Pulse = 0.78f + 0.22f * FMath::Sin(TimeSec * 16.0f);
+				DrawSkewedRect(VitX, DiveBarY, DiveBarW * BubbleRatio, DiveBarH, 4.0f,
+					TealPrimary * FLinearColor(1, 1, 1, 0.55f * Pulse), CyanTactical * FLinearColor(1, 1, 1, 0.85f * Pulse), 1);
+				DrawLine(VitX + 4.0f, DiveBarY, VitX + 4.0f + DiveBarW * BubbleRatio, DiveBarY, 1.6f, HudWhite, 2);
+
+				DrawGlowText(VitX + 6.0f, DiveBarY + 1.0f,
+					FString::Printf(TEXT("FERMI DIVE // [ACTIVE // 0.25x TIME DILATION %.1fs]"), OwningHUD->FermiBubbleTimeRemaining),
+					FontMicro, HudWhite, 0.85f, 4);
+			}
+			else if (OwningHUD->FermiDiveCooldownRemaining > 0.01f)
+			{
+				const float CooldownRatio = 1.0f - FMath::Clamp(OwningHUD->FermiDiveCooldownRemaining / 1.2f, 0.0f, 1.0f);
+				DrawSkewedRect(VitX, DiveBarY, DiveBarW * CooldownRatio, DiveBarH, 4.0f,
+					AmberWarn * FLinearColor(1, 1, 1, 0.30f), AmberWarn * FLinearColor(1, 1, 1, 0.50f), 1);
+				DrawGlowText(VitX + 6.0f, DiveBarY + 1.0f,
+					FString::Printf(TEXT("FERMI DIVE // [RECHARGING %.1fs]"), OwningHUD->FermiDiveCooldownRemaining),
+					FontMicro, AmberWarn, 0.75f, 4);
+			}
+			else if (OwningHUD->bCanBallisticDive)
+			{
+				DrawSkewedRect(VitX, DiveBarY, DiveBarW, DiveBarH, 4.0f,
+					FLinearColor(0.0f, 0.45f, 0.48f, 0.35f), FLinearColor(0.0f, 0.75f, 0.72f, 0.22f), 1);
+				DrawLine(VitX + 4.0f, DiveBarY, VitX + 4.0f + DiveBarW, DiveBarY, 1.2f, TealPrimary * FLinearColor(1, 1, 1, 0.8f), 2);
+				DrawGlowText(VitX + 6.0f, DiveBarY + 1.0f,
+					TEXT("FERMI DIVE // [READY - ALT / DIVE]"),
+					FontMicro, TealPrimary, 0.80f, 4);
+			}
+			else
+			{
+				DrawGlowText(VitX + 6.0f, DiveBarY + 1.0f,
+					TEXT("FERMI DIVE // [LOW STAMINA < 25%]"),
+					FontMicro, CrimsonAlert, 0.75f, 4);
+			}
+		}
+
 		// =========================================================================
 		// 4. BOTTOM-RIGHT FLOATING WEAPON SCHEMATIC & 30-ROUND PIP MATRIX
 		// =========================================================================
@@ -790,7 +837,7 @@ public:
 
 		// 4.4 Weapon Title, 3-Mode Fire Selector & Tactical Equipment Slots
 		const FString WeaponTitle = OwningHUD->ActiveWeaponName.IsEmpty()
-			? TEXT("NF-98 TACTICAL // 5.56 NATO")
+			? TEXT("AK-47 TACTICAL // 7.62x39MM")
 			: OwningHUD->ActiveWeaponName.ToString().ToUpper();
 		DrawGlowText(AmmoX + 16.0f, AmmoY + 65.0f, WeaponTitle, FontSmall, TealPrimary, 0.75f);
 
@@ -811,8 +858,65 @@ public:
 				bActiveMode ? HudWhite : FLinearColor(0.5f, 0.65f, 0.75f, 0.45f), bActiveMode ? 0.8f : 0.0f);
 		}
 
-		// Lethal & Tactical Ordance Micro-Badges Above Panel
-		DrawGlowText(AmmoX + 180.0f, AmmoY - 22.0f, TEXT("[G] FRAG x1   //   [Q] FLASH x2"), FontMicro, FLinearColor(0.75f, 0.90f, 0.98f, 0.68f), 0.6f);
+		// Lethal & Fermi Echo / Quantum Swap Tactical Micro-Badges Above Weapon Panel
+		FString EchoStatusStr;
+		FLinearColor EchoCol = TealPrimary;
+		if (OwningHUD->bIsFermiDecoyActive)
+		{
+			EchoStatusStr = FString::Printf(TEXT("[G] FRAG  //  [Q] QUANTUM SWAP READY (%.1fs)"), OwningHUD->FermiDecoyTimeRemaining);
+			EchoCol = EmeraldStamina;
+		}
+		else if (OwningHUD->FermiDecoyCooldownRemaining > 0.05f)
+		{
+			EchoStatusStr = FString::Printf(TEXT("[G] FRAG  //  [Q] ECHO COOLDOWN (%.1fs)"), OwningHUD->FermiDecoyCooldownRemaining);
+			EchoCol = AmberWarn;
+		}
+		else
+		{
+			EchoStatusStr = TEXT("[G] FRAG  //  [Q] DEPLOY FERMI ECHO");
+			EchoCol = TealPrimary;
+		}
+		DrawGlowText(AmmoX + 82.0f, AmmoY - 22.0f, EchoStatusStr, FontMicro, EchoCol, 0.75f);
+
+		// =========================================================================
+		// 4.8 ACTIVE FERMI TIME-DILATION VIGNETTE & DIGITAL CHRONOMETER TICKER
+		// =========================================================================
+		if (OwningHUD->bIsFermiTimeBubbleActive || OwningHUD->bIsBallisticDiving)
+		{
+			const float Pulse = 0.65f + 0.35f * FMath::Sin(TimeSec * 14.0f);
+			const FLinearColor EdgeCyan(0.0f, 0.92f, 0.86f, 0.16f * Pulse);
+			const FLinearColor InnerClear(0.0f, 0.92f, 0.86f, 0.0f);
+			const float VigThickness = 42.0f;
+
+			// Top, Bottom, Left, Right subtle cyan peripheral vignette strips
+			DrawQuad(FVector2f(0.0f, 0.0f), FVector2f(ScreenW, 0.0f), FVector2f(ScreenW, VigThickness), FVector2f(0.0f, VigThickness),
+				EdgeCyan, EdgeCyan, InnerClear, InnerClear, 1);
+			DrawQuad(FVector2f(0.0f, ScreenH - VigThickness), FVector2f(ScreenW, ScreenH - VigThickness), FVector2f(ScreenW, ScreenH), FVector2f(0.0f, ScreenH),
+				InnerClear, InnerClear, EdgeCyan, EdgeCyan, 1);
+			DrawQuad(FVector2f(0.0f, 0.0f), FVector2f(VigThickness, 0.0f), FVector2f(VigThickness, ScreenH), FVector2f(0.0f, ScreenH),
+				EdgeCyan, InnerClear, InnerClear, EdgeCyan, 1);
+			DrawQuad(FVector2f(ScreenW - VigThickness, 0.0f), FVector2f(ScreenW, 0.0f), FVector2f(ScreenW, ScreenH), FVector2f(ScreenW - VigThickness, ScreenH),
+				InnerClear, EdgeCyan, EdgeCyan, InnerClear, 1);
+
+			// Digital Chronometer Ticker below top compass tape
+			const float ChronoX = ScreenW * 0.5f - 108.0f + VX * 0.4f;
+			const float ChronoY = 64.0f + VY * 0.4f;
+			DrawSkewedRect(ChronoX - 8.0f, ChronoY - 3.0f, 232.0f, 18.0f, -4.0f,
+				FLinearColor(0.0f, 0.25f, 0.30f, 0.42f), FLinearColor(0.0f, 0.45f, 0.52f, 0.22f), 2);
+			DrawLine(ChronoX - 8.0f, ChronoY + 15.0f, ChronoX + 224.0f, ChronoY + 15.0f, 1.5f, TealPrimary, 3);
+			DrawGlowText(ChronoX, ChronoY,
+				FString::Printf(TEXT("CHRONO FIELD // 0.25x c  [%.2fs]"), OwningHUD->FermiBubbleTimeRemaining),
+				FontSmall, TealPrimary, 0.9f, 4);
+		}
+
+		// Quantum Phase-Swap Visor Flash
+		if (OwningHUD->QuantumSwapFlashAlpha > 0.01f)
+		{
+			const FLinearColor SwapCol(0.0f, 0.98f, 0.88f, OwningHUD->QuantumSwapFlashAlpha * 0.22f);
+			DrawQuad(FVector2f(0.0f, 0.0f), FVector2f(ScreenW, 0.0f), FVector2f(ScreenW, ScreenH), FVector2f(0.0f, ScreenH),
+				SwapCol, SwapCol, SwapCol, SwapCol, 5);
+			DrawGlowText(ScreenW * 0.5f - 96.0f, 90.0f, TEXT(">> QUANTUM PHASE-SWAP COMPLETE <<"), FontSmall, EmeraldStamina, 0.9f, 6);
+		}
 
 		// =========================================================================
 		// 5. CENTER MULTI-LAYER RETICLE, RADIAL RELOAD RING & 3D DAMAGE ARCS
@@ -1016,13 +1120,24 @@ void UFPSHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 			}
 		}
 
-		// 2. Stamina System
+		// 2. Stamina & Fermi Ballistic Dive System
 		if (Char->FPSMovementComponent)
 		{
 			CurrentStamina = Char->FPSMovementComponent->GetCurrentStamina();
 			MaxStamina = Char->FPSMovementComponent->GetMaxStamina();
 			bIsStaminaExhausted = Char->FPSMovementComponent->IsStaminaExhausted();
+			bIsBallisticDiving = Char->FPSMovementComponent->IsBallisticDiving();
+			FermiDiveCooldownRemaining = Char->FPSMovementComponent->GetDiveCooldownRemaining();
+			bCanBallisticDive = Char->FPSMovementComponent->CanStartBallisticDive();
 		}
+
+		bIsFermiTimeBubbleActive = Char->IsFermiTimeBubbleActive();
+		FermiBubbleTimeRemaining = Char->GetFermiTimeBubbleRemaining();
+		bIsFermiDecoyActive = Char->IsFermiDecoyActive();
+		FermiDecoyTimeRemaining = Char->GetFermiDecoyRemaining();
+		FermiDecoyCooldownRemaining = Char->GetFermiDecoyCooldownRemaining();
+		QuantumSwapFlashAlpha = Char->GetQuantumSwapFlashAlpha();
+		bUseFirstPersonOpticADS = Char->bUseFirstPersonOpticADS;
 
 		// 3. Weapon, Individual Pip Matrix & Reload Progress
 		if (Char->InventoryComponent)

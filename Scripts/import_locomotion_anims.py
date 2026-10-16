@@ -2,7 +2,7 @@ import unreal
 import os
 import sys
 
-print(">>> IMPORTING LOCOMOTION ANIMATIONS INTO UNREAL ENGINE <<<")
+print(">>> IMPORTING 5 IK-BAKED TACTICAL STANCES & LOCOMOTION ANIMATIONS INTO UNREAL ENGINE 5.8 <<<")
 
 skeleton_path = "/Game/Characters/BaseMale/SK_BaseMale_Skeleton"
 skeleton = unreal.EditorAssetLibrary.load_asset(skeleton_path)
@@ -14,17 +14,24 @@ print(f"Loaded Target Skeleton: {skeleton.get_path_name()}")
 
 destination_path = "/Game/Characters/BaseMale/Animations"
 anim_names = [
+    "Anim_BaseMale_Idle_ADS",
+    "Anim_BaseMale_LowReady",
+    "Anim_BaseMale_Walk",
+    "Anim_BaseMale_Run",
+    "Anim_BaseMale_Sprint",
     "Anim_Operator_Idle_ADS",
+    "Anim_Operator_LowReady",
     "Anim_Operator_Walk",
     "Anim_Operator_Run",
     "Anim_Operator_Sprint"
 ]
 
+anims_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi\Content\Characters\BaseMale\Animations"
 tasks = []
 for anim_name in anim_names:
-    fbx_file = os.path.abspath(f"Content/Characters/BaseMale/Animations/{anim_name}.fbx")
+    fbx_file = os.path.join(anims_dir, f"{anim_name}.fbx")
     if not os.path.exists(fbx_file):
-        print(f"ERROR: FBX missing at {fbx_file}")
+        unreal.log_warning(f"ERROR: FBX missing at {fbx_file}")
         continue
     
     task = unreal.AssetImportTask()
@@ -46,17 +53,27 @@ for anim_name in anim_names:
     task.options = options
     tasks.append(task)
 
-print(f"Executing import tasks for {len(tasks)} animations...")
+unreal.log_warning(f"Executing import tasks for {len(tasks)} animations...")
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
 asset_tools.import_asset_tasks(tasks)
 
-# Save directory
 unreal.EditorAssetLibrary.save_directory(destination_path, only_if_is_dirty=False, recursive=True)
 
-imported_assets = unreal.EditorAssetLibrary.list_assets(destination_path, recursive=True)
-print(f"Current Assets in {destination_path}:")
-for a in imported_assets:
-    print(f"  - {a}")
+# Verify weapon_r socket transform in Unreal Engine component space!
+try:
+    sk_mesh = unreal.EditorAssetLibrary.load_asset("/Game/Characters/BaseMale/SK_BaseMale")
+    ak_mesh = unreal.EditorAssetLibrary.load_asset("/Game/Characters/BaseMale/SM_AK47")
+    if sk_mesh:
+        sk_comp = unreal.SkeletalMeshComponent()
+        sk_comp.set_skeletal_mesh_asset(sk_mesh)
+        for bname in ["root", "pelvis", "hand_r", "hand_l", "weapon_r"]:
+            t_comp = sk_comp.get_socket_transform(bname, unreal.RelativeTransformSpace.RTS_COMPONENT)
+            unreal.log_warning(f"[UE_SOCKET_CHECK] {bname} (Component Space): Loc={t_comp.translation}, Rot={t_comp.rotation.rotator()}")
+    if ak_mesh:
+        b = ak_mesh.get_bounds()
+        unreal.log_warning(f"[UE_AK47_BOUNDS] Origin={b.origin}, BoxExtent={b.box_extent}")
+except Exception as e:
+    unreal.log_warning(f"[UE_SOCKET_CHECK] Note: {e}")
 
-print(">>> ANIMATION IMPORT COMPLETED <<<")
+unreal.log_warning(">>> ANIMATION IMPORT COMPLETED <<<")
 sys.exit(0)

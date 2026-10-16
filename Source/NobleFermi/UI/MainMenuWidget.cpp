@@ -517,16 +517,65 @@ TSharedRef<SWidget> UMainMenuWidget::BuildCustomizationView()
 					+ SScrollBox::Slot()
 					[
 						SNew(SVerticalBox)
-						// 1. Aiming Stance
-						+ SVerticalBox::Slot().AutoHeight() [ MakeSectionHeader(TEXT("/// AIMING STANCE CONTROLS")) ]
+						// 1. Aiming Stance & Locomotion Preview
+						+ SVerticalBox::Slot().AutoHeight() [ MakeSectionHeader(TEXT("/// STANCE & LOCOMOTION CONTROLS")) ]
 						+ SVerticalBox::Slot().AutoHeight()
 						[
-							MakeItemButton([this]() { return HandleToggleAimingStance(); }, TEXT("TOGGLE AIMING STANCE (ADS / LOW READY)"))
+							MakeItemButton([this]() { return HandleToggleAimingStance(); }, TEXT("CYCLE STANCE (AIMED ADS / LOW READY / WALK)"))
+						]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f)
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(0.0f, 0.0f, 4.0f, 0.0f)
+							[
+								SNew(SButton)
+								.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
+								.OnClicked_Lambda([this]()
+								{
+									if (PreviewActor) PreviewActor->SetPreviewStance(0);
+									if (StanceStatusText.IsValid()) StanceStatusText->SetText(FText::FromString(TEXT("STANCE: AIMED WEAPON (AK-47 ADS // IK HAND LOCK)")));
+									return FReply::Handled();
+								})
+								.HAlign(HAlign_Center)
+								[
+									SNew(STextBlock).Text(FText::FromString(TEXT("AIMED ADS"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+								]
+							]
+							+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(2.0f, 0.0f)
+							[
+								SNew(SButton)
+								.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
+								.OnClicked_Lambda([this]()
+								{
+									if (PreviewActor) PreviewActor->SetPreviewStance(1);
+									if (StanceStatusText.IsValid()) StanceStatusText->SetText(FText::FromString(TEXT("STANCE: LOW-READY PATROL (AK-47 LOWERED)")));
+									return FReply::Handled();
+								})
+								.HAlign(HAlign_Center)
+								[
+									SNew(STextBlock).Text(FText::FromString(TEXT("LOW READY"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+								]
+							]
+							+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4.0f, 0.0f, 0.0f, 0.0f)
+							[
+								SNew(SButton)
+								.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
+								.OnClicked_Lambda([this]()
+								{
+									if (PreviewActor) PreviewActor->SetPreviewStance(2);
+									if (StanceStatusText.IsValid()) StanceStatusText->SetText(FText::FromString(TEXT("STANCE: TACTICAL WALK CYCLE (AIMED GAIT)")));
+									return FReply::Handled();
+								})
+								.HAlign(HAlign_Center)
+								[
+									SNew(STextBlock).Text(FText::FromString(TEXT("WALK ANIM"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+								]
+							]
 						]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 12.0f)
 						[
 							SAssignNew(StanceStatusText, STextBlock)
-							.Text(FText::FromString(TEXT("STANCE: HIGH-READY ADS (AIM-DOWN-SIGHTS)")))
+							.Text(FText::FromString(TEXT("STANCE: AIMED WEAPON (AK-47 ADS // IK HAND LOCK)")))
 							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
 							.ColorAndOpacity(FLinearColor(0.95f, 0.75f, 0.2f, 1.0f))
 						]
@@ -1431,13 +1480,22 @@ FReply UMainMenuWidget::HandleToggleAimingStance()
 {
 	if (PreviewActor)
 	{
-		const bool bNewAiming = !PreviewActor->IsAiming();
-		PreviewActor->SetAimingStance(bNewAiming);
+		const int32 NextStance = (PreviewActor->GetPreviewStance() + 1) % 3;
+		PreviewActor->SetPreviewStance(NextStance);
 		if (StanceStatusText.IsValid())
 		{
-			StanceStatusText->SetText(FText::FromString(bNewAiming ?
-				TEXT("STANCE: HIGH-READY ADS (AIM-DOWN-SIGHTS)") :
-				TEXT("STANCE: LOW-READY (PATROL RELAXED)")));
+			switch (NextStance)
+			{
+			case 0:
+				StanceStatusText->SetText(FText::FromString(TEXT("STANCE: AIMED WEAPON (AK-47 ADS // IK HAND LOCK)")));
+				break;
+			case 1:
+				StanceStatusText->SetText(FText::FromString(TEXT("STANCE: LOW-READY PATROL (AK-47 LOWERED)")));
+				break;
+			case 2:
+				StanceStatusText->SetText(FText::FromString(TEXT("STANCE: TACTICAL WALK CYCLE (AIMED GAIT)")));
+				break;
+			}
 		}
 	}
 	if (TransitionSound) UGameplayStatics::PlaySound2D(this, TransitionSound);

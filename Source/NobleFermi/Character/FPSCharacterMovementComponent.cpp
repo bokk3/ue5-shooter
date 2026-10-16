@@ -44,6 +44,39 @@ void UFPSCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float De
 		}
 	}
 
+	if (DiveCooldownRemaining > 0.0f)
+	{
+		DiveCooldownRemaining = FMath::Max(0.0f, DiveCooldownRemaining - DeltaSeconds);
+	}
+
+	if (bIsBallisticDiving)
+	{
+		DiveAirborneTime += DeltaSeconds;
+		if (!IsMovingOnGround())
+		{
+			bHasLeftGroundDuringDive = true;
+		}
+		else if (bHasLeftGroundDuringDive || DiveAirborneTime > 0.15f)
+		{
+			// Landed from airborne ballistic dive -> transition to 0.45s kinetic ground slide
+			if (!bIsDiveLandingSlide)
+			{
+				bIsDiveLandingSlide = true;
+				DiveLandingSlideTimer = DiveLandingSlideDuration;
+				Velocity = BallisticDiveDirection * (DiveHorizontalLaunchSpeed * 0.65f);
+			}
+			else
+			{
+				DiveLandingSlideTimer -= DeltaSeconds;
+				Velocity = FMath::VInterpTo(Velocity, FVector::ZeroVector, DeltaSeconds, 4.5f);
+				if (DiveLandingSlideTimer <= 0.0f)
+				{
+					StopBallisticDive();
+				}
+			}
+		}
+	}
+
 	if (bIsSliding)
 	{
 		// Check if sliding velocity dropped below threshold
@@ -64,6 +97,8 @@ float UFPSCharacterMovementComponent::GetMaxSpeed() const
 {
 	switch (CurrentFPSMode)
 	{
+	case EFPSMovementMode::BallisticDiving:
+		return DiveHorizontalLaunchSpeed;
 	case EFPSMovementMode::Sliding:
 		return SlideImpulse;
 	case EFPSMovementMode::Sprinting:
@@ -78,7 +113,7 @@ float UFPSCharacterMovementComponent::GetMaxSpeed() const
 
 void UFPSCharacterMovementComponent::SetWantsToSprint(bool bSprint)
 {
-	if (bSprint && (bIsStaminaExhausted || CurrentStamina <= 5.0f))
+	if (bSprint && (bIsStaminaExhausted || CurrentStamina <= 5.0f || bIsBallisticDiving))
 	{
 		bWantsToSprint = false;
 		return;
@@ -86,11 +121,11 @@ void UFPSCharacterMovementComponent::SetWantsToSprint(bool bSprint)
 
 	bWantsToSprint = bSprint;
 
-	if (bWantsToSprint && IsMovingOnGround() && !IsCrouching() && !bIsSliding)
+	if (bWantsToSprint && IsMovingOnGround() && !IsCrouching() && !bIsSliding && !bIsBallisticDiving)
 	{
 		CurrentFPSMode = EFPSMovementMode::Sprinting;
 	}
-	else if (!bIsSliding && !IsCrouching())
+	else if (!bIsSliding && !IsCrouching() && !bIsBallisticDiving)
 	{
 		CurrentFPSMode = EFPSMovementMode::Walking;
 	}
@@ -98,7 +133,7 @@ void UFPSCharacterMovementComponent::SetWantsToSprint(bool bSprint)
 
 void UFPSCharacterMovementComponent::StartSlide()
 {
-	if (!IsMovingOnGround() || bIsSliding) return;
+	if (!IsMovingOnGround() || bIsSliding || bIsBallisticDiving) return;
 
 	if (Velocity.Size2D() > WalkSpeed * 0.8f)
 	{
@@ -125,6 +160,71 @@ void UFPSCharacterMovementComponent::StopSlide()
 	{
 		CharOwner->UnCrouch();
 	}
+}
+
+bool UFPSCharacterMovementComponent::TryStartBallisticDive(const FVector& DesiredWorldDirection)
+{
+	if (!CanStartBallisticDive())
+	{
+		return false;
+	}
+
+	ACharacter* CharOwner = GetCharacterOwner();
+	if (!CharOwner)
+	{
+		return false;
+	}
+
+	if (bIsSliding)
+	{
+		StopSlide();
+	}
+	else if (IsCrouching())
+	{
+		CharOwner->UnCrouch();
+	}
+
+	// Deduct stamina cost (35.0f, requires >= 25.0f)
+	CurrentStamina = FMath::Max(0.0f, CurrentStamina - DiveStaminaCost);
+	TimeSinceLastSprint = 0.0f;
+	if (CurrentStamina <= 0.0f)
+	{
+		bIsStaminaExhausted = true;
+	}
+
+	FVector DiveDir = DesiredWorldDirection.GetSafeNormal2D();
+	if (DiveDir.IsNearlyZero())
+	{
+		DiveDir = Velocity.GetSafeNormal2D();
+	}
+	if (DiveDir.IsNearlyZero())
+	{
+		DiveDir = CharOwner->GetActorForwardVector().GetSafeNormal2D();
+	}
+
+	BallisticDiveDirection = DiveDir;
+	bIsBallisticDiving = true;
+	bHasLeftGroundDuringDive = false;
+	bIsDiveLandingSlide = false;
+	DiveAirborneTime = 0.0f;
+	DiveLandingSlideTimer = 0.0f;
+	DiveCooldownRemaining = DiveCooldownDuration;
+	CurrentFPSMode = EFPSMovementMode::BallisticDiving;
+
+	// Launch character into omnidirectional parabolic arc (820 cm/s horizontal, 340 cm/s upward)
+	SetMovementMode(MOVE_Falling);
+	Velocity = (BallisticDiveDirection * DiveHorizontalLaunchSpeed) + FVector(0.0f, 0.0f, DiveVerticalLaunchSpeed);
+	return true;
+}
+
+void UFPSCharacterMovementComponent::StopBallisticDive()
+{
+	bIsBallisticDiving = false;
+	bHasLeftGroundDuringDive = false;
+	bIsDiveLandingSlide = false;
+	DiveAirborneTime = 0.0f;
+	DiveLandingSlideTimer = 0.0f;
+	CurrentFPSMode = bWantsToSprint ? EFPSMovementMode::Sprinting : EFPSMovementMode::Walking;
 }
 
 bool UFPSCharacterMovementComponent::TryMantle()

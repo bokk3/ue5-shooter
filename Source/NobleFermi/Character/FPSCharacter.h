@@ -88,39 +88,78 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
 	TObjectPtr<class UAnimSequence> AnimSprint;
 
-	// Tactical 3rd-Person Camera Settings
+	// Tactical 3rd-Person Over-The-Shoulder (OTS) Camera Settings (Phase 8A Spec)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	float DefaultArmLength = 175.0f;
+	float DefaultArmLength = 210.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	float ADSArmLength = 110.0f;
+	float ADSArmLength = 95.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	FVector RightShoulderOffset = FVector(0.0f, 48.0f, 25.0f);
+	FVector HipfireShoulderOffset = FVector(0.0f, 52.0f, 22.0f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	FVector LeftShoulderOffset = FVector(0.0f, -48.0f, 25.0f);
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	FVector ADSRightShoulderOffset = FVector(10.0f, 38.0f, 18.0f);
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	FVector ADSLeftShoulderOffset = FVector(10.0f, -38.0f, 18.0f);
+	FVector ADSShoulderOffset = FVector(0.0f, 34.0f, 16.0f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
 	float DefaultFOV = 90.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	float ADSFOV = 68.0f;
+	float ADSFOV = 62.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Camera")
 	bool bIsRightShoulder = true;
 
+	/** Smoothly interpolated between +1.0f (Right Shoulder) and -1.0f (Left Shoulder) at speed 10.0f */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Camera")
+	float ShoulderSideMultiplier = 1.0f;
+
+	/** Hybrid toggle (MiddleMouseButton while aiming): switches between 3rd-Person Tight OTS ADS and 1st-Person True Optic Red-Dot ADS */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Camera")
+	bool bUseFirstPersonOpticADS = false;
+
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Camera")
 	void ToggleShoulderSwap();
 
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Camera")
+	void ToggleOpticADSMode();
+
+	void OnMiddleMouseButtonPressed();
+	void OnMiddleMouseButtonReleased();
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Camera")
+	bool IsAiming() const;
+
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Camera")
 	bool IsRightShoulder() const { return bIsRightShoulder; }
+
+	// The Fermi Paradox Engine (Dive, Clone, Swap, Shatter Time)
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Fermi Engine")
+	void TriggerBallisticDive();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Fermi Engine")
+	void TriggerFermiEchoOrQuantumSwap();
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
+	bool IsBallisticDiving() const;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
+	bool IsFermiTimeBubbleActive() const;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
+	float GetFermiTimeBubbleRemaining() const;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
+	bool IsFermiDecoyActive() const;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
+	float GetFermiDecoyRemaining() const;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
+	float GetFermiDecoyCooldownRemaining() const { return FermiDecoyCooldownRemaining; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
+	float GetQuantumSwapFlashAlpha() const { return FMath::Clamp(QuantumSwapFlashTimer / 0.35f, 0.0f, 1.0f); }
 
 	// Actions
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
@@ -131,6 +170,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
 	void ThrowTactical();
+
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
 	void StartFire();
 
@@ -158,6 +198,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
 	void StopCrouchOrSlide();
 
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
+	void OnJumpOrDivePressed();
+
 	// Death Handling
 	UFUNCTION()
 	void HandleOnDeath(AActor* KillerActor);
@@ -175,14 +218,29 @@ private:
 	UPROPERTY()
 	TObjectPtr<UFPSHUDWidget> ActiveHUDWidget;
 
-	// Tactical Camera & Locomotion Updates
+	UPROPERTY()
+	TObjectPtr<class AFPSFermiTimeBubble> ActiveTimeBubble;
+
+	UPROPERTY()
+	TObjectPtr<class AFPSFermiDecoyActor> ActiveFermiDecoy;
+
+	// Tactical Camera, Dive Posture & Locomotion Updates
 	void UpdateThirdPersonCamera(float DeltaTime);
+	void UpdateBallisticDivePosture(float DeltaTime);
 	void UpdateProceduralCameraBob(float DeltaTime);
 	void UpdateWeaponSway(float DeltaTime);
 	void UpdateLocomotionAnimation(float DeltaTime);
 
 	UPROPERTY()
 	TObjectPtr<class UAnimSequence> CurrentLocomotionAnim;
+
+	FVector2D CurrentMoveInput = FVector2D::ZeroVector;
+	FRotator CurrentDiveMeshRotation = FRotator(0.0f, -90.0f, 0.0f);
+	float CurrentDiveMeshZOffset = -96.0f;
+	float FermiDecoyCooldownRemaining = 0.0f;
+	float QuantumSwapFlashTimer = 0.0f;
+	float LastCrouchPressTime = -10.0f;
+	bool bIsHoldingCrouchKey = false;
 
 	float BobTimer = 0.0f;
 	FVector DefaultCameraPos;

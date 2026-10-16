@@ -115,6 +115,19 @@ public:
 	float PlayerSpeed = 0.0f;
 	float HUDTimeSeconds = 0.0f;
 
+	// Fermi Paradox Engine Telemetry (Chrono Dive & Acoustic Echo / Quantum Swap)
+	bool bIsBallisticDiving = false;
+	bool bIsFermiTimeBubbleActive = false;
+	float FermiBubbleTimeRemaining = 0.0f;
+	float FermiDiveCooldownRemaining = 0.0f;
+	bool bCanBallisticDive = true;
+
+	bool bIsFermiDecoyActive = false;
+	float FermiDecoyTimeRemaining = 0.0f;
+	float FermiDecoyCooldownRemaining = 0.0f;
+	float QuantumSwapFlashAlpha = 0.0f;
+	bool bUseFirstPersonOpticADS = false;
+
 private:
 	UPROPERTY()
 	TWeakObjectPtr<AFPSCharacter> OwningCharacter;

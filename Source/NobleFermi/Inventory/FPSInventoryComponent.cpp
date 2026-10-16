@@ -68,12 +68,15 @@ void UFPSInventoryComponent::EquipSlot(int32 SlotIndex)
 	ActiveWeapon = TargetWeapon;
 	ActiveWeapon->SetActorHiddenInGame(false);
 
-	// Primary 3rd-person tactical weapon attachment: socket to character mesh right hand
+	// Primary 3rd-person tactical weapon attachment: socket to character mesh weapon_r bone socket
 	ACharacter* Char = Cast<ACharacter>(GetOwner());
 	if (Char && Char->GetMesh())
 	{
-		const bool bHasGripSocket = Char->GetMesh()->GetSkeletalMeshAsset() && Char->GetMesh()->DoesSocketExist(TEXT("GripPoint"));
-		const FName SocketName = bHasGripSocket ? FName(TEXT("GripPoint")) : FName(TEXT("hand_r"));
+		FName SocketName = FName(TEXT("weapon_r"));
+		if (Char->GetMesh()->GetSkeletalMeshAsset() && !Char->GetMesh()->DoesSocketExist(TEXT("weapon_r")))
+		{
+			SocketName = Char->GetMesh()->DoesSocketExist(TEXT("GripPoint")) ? FName(TEXT("GripPoint")) : FName(TEXT("hand_r"));
+		}
 		ActiveWeapon->AttachToComponent(Char->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
 		ActiveWeapon->SetActorRelativeLocation(ActiveWeapon->GetThirdPersonLocation());
 		ActiveWeapon->SetActorRelativeRotation(ActiveWeapon->GetThirdPersonRotation());

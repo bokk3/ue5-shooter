@@ -1,10 +1,13 @@
 #include "Character/FPSCharacter.h"
 #include "Character/FPSCharacterMovementComponent.h"
 #include "Combat/FPSHealthComponent.h"
+#include "Combat/FPSFermiTimeBubble.h"
+#include "Combat/FPSFermiDecoyActor.h"
 #include "Inventory/FPSInventoryComponent.h"
 #include "Combat/FPSEquipmentComponent.h"
 #include "BodyMechanics/FPSBodyMechanicsComponent.h"
 #include "Weapons/FPSWeaponBase.h"
+#include "Multiplayer/FPSPlayerState.h"
 #include "UI/FPSHUDWidget.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -14,6 +17,8 @@
 #include "Animation/AnimSequence.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/PlayerController.h"
+#include "InputCoreTypes.h"
+#include "Engine/World.h"
 
 AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UFPSCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -24,12 +29,12 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 
 	GetCapsuleComponent()->InitCapsuleSize(40.0f, 96.0f);
 
-	// Primary 3rd-Person Tactical Camera Boom
+	// Primary 3rd-Person Tactical Camera Boom (Phase 8A OTS Spec)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetCapsuleComponent());
 	CameraBoom->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
 	CameraBoom->TargetArmLength = DefaultArmLength;
-	CameraBoom->SocketOffset = RightShoulderOffset;
+	CameraBoom->SocketOffset = HipfireShoulderOffset;
 	CameraBoom->bUsePawnControlRotation = true;
 	CameraBoom->bInheritPitch = true;
 	CameraBoom->bInheritYaw = true;
@@ -37,7 +42,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	CameraBoom->bDoCollisionTest = true;
 	CameraBoom->ProbeSize = 12.0f;
 	CameraBoom->bEnableCameraLag = true;
-	CameraBoom->CameraLagSpeed = 16.0f;
+	CameraBoom->CameraLagSpeed = 18.0f;
 	CameraBoom->bEnableCameraRotationLag = true;
 	CameraBoom->CameraRotationLagSpeed = 24.0f;
 
@@ -87,12 +92,6 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	if (BaseMaleMeshFinder.Succeeded())
 	{
 		GetMesh()->SetSkeletalMesh(BaseMaleMeshFinder.Object);
-	}
-
-	static ConstructorHelpers::FObjectFinder<UPhysicsAsset> BaseMalePhysFinder(TEXT("/Game/Characters/BaseMale/SK_BaseMale_PhysicsAsset.SK_BaseMale_PhysicsAsset"));
-	if (BaseMalePhysFinder.Succeeded())
-	{
-		GetMesh()->SetPhysicsAsset(BaseMalePhysFinder.Object);
 	}
 
 	// Ballistic collision routing: root movement capsule ignores visibility trace so bullet line traces strike anatomical bone capsules directly
@@ -171,9 +170,52 @@ void AFPSCharacter::BeginPlay()
 		}
 	}
 
-	// Tactical Operator Material Configuration (Multi-zone Camo & Ripstop PBR)
+	// Tactical Operator Mesh & Animation Runtime Fallbacks + Material Configuration
 	if (GetMesh())
 	{
+		if (!GetMesh()->GetSkeletalMeshAsset())
+		{
+			USkeletalMesh* LoadedBaseMale = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Characters/BaseMale/SK_BaseMale.SK_BaseMale"));
+			if (LoadedBaseMale)
+			{
+				GetMesh()->SetSkeletalMesh(LoadedBaseMale);
+			}
+		}
+
+		if (!AnimIdleADS)
+		{
+			AnimIdleADS = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
+		}
+		if (!AnimWalk)
+		{
+			AnimWalk = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk.Anim_BaseMale_Walk"));
+		}
+		if (!AnimRun)
+		{
+			AnimRun = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Run.Anim_BaseMale_Run"));
+		}
+		if (!AnimSprint)
+		{
+			AnimSprint = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Sprint.Anim_BaseMale_Sprint"));
+		}
+
+		if (AnimIdleADS && !CurrentLocomotionAnim)
+		{
+			GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+			GetMesh()->SetAnimation(AnimIdleADS);
+			CurrentLocomotionAnim = AnimIdleADS;
+			GetMesh()->Play(true);
+		}
+
+		if (!GetMesh()->GetMaterial(0))
+		{
+			UMaterialInterface* BaseBodyMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
+			if (BaseBodyMat)
+			{
+				GetMesh()->SetMaterial(0, BaseBodyMat);
+			}
+		}
+
 		UMaterialInstanceDynamic* BodyMID = GetMesh()->CreateDynamicMaterialInstance(0);
 		if (BodyMID)
 		{
@@ -195,7 +237,19 @@ void AFPSCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UpdateThirdPersonCamera(DeltaTime);
+	// Track real-world cooldowns independent of CustomTimeDilation
+	const float RealDeltaTime = DeltaTime / FMath::Max(0.05f, CustomTimeDilation);
+	if (FermiDecoyCooldownRemaining > 0.0f)
+	{
+		FermiDecoyCooldownRemaining = FMath::Max(0.0f, FermiDecoyCooldownRemaining - RealDeltaTime);
+	}
+	if (QuantumSwapFlashTimer > 0.0f)
+	{
+		QuantumSwapFlashTimer = FMath::Max(0.0f, QuantumSwapFlashTimer - RealDeltaTime);
+	}
+
+	UpdateThirdPersonCamera(RealDeltaTime);
+	UpdateBallisticDivePosture(RealDeltaTime);
 	UpdateLocomotionAnimation(DeltaTime);
 
 	// Update HUD Crosshair with current weapon spread
@@ -205,7 +259,7 @@ void AFPSCharacter::Tick(float DeltaTime)
 		AFPSWeaponBase* Weapon = InventoryComponent->GetActiveWeapon();
 		if (Weapon)
 		{
-			// In ADS, crosshair collapses so operator aims via 3D reflex optic dot
+			// In ADS, crosshair collapses so operator aims via 3D optic / tight OTS sightline
 			const float Spread = bIsAiming ? 0.0f : Weapon->GetCurrentSpread();
 			ActiveHUDWidget->UpdateCrosshairSpread(Spread);
 		}
@@ -221,21 +275,283 @@ void AFPSCharacter::UpdateThirdPersonCamera(float DeltaTime)
 
 	const bool bIsAiming = (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights());
 
-	// Over-the-shoulder framing & smooth ADS zoom
-	const float TargetArmLength = bIsAiming ? ADSArmLength : DefaultArmLength;
-	const float TargetFOV = bIsAiming ? ADSFOV : DefaultFOV;
-	const FVector TargetSocketOffset = bIsRightShoulder ?
-		(bIsAiming ? ADSRightShoulderOffset : RightShoulderOffset) :
-		(bIsAiming ? ADSLeftShoulderOffset : LeftShoulderOffset);
+	// Smoothly interpolate ShoulderSideMultiplier between +1.0f (Right Shoulder) and -1.0f (Left Shoulder) at speed 10.0f
+	const float TargetShoulderSide = bIsRightShoulder ? 1.0f : -1.0f;
+	ShoulderSideMultiplier = FMath::FInterpTo(ShoulderSideMultiplier, TargetShoulderSide, DeltaTime, 10.0f);
+
+	float TargetArmLength = DefaultArmLength;
+	float TargetFOV = DefaultFOV;
+	FVector TargetSocketOffset = FVector(
+		HipfireShoulderOffset.X,
+		HipfireShoulderOffset.Y * ShoulderSideMultiplier,
+		HipfireShoulderOffset.Z
+	);
+
+	if (bIsAiming)
+	{
+		if (bUseFirstPersonOpticADS && !IsBallisticDiving())
+		{
+			// Hybrid 1st-Person True Optic Red-Dot ADS (TargetArmLength = 0.0f)
+			TargetArmLength = 0.0f;
+			TargetFOV = 55.0f;
+			TargetSocketOffset = FVector(28.0f, 12.0f * ShoulderSideMultiplier, 4.0f);
+		}
+		else
+		{
+			// Tight Over-The-Shoulder ADS Zoom (ArmLength = 95.0f, Offset = (0, 34*Side, 16), FOV = 62.0f)
+			TargetArmLength = ADSArmLength;
+			TargetFOV = ADSFOV;
+			TargetSocketOffset = FVector(
+				ADSShoulderOffset.X,
+				ADSShoulderOffset.Y * ShoulderSideMultiplier,
+				ADSShoulderOffset.Z
+			);
+		}
+	}
+	else if (IsBallisticDiving())
+	{
+		// Slightly wider cinematic framing during Max Payne ballistic dive
+		TargetArmLength = 225.0f;
+		TargetFOV = 94.0f;
+	}
 
 	CameraBoom->TargetArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, TargetArmLength, DeltaTime, 14.0f);
 	CameraBoom->SocketOffset = FMath::VInterpTo(CameraBoom->SocketOffset, TargetSocketOffset, DeltaTime, 14.0f);
 	FollowCamera->SetFieldOfView(FMath::FInterpTo(FollowCamera->FieldOfView, TargetFOV, DeltaTime, 16.0f));
 }
 
+void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
+{
+	if (!GetMesh() || bIsDead)
+	{
+		return;
+	}
+
+	FRotator TargetMeshRot = FRotator(0.0f, -90.0f, 0.0f);
+	float TargetZOffset = -96.0f;
+
+	if (FPSMovementComponent && FPSMovementComponent->IsBallisticDiving())
+	{
+		// Compute dive direction relative to current character aim yaw so the 21-bone mesh tilts 75 deg into the world dive vector
+		// while allowing full 360-degree aiming & firing mid-air!
+		const FVector DiveDir2D = FPSMovementComponent->GetBallisticDiveDirection().GetSafeNormal2D();
+		const FVector CharForward2D = GetActorForwardVector().GetSafeNormal2D();
+		const FVector CharRight2D = GetActorRightVector().GetSafeNormal2D();
+
+		const float ForwardDot = FVector::DotProduct(DiveDir2D, CharForward2D);
+		const float RightDot = FVector::DotProduct(DiveDir2D, CharRight2D);
+
+		// Note: Mesh has a base Yaw of -90 deg (so local +Y is character Forward, local +X is character Right)
+		// In Unreal FRotator(Pitch, Yaw, Roll) with Yaw = -90:
+		// Roll tilts the character forward/backward along their facing axis, Pitch tilts them side-to-side!
+		const float DiveTiltDeg = FPSMovementComponent->IsInDiveLandingSlide() ? 78.0f : 72.0f;
+		const float TargetRoll = ForwardDot * DiveTiltDeg;
+		const float TargetPitch = -RightDot * DiveTiltDeg;
+
+		TargetMeshRot = FRotator(TargetPitch, -90.0f, TargetRoll);
+		TargetZOffset = FPSMovementComponent->IsInDiveLandingSlide() ? -68.0f : -58.0f;
+	}
+	else
+	{
+		// Subtle upper-body pitch inclination when aiming up/down in standard stance
+		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
+		TargetMeshRot = FRotator(0.0f, -90.0f, FMath::Clamp(-AimPitch * 0.18f, -12.0f, 12.0f));
+	}
+
+	CurrentDiveMeshRotation = FMath::RInterpTo(CurrentDiveMeshRotation, TargetMeshRot, DeltaTime, 14.0f);
+	CurrentDiveMeshZOffset = FMath::FInterpTo(CurrentDiveMeshZOffset, TargetZOffset, DeltaTime, 14.0f);
+
+	GetMesh()->SetRelativeRotation(CurrentDiveMeshRotation);
+	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, CurrentDiveMeshZOffset));
+}
+
 void AFPSCharacter::ToggleShoulderSwap()
 {
 	bIsRightShoulder = !bIsRightShoulder;
+}
+
+void AFPSCharacter::ToggleOpticADSMode()
+{
+	bUseFirstPersonOpticADS = !bUseFirstPersonOpticADS;
+}
+
+bool AFPSCharacter::IsAiming() const
+{
+	return InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights();
+}
+
+void AFPSCharacter::OnMiddleMouseButtonPressed()
+{
+	if (IsAiming())
+	{
+		ToggleOpticADSMode();
+	}
+	else
+	{
+		StartCookingLethal();
+	}
+}
+
+void AFPSCharacter::OnMiddleMouseButtonReleased()
+{
+	if (!IsAiming())
+	{
+		ReleaseLethal();
+	}
+}
+
+
+
+bool AFPSCharacter::IsBallisticDiving() const
+{
+	return FPSMovementComponent && FPSMovementComponent->IsBallisticDiving();
+}
+
+bool AFPSCharacter::IsFermiTimeBubbleActive() const
+{
+	return ActiveTimeBubble && IsValid(ActiveTimeBubble) && ActiveTimeBubble->GetRemainingTime() > 0.0f;
+}
+
+float AFPSCharacter::GetFermiTimeBubbleRemaining() const
+{
+	return (ActiveTimeBubble && IsValid(ActiveTimeBubble)) ? ActiveTimeBubble->GetRemainingTime() : 0.0f;
+}
+
+bool AFPSCharacter::IsFermiDecoyActive() const
+{
+	return ActiveFermiDecoy && IsValid(ActiveFermiDecoy) && ActiveFermiDecoy->GetRemainingLifetime() > 0.0f;
+}
+
+float AFPSCharacter::GetFermiDecoyRemaining() const
+{
+	return (ActiveFermiDecoy && IsValid(ActiveFermiDecoy)) ? ActiveFermiDecoy->GetRemainingLifetime() : 0.0f;
+}
+
+void AFPSCharacter::TriggerBallisticDive()
+{
+	if (!FPSMovementComponent || bIsDead)
+	{
+		return;
+	}
+
+	// Determine desired world dive vector from WASD input (or forward vector if neutral)
+	FVector DesiredDiveDir = (GetActorForwardVector() * CurrentMoveInput.X) + (GetActorRightVector() * CurrentMoveInput.Y);
+	if (DesiredDiveDir.SizeSquared2D() < 0.05f)
+	{
+		DesiredDiveDir = GetVelocity().Size2D() > 30.0f ? GetVelocity().GetSafeNormal2D() : GetActorForwardVector();
+	}
+
+	if (FPSMovementComponent->TryStartBallisticDive(DesiredDiveDir))
+	{
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			if (ActiveTimeBubble && IsValid(ActiveTimeBubble))
+			{
+				ActiveTimeBubble->Destroy();
+			}
+
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SpawnParams.Instigator = this;
+			ActiveTimeBubble = World->SpawnActor<AFPSFermiTimeBubble>(AFPSFermiTimeBubble::StaticClass(), GetActorLocation(), FRotator::ZeroRotator, SpawnParams);
+			if (ActiveTimeBubble)
+			{
+				ActiveTimeBubble->AttachToActor(this, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+			}
+
+			// If an Acoustic Fermi Echo decoy is active on the field, expand a secondary Fermi Time Bubble around the decoy too!
+			if (IsFermiDecoyActive())
+			{
+				ActiveFermiDecoy->SpawnSecondaryTimeBubble();
+			}
+		}
+	}
+}
+
+void AFPSCharacter::TriggerFermiEchoOrQuantumSwap()
+{
+	if (bIsDead)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// CASE 1: Active Fermi Echo exists -> Execute Instant Quantum Phase-Swap!
+	if (IsFermiDecoyActive())
+	{
+		const FVector PlayerOldLoc = GetActorLocation();
+		const FRotator PlayerControlRot = GetControlRotation();
+		const FVector DecoyLoc = ActiveFermiDecoy->GetActorLocation();
+
+		// Preserve ballistic dive velocity magnitude and re-project along current aim yaw if diving, or keep velocity
+		const FVector OldVelocity = GetVelocity();
+		const float HorizSpeed = OldVelocity.Size2D();
+
+		// Swap world coordinates
+		SetActorLocation(DecoyLoc, false, nullptr, ETeleportType::TeleportPhysics);
+		ActiveFermiDecoy->SetActorLocation(PlayerOldLoc, false, nullptr, ETeleportType::TeleportPhysics);
+
+		if (FPSMovementComponent)
+		{
+			if (FPSMovementComponent->IsBallisticDiving())
+			{
+				const FVector NewDiveDir = PlayerControlRot.Vector().GetSafeNormal2D();
+				FPSMovementComponent->Velocity = NewDiveDir * FMath::Max(HorizSpeed, 620.0f) + FVector(0.0f, 0.0f, FMath::Max(OldVelocity.Z, 180.0f));
+			}
+			else
+			{
+				FPSMovementComponent->Velocity = OldVelocity;
+			}
+		}
+
+		// Trigger Quantum Phase-Swap visor flash on HUD
+		QuantumSwapFlashTimer = 0.35f;
+		return;
+	}
+
+	// CASE 2: No active Fermi Echo -> Deploy Autonomous Acoustic Hologram Clone (if off cooldown)
+	if (FermiDecoyCooldownRemaining > 0.0f)
+	{
+		return;
+	}
+
+	FVector DeployDir = GetControlRotation().Vector().GetSafeNormal2D();
+	if (DeployDir.IsNearlyZero())
+	{
+		DeployDir = GetActorForwardVector().GetSafeNormal2D();
+	}
+
+	// Offset slightly toward the active shoulder side so the decoy sprints out past cover
+	const FVector SpawnLoc = GetActorLocation() + DeployDir * 65.0f + GetActorRightVector() * (35.0f * ShoulderSideMultiplier);
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ActiveFermiDecoy = World->SpawnActor<AFPSFermiDecoyActor>(AFPSFermiDecoyActor::StaticClass(), SpawnLoc, DeployDir.Rotation(), SpawnParams);
+	if (ActiveFermiDecoy)
+	{
+		EFPSPlayerTeam MyTeam = EFPSPlayerTeam::Alpha;
+		if (AFPSPlayerState* PS = GetPlayerState<AFPSPlayerState>())
+		{
+			MyTeam = PS->GetPlayerTeam();
+		}
+		ActiveFermiDecoy->InitializeDecoy(DeployDir, MyTeam);
+		FermiDecoyCooldownRemaining = 8.0f;
+
+		// If the player is already mid-dive when deploying the decoy, immediately project its secondary time bubble
+		if (IsBallisticDiving())
+		{
+			ActiveFermiDecoy->SpawnSecondaryTimeBubble();
+		}
+	}
 }
 
 void AFPSCharacter::HandleOnDeath(AActor* KillerActor)
@@ -245,6 +561,18 @@ void AFPSCharacter::HandleOnDeath(AActor* KillerActor)
 		return;
 	}
 	bIsDead = true;
+
+	CustomTimeDilation = 1.0f;
+	if (ActiveTimeBubble && IsValid(ActiveTimeBubble))
+	{
+		ActiveTimeBubble->Destroy();
+		ActiveTimeBubble = nullptr;
+	}
+	if (ActiveFermiDecoy && IsValid(ActiveFermiDecoy))
+	{
+		ActiveFermiDecoy->Destroy();
+		ActiveFermiDecoy = nullptr;
+	}
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
@@ -350,7 +678,13 @@ void AFPSCharacter::UpdateLocomotionAnimation(float DeltaTime)
 	UAnimSequence* TargetAnim = AnimIdleADS;
 	float PlayRate = 1.0f;
 
-	if (FPSMovementComponent && FPSMovementComponent->IsTacticalSprinting() && Speed > 280.0f)
+	if (IsBallisticDiving())
+	{
+		// Lock upper body and hands into high-ready aimed posture during mid-air ballistic dive
+		TargetAnim = AnimIdleADS;
+		PlayRate = 0.5f;
+	}
+	else if (FPSMovementComponent && FPSMovementComponent->IsTacticalSprinting() && Speed > 280.0f)
 	{
 		TargetAnim = AnimSprint ? AnimSprint : AnimRun;
 		PlayRate = FMath::Clamp(Speed / 520.0f, 0.85f, 1.35f);
@@ -393,7 +727,7 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAxis(TEXT("Turn"), this, &AFPSCharacter::Turn);
 	PlayerInputComponent->BindAxis(TEXT("LookUp"), this, &AFPSCharacter::LookUp);
 
-	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &AFPSCharacter::OnJumpOrDivePressed);
 	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Pressed, this, &AFPSCharacter::StartFire);
@@ -411,10 +745,22 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction(TEXT("Crouch"), IE_Released, this, &AFPSCharacter::StopCrouchOrSlide);
 
 	PlayerInputComponent->BindAction(TEXT("ShoulderSwap"), IE_Pressed, this, &AFPSCharacter::ToggleShoulderSwap);
+
+	// The Fermi Paradox Engine Bindings
+	PlayerInputComponent->BindAction(TEXT("BallisticDive"), IE_Pressed, this, &AFPSCharacter::TriggerBallisticDive);
+	PlayerInputComponent->BindKey(EKeys::LeftAlt, IE_Pressed, this, &AFPSCharacter::TriggerBallisticDive);
+	PlayerInputComponent->BindAction(TEXT("Tactical"), IE_Pressed, this, &AFPSCharacter::TriggerFermiEchoOrQuantumSwap);
+	PlayerInputComponent->BindAction(TEXT("Lethal"), IE_Pressed, this, &AFPSCharacter::StartCookingLethal);
+	PlayerInputComponent->BindAction(TEXT("Lethal"), IE_Released, this, &AFPSCharacter::ReleaseLethal);
+	PlayerInputComponent->BindAction(TEXT("ToggleOpticADS"), IE_Pressed, this, &AFPSCharacter::OnMiddleMouseButtonPressed);
+	PlayerInputComponent->BindAction(TEXT("ToggleOpticADS"), IE_Released, this, &AFPSCharacter::OnMiddleMouseButtonReleased);
+	PlayerInputComponent->BindKey(EKeys::MiddleMouseButton, IE_Pressed, this, &AFPSCharacter::OnMiddleMouseButtonPressed);
+	PlayerInputComponent->BindKey(EKeys::MiddleMouseButton, IE_Released, this, &AFPSCharacter::OnMiddleMouseButtonReleased);
 }
 
 void AFPSCharacter::MoveForward(float Value)
 {
+	CurrentMoveInput.X = Value;
 	if (Value != 0.0f)
 	{
 		AddMovementInput(GetActorForwardVector(), Value);
@@ -423,6 +769,7 @@ void AFPSCharacter::MoveForward(float Value)
 
 void AFPSCharacter::MoveRight(float Value)
 {
+	CurrentMoveInput.Y = Value;
 	if (Value != 0.0f)
 	{
 		AddMovementInput(GetActorRightVector(), Value);
@@ -436,7 +783,9 @@ void AFPSCharacter::Turn(float Rate)
 	{
 		SensMod = 0.65f;
 	}
-	AddControllerYawInput(Rate * SensMod);
+	// Preserve crisp 1:1 mouse aiming responsiveness even when CustomTimeDilation = 0.55f inside the Fermi Time Bubble
+	const float DilationComp = 1.0f / FMath::Max(0.15f, CustomTimeDilation);
+	AddControllerYawInput(Rate * SensMod * DilationComp);
 }
 
 void AFPSCharacter::LookUp(float Rate)
@@ -446,7 +795,8 @@ void AFPSCharacter::LookUp(float Rate)
 	{
 		SensMod = 0.65f;
 	}
-	AddControllerPitchInput(Rate * SensMod);
+	const float DilationComp = 1.0f / FMath::Max(0.15f, CustomTimeDilation);
+	AddControllerPitchInput(Rate * SensMod * DilationComp);
 }
 
 void AFPSCharacter::StartFire()
@@ -513,6 +863,20 @@ void AFPSCharacter::StopSprint()
 
 void AFPSCharacter::StartCrouchOrSlide()
 {
+	bIsHoldingCrouchKey = true;
+
+	UWorld* World = GetWorld();
+	const float Now = World ? World->GetRealTimeSeconds() : 0.0f;
+	const bool bIsDoubleTapCrouch = (Now - LastCrouchPressTime) <= 0.32f;
+	LastCrouchPressTime = Now;
+
+	// Double-tap C while moving in any WASD direction triggers Omnidirectional Ballistic Dive!
+	if (bIsDoubleTapCrouch && (CurrentMoveInput.SizeSquared() > 0.05f || GetVelocity().Size2D() > 120.0f))
+	{
+		TriggerBallisticDive();
+		return;
+	}
+
 	if (FPSMovementComponent)
 	{
 		if (FPSMovementComponent->IsTacticalSprinting())
@@ -528,6 +892,7 @@ void AFPSCharacter::StartCrouchOrSlide()
 
 void AFPSCharacter::StopCrouchOrSlide()
 {
+	bIsHoldingCrouchKey = false;
 	if (FPSMovementComponent)
 	{
 		if (FPSMovementComponent->IsSliding())
@@ -541,8 +906,31 @@ void AFPSCharacter::StopCrouchOrSlide()
 	}
 }
 
+void AFPSCharacter::OnJumpOrDivePressed()
+{
+	// Pressing Spacebar while holding LeftControl/C and moving triggers Max Payne Omnidirectional Dive
+	if (bIsHoldingCrouchKey && (CurrentMoveInput.SizeSquared() > 0.05f || GetVelocity().Size2D() > 80.0f))
+	{
+		TriggerBallisticDive();
+		return;
+	}
+	Jump();
+}
+
 void AFPSCharacter::StartCookingLethal()
 {
+	// Optional Toggle from Prompt A: Pressing MiddleMouseButton while aiming toggles between 3rd-Person Tight OTS ADS and 1st-Person True Optic ADS
+	const bool bIsAiming = (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights());
+	if (bIsAiming)
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC && PC->WasInputKeyJustPressed(EKeys::MiddleMouseButton))
+		{
+			bUseFirstPersonOpticADS = !bUseFirstPersonOpticADS;
+			return;
+		}
+	}
+
 	if (EquipmentComponent)
 	{
 		EquipmentComponent->StartCookingLethal();
@@ -551,7 +939,7 @@ void AFPSCharacter::StartCookingLethal()
 
 void AFPSCharacter::ReleaseLethal()
 {
-	if (EquipmentComponent)
+	if (EquipmentComponent && EquipmentComponent->IsCookingFrag())
 	{
 		EquipmentComponent->ReleaseAndThrowLethal();
 	}
@@ -559,8 +947,5 @@ void AFPSCharacter::ReleaseLethal()
 
 void AFPSCharacter::ThrowTactical()
 {
-	if (EquipmentComponent)
-	{
-		EquipmentComponent->ThrowTactical();
-	}
+	TriggerFermiEchoOrQuantumSwap();
 }

@@ -147,6 +147,17 @@ Any engineer or AI agent working on this codebase must adhere strictly to these 
   - Weapon hand socketing: NF-98 Carbine attached directly to operator right hand (`hand_r`) with procedural recoil and 4-phase reload retained.
   - Authoritative death ragdoll: Disables movement and capsule collision, wakes all 21 physics bodies, and smoothly attaches camera boom to pelvis without jarring cuts.
 
+- **Step 5: 3D AK-47 Rifle (`SM_AK47`) & IK-to-FK Baked Stances**:
+  - Generated 3D AK-47 model (`SM_AK47.uasset`) with stamped steel receiver, wooden buttstock/handguard/pistol grip, and curved Bakelite magazine (`M_AK47_Steel`, `M_AK47_Wood`, `M_AK47_Bakelite`).
+  - Added dedicated `weapon_r` bone socket on `SK_BaseMale` (`hand_r` child) and baked exact two-handed IK contact poses onto pure FK bone rotations across `Anim_BaseMale_Idle_ADS`, `Anim_BaseMale_LowReady`, `Anim_BaseMale_Walk`, `Anim_BaseMale_Run`, and `Anim_BaseMale_Sprint`.
+  - Integrated `[ AIMED ADS ]`, `[ LOW READY ]`, and `[ WALK ANIM ]` stance controls in the `02. OPERATOR // CUSTOMISATION` menu tab.
+- **Step 6 (Phase 8A & 8B): "The Fermi Paradox Engine" (Dive, Clone, Swap, Shatter Time)**:
+  - **3rd-Person OTS Camera Overhaul**: `DefaultArmLength = 210.0f`, `ADSArmLength = 95.0f`, smooth `ShoulderSideMultiplier` interpolation (`V` key), `62°` tight OTS ADS FOV, and hybrid toggle (`MiddleMouseButton` while aiming) into `1st-Person True Optic ADS` (`TargetArmLength = 0.0f`).
+  - **Max Payne Omnidirectional Ballistic Dive (`LeftAlt` / `Move+C`)**: Launches operator at `820 cm/s` horizontal + `340 cm/s` vertical (`35.0f` stamina cost), tilts the 21-bone body `75°` into the dive direction (chest-down forward, supine backward, side-roll left/right) with full `360°` mid-air aiming/firing, and transitions into a `0.45s` kinetic ground slide on landing.
+  - **Localized Fermi Time-Dilation Bubble (`AFPSFermiTimeBubble`)**: `4.5m` (`450 cm`) radius chrono sphere lasting `2.4s`, slowing enemy pawns and projectiles inside to `0.25x` (`CustomTimeDilation = 0.25f`) while granting the diving operator `0.55x` reflex speed with inverse time-dilation mouse compensation and physicalized `AFPSBallisticTracer` brass slugs (`2,800 cm/s`).
+  - **"Fermi Echo" Acoustic Hologram Decoy & Mid-Air Quantum Swap (`AFPSFermiDecoyActor`, `Q` key)**: Deploys a phosphor-cyan `SK_BaseMale` hologram sprinting at `680 cm/s` and broadcasting unsuppressed gunfire pings to `UFPSRadarSubsystem`. Pressing `Q` again while active executes an instant **Quantum Phase-Swap**, exchanging world positions and conserving/redirecting dive momentum along the player's sightline.
+  - **Slate HUD Chrono & Echo Telemetry**: Added the `FERMI DIVE // CHRONO FIELD` status bar, `[Q] QUANTUM SWAP READY` indicator, peripheral cyan time-dilation vignette, and `CHRONO FIELD // 0.25x c` digital chronometer to `SFPSHUDWidget`.
+
 ---
 
 ## 4. Codebase Architecture & File Inventory
@@ -159,12 +170,15 @@ Source/NobleFermi/
 │   ├── FPSHumanBones.h / .cpp              # 21-bone male hierarchy, anthropometry, mass distribution
 │   └── FPSBodyMechanicsComponent.h / .cpp  # 2nd-order spring aim punch, flinch, IK, limb trauma
 ├── Character/
-│   ├── FPSCharacter.h / .cpp               # Authoritative player pawn (movement, ADS, camera, vitals)
-│   ├── FPSCharacterMovementComponent.h/.cpp# Tactical sprint, 100 max stamina, drain & regen rates
-│   └── FPSCharacterPreviewActor.h / .cpp   # 3D turntable operator actor (camo, stance, studio lights)
+│   ├── FPSCharacter.h / .cpp               # Authoritative player pawn (3P OTS, Ballistic Dive, Quantum Swap)
+│   ├── FPSCharacterMovementComponent.h/.cpp# Tactical sprint, slide, Max Payne Omnidirectional Ballistic Dive
+│   └── FPSCharacterPreviewActor.h / .cpp   # 3D turntable operator actor (AK-47 stances, camo, studio lights)
 ├── Combat/
-│   ├── FPSCombatInterface.h                # Impact dispatch contract
-│   ├── FPSDamageType.h / .cpp              # Ballistic penetration & kinetic transfer flags
+│   ├── FPSFermiTimeBubble.h / .cpp         # Localized 4.5m Chrono-Dilation Field (0.25x enemies, 0.55x owner)
+│   ├── FPSFermiDecoyActor.h / .cpp         # Autonomous Acoustic Hologram Clone & Quantum Phase-Swap anchor
+│   ├── FPSBallisticTracer.h / .cpp         # Physicalized 2,800 cm/s slow-motion brass projectiles & wake trails
+│   ├── FPSEquipmentComponent.h / .cpp      # Lethal frag cooking & tactical ordnance
+│   ├── FPSProjectileBase.h / .cpp          # Grenade & ordnance physics
 │   └── FPSHealthComponent.h / .cpp         # Health (100), Level IV Armor Shield (100), damage zoning
 ├── Game/
 │   ├── FPSGameMode.h / .cpp                # Match lifecycle, 128-tick configuration, team management
@@ -180,14 +194,15 @@ Source/NobleFermi/
 ├── Radar/
 │   └── FPSRadarSubsystem.h / .cpp          # Acoustic gunfire detection & radar ping dispatcher
 ├── UI/
-│   ├── FPSHUDWidget.h / .cpp               # In-Game Tactical HUD (Minimap, Compass, Vitals, Ammo)
-│   ├── MainMenuWidget.h / .cpp             # Full-screen military start menu & customizer
+│   ├── FPSHUDWidget.h / .cpp               # In-Game AR Visor HUD (Minimap, Compass, Vitals, Fermi Chrono Field)
+│   ├── MainMenuWidget.h / .cpp             # Full-screen military start menu & 3D stance/camo customizer
 │   ├── FPSPauseMenuWidget.h / .cpp         # In-game escape pause menu & settings
 │   └── SettingsMenuWidget.h / .cpp         # Video, audio, mouse sensitivity configuration
 └── Weapons/
-    ├── FPSWeaponBase.h / .cpp              # NF-98 Carbine model, procedural ADS, 4-phase reload
+    ├── FPSWeaponBase.h / .cpp              # 3D SM_AK47 rifle, procedural ADS, 4-phase reload, tracer spawning
+    ├── FPSDilatedBulletActor.h / .cpp      # Piecewise hitscan-to-slug physical bullet actor (1,400 cm/s)
     ├── FPSGunsmithComponent.h / .cpp       # Modular attachment slots (barrel, optic, mag, muzzle)
-    └── FPSInventoryComponent.h / .cpp      # Weapon inventory & switching logic
+    └── FPSInventoryComponent.h / .cpp      # Weapon inventory & weapon_r bone socket attachment
 ```
 
 ---
@@ -227,7 +242,7 @@ The next development milestones to prioritize:
 *Copy and paste the exact block below to immediately onboard any new AI coding agent into the project:*
 
 ```markdown
-You are an expert Unreal Engine 5.8 C++ systems engineer working on **Noble Fermi**, a competitive tactical first-person shooter inspired by classic Call of Duty: Modern Warfare 2 (2009).
+You are an expert Unreal Engine 5.8 C++ systems engineer working on **Noble Fermi**, a competitive 3rd-person tactical shooter featuring "The Fermi Paradox Engine" (Omnidirectional Ballistic Dives, Localized Time-Dilation Bubbles, Acoustic Hologram Decoys, and Mid-Air Quantum Phase-Swapping).
 
 ### Project Context & Environment
 - **Engine**: Unreal Engine 5.8 custom source build located at `D:\epuc\UE_5.8`.
@@ -238,19 +253,15 @@ You are an expert Unreal Engine 5.8 C++ systems engineer working on **Noble Ferm
 - **Dedicated Server**: `Launch_DedicatedServer.bat` (runs headless on port 7777 at 128 Hz tickrate).
 
 ### Core Architectural Principles
-1. **Primary Tactical 3rd-Person Perspective**: Visceral over-the-shoulder framing (`CameraBoom` + `FollowCamera`), 12cm collision probe radius, smooth camera lag, shoulder swapping (key `V`), tight ADS zoom, and full anatomical body visibility (`SK_BaseMale`).
-2. **Authoritative 128-Tick Networking**: High-frequency physics, lag compensation rewind, and client prediction across both headless dedicated VPS servers and client listen rooms (`?listen`).
-3. **Human Male Anatomical Mechanics**: 21-bone hierarchy (`FPSHumanBones.h`), 180 cm / 82 kg anthropometry, Level IV ceramic plates covering `spine_02`/`spine_03`, and 2nd-order spring aim punch flinch equations (`FPSBodyMechanicsComponent.h`).
-4. **Hardware-Accelerated Slate C++ UI**: Pure C++ Slate rendering (`MainMenuWidget.h`, `FPSHUDWidget.h` / `SFPSHUDWidget`). Zero webview or heavy UMG overhead. All HUD elements (minimap, compass tape, stamina, vitals, ammo) use `FSlateDrawElement`.
-5. **Procedural C++ Construction**: The combat map (`AFPSCombatArenaMapActor` - Rust Tactical 60m x 60m) and weapon geometry (`AFPSWeaponBase` - NF-98 Tactical Carbine) are generated procedurally in C++, requiring zero editor GUI dependency.
-6. **Pure Dynamic Lumen Lighting & Locked Exposure**: Static lightmass baking is permanently disabled (`r.AllowStaticLighting=False`). Camera exposure is strictly locked to prevent whiteout.
-
-### Current Implemented State
-- **Perspective**: Tactical over-the-shoulder 3rd-person camera with camera lag, shoulder swap (`V`), ADS tight zoom (110cm arm length, 68° FOV), and direct right-hand weapon socketing (`hand_r`).
-- **Character**: 180cm / 82kg adult male model (`SK_BaseMale`) with 21-bone skeletal hierarchy, authoritative ragdoll physics asset, 4 locomotion animations with stride matching, and PBR ripstop multi-zone camouflage.
-- **Weaponry**: NF-98 Carbine attached directly to right hand (`hand_r`) with procedural recoil kick, inertia sway, and a deterministic 4-phase reload timeline (cant & dip, mag drop, fresh insert & palm slap, bolt release).
-- **Arena**: "Rust Tactical" 60m x 60m arena with 3 tactical lanes (Container Yard shoot-thru tunnel, 12m Oil Derrick tower catwalks & sniper nest, Pipeline trench & bunker), 8 anti-spawn-trap spawns, and Domination flags A/B/C.
-- **Tactical HUD**: Circular minimap with 25m/50m range rings and 120°/s rotating radar sweep; 90° FOV horizontal radar compass tape with cardinal points and digital heading ticker; operator vitals with Level IV ceramic shield, health, and tactical stamina sprint meter (18/s drain, 28/s regen, exhaustion lock); digital ammo counter with reserve and reload status; dynamic reticle and kinetic hitmarkers.
+1. **Primary Tactical 3rd-Person OTS Perspective**: Visceral over-the-shoulder framing (`CameraBoom` 210cm hipfire -> 95cm tight OTS ADS at 62° FOV, plus `MiddleMouseButton` hybrid toggle to 1st-Person Optic ADS), 12cm collision probe radius, smooth camera lag, smooth shoulder swapping (key `V`), and full anatomical body visibility (`SK_BaseMale` holding `SM_AK47` on socket `weapon_r`).
+2. **The Fermi Paradox Engine**:
+   - **Max Payne Omnidirectional Ballistic Dive (`LeftAlt` / `Move+C`)**: Launches at 820 cm/s horiz + 340 cm/s vert, tilts the 21-bone operator 75° into the dive vector with full 360° aiming, and lands in a 0.45s kinetic slide.
+   - **Localized Fermi Time-Dilation Bubble (`AFPSFermiTimeBubble`)**: 4.5m sphere lasting 2.4s (0.25x enemy speed, 0.55x owner reflex speed, 2,800 cm/s physicalized `AFPSBallisticTracer` brass rounds).
+   - **Acoustic Fermi Echo & Mid-Air Quantum Swap (`AFPSFermiDecoyActor`, `Q` key)**: Deploys a phosphor-cyan `SK_BaseMale` hologram sprinting at 680 cm/s and spoofing radar gunfire; pressing `Q` again swaps world transforms while conserving dive momentum.
+3. **Authoritative 128-Tick Networking**: High-frequency physics, lag compensation rewind, and client prediction across both headless dedicated VPS servers and client listen rooms (`?listen`).
+4. **Human Male Anatomical Mechanics**: 21-bone hierarchy (`FPSHumanBones.h`), 180 cm / 82 kg anthropometry, Level IV ceramic plates covering `spine_02`/`spine_03`, and 2nd-order spring aim punch flinch equations (`FPSBodyMechanicsComponent.h`).
+5. **Hardware-Accelerated Slate C++ UI**: Pure C++ Slate rendering (`MainMenuWidget.h`, `FPSHUDWidget.h` / `SFPSHUDWidget`). Zero webview or heavy UMG overhead.
+6. **Pure Dynamic Lumen Lighting & Locked Exposure**: Static lightmass baking is permanently disabled (`r.AllowStaticLighting=False`). Camera exposure is strictly locked (`AEM_Manual`) to prevent whiteout.
 
 ### Standard Build & Deploy Command
 Always compile with:
@@ -262,3 +273,4 @@ if (Test-Path "Binaries\Win64\NobleFermi.pdb") { Copy-Item -Path "Binaries\Win64
 
 When building new features, maintain clean separation of concerns, preserve documentation, respect the existing code style, and ensure the game is fully launchable via `Launch_Menu.bat`.
 ```
+

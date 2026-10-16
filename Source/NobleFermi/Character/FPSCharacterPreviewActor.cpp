@@ -127,23 +127,30 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 		UE_LOG(LogTemp, Warning, TEXT("[PREVIEW_ACTOR] Constructor: BaseMaleFinder FAILED"));
 	}
 
-	static ConstructorHelpers::FObjectFinder<UPhysicsAsset> BaseMalePhysFinder(TEXT("/Game/Characters/BaseMale/SK_BaseMale_PhysicsAsset.SK_BaseMale_PhysicsAsset"));
-	if (BaseMalePhysFinder.Succeeded())
-	{
-		BodyMesh->SetPhysicsAsset(BaseMalePhysFinder.Object);
-	}
-
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
 	if (IdleAnimFinder.Succeeded())
 	{
+		AnimIdleADS = IdleAnimFinder.Object;
 		BodyMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		BodyMesh->SetAnimation(IdleAnimFinder.Object);
+		BodyMesh->SetAnimation(AnimIdleADS);
 		BodyMesh->Play(true);
 		UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] Constructor: IdleAnimFinder succeeded: %s"), *IdleAnimFinder.Object->GetName());
 	}
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[PREVIEW_ACTOR] Constructor: IdleAnimFinder FAILED"));
+	}
+
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> LowReadyAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_LowReady.Anim_BaseMale_LowReady"));
+	if (LowReadyAnimFinder.Succeeded())
+	{
+		AnimLowReady = LowReadyAnimFinder.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> WalkAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk.Anim_BaseMale_Walk"));
+	if (WalkAnimFinder.Succeeded())
+	{
+		AnimWalk = WalkAnimFinder.Object;
 	}
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseBodyMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
@@ -156,6 +163,28 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[PREVIEW_ACTOR] Constructor: BaseBodyMatFinder FAILED"));
 	}
+
+	// 5.6 AK-47 Rifle Substitute Mesh (SM_AK47 attached directly to weapon_r bone socket on BodyMesh)
+	AK47Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AK47Mesh"));
+	AK47Mesh->SetupAttachment(BodyMesh, TEXT("weapon_r"));
+	AK47Mesh->SetRelativeLocation(FVector::ZeroVector);
+	AK47Mesh->SetRelativeRotation(FRotator::ZeroRotator);
+	AK47Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AK47Mesh->SetCastShadow(true);
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> AK47MeshFinder(TEXT("/Game/Characters/BaseMale/SM_AK47.SM_AK47"));
+	if (AK47MeshFinder.Succeeded())
+	{
+		AK47Mesh->SetStaticMesh(AK47MeshFinder.Object);
+		UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] Constructor: AK47MeshFinder succeeded: %s"), *AK47MeshFinder.Object->GetName());
+	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKSteelMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKWoodMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKBakeliteMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"));
+	if (AKSteelMatFinder.Succeeded()) AK47Mesh->SetMaterial(0, AKSteelMatFinder.Object);
+	if (AKWoodMatFinder.Succeeded()) AK47Mesh->SetMaterial(1, AKWoodMatFinder.Object);
+	if (AKBakeliteMatFinder.Succeeded()) AK47Mesh->SetMaterial(2, AKBakeliteMatFinder.Object);
 
 	// 6. Turntable Pedestal
 	SetupMeshComp(PedestalMesh, TEXT("PedestalMesh"), CylinderMesh, FVector(0.0f, 0.0f, -2.0f), FRotator::ZeroRotator, FVector(0.9f, 0.9f, 0.04f));
@@ -278,16 +307,25 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		}
 	}
 
-	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset() && !BodyMesh->GetAnimInstance())
+	if (!AnimIdleADS)
 	{
-		UAnimSequence* LoadedAnim = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
-		if (LoadedAnim)
-		{
-			BodyMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-			BodyMesh->SetAnimation(LoadedAnim);
-			BodyMesh->Play(true);
-			UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: Loaded Anim_BaseMale_Idle_ADS via LoadObject fallback!"));
-		}
+		AnimIdleADS = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
+	}
+	if (!AnimLowReady)
+	{
+		AnimLowReady = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_LowReady.Anim_BaseMale_LowReady"));
+	}
+	if (!AnimWalk)
+	{
+		AnimWalk = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk.Anim_BaseMale_Walk"));
+	}
+
+	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset() && AnimIdleADS)
+	{
+		BodyMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		BodyMesh->SetAnimation(AnimIdleADS);
+		BodyMesh->Play(true);
+		UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: Playing Anim_BaseMale_Idle_ADS on SK_BaseMale!"));
 	}
 
 	if (BodyMesh && !BodyMesh->GetMaterial(0))
@@ -300,14 +338,46 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		}
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: BodyMesh Valid=%d, SkeletalMeshAsset=%s, Visible=%d"),
+	if (AK47Mesh && !AK47Mesh->GetStaticMesh())
+	{
+		UStaticMesh* LoadedAK = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Characters/BaseMale/SM_AK47.SM_AK47"));
+		if (LoadedAK)
+		{
+			AK47Mesh->SetStaticMesh(LoadedAK);
+			UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: Loaded SM_AK47 via LoadObject fallback!"));
+		}
+	}
+
+	if (AK47Mesh && AK47Mesh->GetStaticMesh() && BodyMesh)
+	{
+		AK47Mesh->AttachToComponent(BodyMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("weapon_r"));
+		AK47Mesh->SetRelativeLocation(FVector::ZeroVector);
+		AK47Mesh->SetRelativeRotation(FRotator::ZeroRotator);
+		AK47Mesh->SetVisibility(true);
+
+		if (!AK47Mesh->GetMaterial(0))
+		{
+			if (UMaterialInterface* M0 = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"))) AK47Mesh->SetMaterial(0, M0);
+		}
+		if (!AK47Mesh->GetMaterial(1))
+		{
+			if (UMaterialInterface* M1 = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"))) AK47Mesh->SetMaterial(1, M1);
+		}
+		if (!AK47Mesh->GetMaterial(2))
+		{
+			if (UMaterialInterface* M2 = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"))) AK47Mesh->SetMaterial(2, M2);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: BodyMesh Valid=%d, SkeletalMeshAsset=%s, Visible=%d, AK47Mesh=%s"),
 		BodyMesh != nullptr,
 		(BodyMesh && BodyMesh->GetSkeletalMeshAsset()) ? *BodyMesh->GetSkeletalMeshAsset()->GetName() : TEXT("None"),
-		BodyMesh ? (int32)BodyMesh->IsVisible() : -1);
+		BodyMesh ? (int32)BodyMesh->IsVisible() : -1,
+		(AK47Mesh && AK47Mesh->GetStaticMesh()) ? *AK47Mesh->GetStaticMesh()->GetName() : TEXT("None"));
 
 	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset())
 	{
-		// Hide primitive blocks when the true connected body is present
+		// Hide all legacy primitive blocks when the true connected anatomical body is present
 		auto HideComp = [](UStaticMeshComponent* Comp) { if (Comp) Comp->SetVisibility(false); };
 		HideComp(PelvisMesh);
 		HideComp(SpineLowerMesh);
@@ -327,6 +397,22 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		HideComp(LeftCalfMesh);
 		HideComp(RightThighMesh);
 		HideComp(RightCalfMesh);
+		HideComp(LeftBootMesh);
+		HideComp(RightBootMesh);
+		HideComp(VestMesh);
+		HideComp(HelmetMesh);
+		HideComp(NVGMesh);
+		HideComp(BalaclavaMesh);
+		HideComp(CapMesh);
+
+		if (AK47Mesh && AK47Mesh->GetStaticMesh())
+		{
+			HideComp(WeaponReceiverMesh);
+			HideComp(WeaponBarrelMesh);
+			HideComp(WeaponOpticMesh);
+			HideComp(WeaponMagMesh);
+			HideComp(WeaponStockMesh);
+		}
 
 		BodyMesh->SetVisibility(true);
 
@@ -357,23 +443,23 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		RegisterUniform(LeftCalfMesh);
 		RegisterUniform(RightThighMesh);
 		RegisterUniform(RightCalfMesh);
+
+		// Armor & Gear
+		RegisterArmor(VestMesh);
+		RegisterArmor(HelmetMesh);
+		RegisterArmor(NVGMesh);
+		RegisterArmor(BalaclavaMesh);
+		RegisterArmor(CapMesh);
+		RegisterArmor(LeftBootMesh);
+		RegisterArmor(RightBootMesh);
+
+		// Weapon
+		RegisterWeapon(WeaponReceiverMesh);
+		RegisterWeapon(WeaponBarrelMesh);
+		RegisterWeapon(WeaponOpticMesh);
+		RegisterWeapon(WeaponMagMesh);
+		RegisterWeapon(WeaponStockMesh);
 	}
-
-	// Armor & Gear
-	RegisterArmor(VestMesh);
-	RegisterArmor(HelmetMesh);
-	RegisterArmor(NVGMesh);
-	RegisterArmor(BalaclavaMesh);
-	RegisterArmor(CapMesh);
-	RegisterArmor(LeftBootMesh);
-	RegisterArmor(RightBootMesh);
-
-	// Weapon
-	RegisterWeapon(WeaponReceiverMesh);
-	RegisterWeapon(WeaponBarrelMesh);
-	RegisterWeapon(WeaponOpticMesh);
-	RegisterWeapon(WeaponMagMesh);
-	RegisterWeapon(WeaponStockMesh);
 
 	// Pedestal dark metallic material
 	if (PedestalMesh)
@@ -408,7 +494,7 @@ void AFPSCharacterPreviewActor::UpdateAimingPose(float DeltaTime)
 {
 	AimBreathTimer += DeltaTime;
 
-	// Procedural subtle breathing sway for tactical soldier holding ADS
+	// Procedural subtle breathing sway for fallback primitive meshes
 	const float BreathFreq = 1.6f;
 	const float BreathZ = FMath::Sin(AimBreathTimer * BreathFreq) * 0.40f;
 	const float BreathPitch = FMath::Sin(AimBreathTimer * BreathFreq) * 0.35f;
@@ -453,9 +539,36 @@ void AFPSCharacterPreviewActor::SetArmorVest(EOperatorArmorVest NewVest)
 	ApplyVestConfiguration();
 }
 
+void AFPSCharacterPreviewActor::SetPreviewStance(int32 StanceIndex)
+{
+	CurrentStanceIndex = FMath::Clamp(StanceIndex, 0, 2);
+	bIsAiming = (CurrentStanceIndex == 0);
+
+	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset())
+	{
+		UAnimSequence* TargetAnim = AnimIdleADS;
+		if (CurrentStanceIndex == 1 && AnimLowReady)
+		{
+			TargetAnim = AnimLowReady;
+		}
+		else if (CurrentStanceIndex == 2 && AnimWalk)
+		{
+			TargetAnim = AnimWalk;
+		}
+
+		if (TargetAnim)
+		{
+			BodyMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+			BodyMesh->SetAnimation(TargetAnim);
+			BodyMesh->Play(true);
+		}
+	}
+}
+
 void AFPSCharacterPreviewActor::SetAimingStance(bool bInAiming)
 {
-	bIsAiming = bInAiming;
+	// Cycle through the 3 stances (0 = Aimed ADS, 1 = Low-Ready, 2 = Walk Cycle)
+	SetPreviewStance((CurrentStanceIndex + 1) % 3);
 
 	if (RightForearmMesh && LeftForearmMesh)
 	{
@@ -609,6 +722,15 @@ void AFPSCharacterPreviewActor::ApplyCamoColors()
 
 void AFPSCharacterPreviewActor::ApplyHeadgearVisibility()
 {
+	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset())
+	{
+		if (HelmetMesh) HelmetMesh->SetVisibility(false);
+		if (NVGMesh) NVGMesh->SetVisibility(false);
+		if (BalaclavaMesh) BalaclavaMesh->SetVisibility(false);
+		if (CapMesh) CapMesh->SetVisibility(false);
+		return;
+	}
+
 	const bool bHelmet = (CurrentHeadgear == EOperatorHeadgear::BallisticHelmet || CurrentHeadgear == EOperatorHeadgear::NightVisionGoggles);
 	const bool bNVG = (CurrentHeadgear == EOperatorHeadgear::NightVisionGoggles);
 	const bool bBalaclava = (CurrentHeadgear == EOperatorHeadgear::SpecOpsBalaclava);
@@ -635,6 +757,12 @@ void AFPSCharacterPreviewActor::ApplyVestConfiguration()
 {
 	if (!VestMesh) return;
 
+	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset())
+	{
+		VestMesh->SetVisibility(false);
+		return;
+	}
+
 	switch (CurrentVest)
 	{
 	case EOperatorArmorVest::HeavyPlateCarrier:
@@ -656,3 +784,4 @@ void AFPSCharacterPreviewActor::ApplyVestConfiguration()
 		break;
 	}
 }
+

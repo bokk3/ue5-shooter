@@ -50,6 +50,9 @@ public:
 
 	// Procedural 3D Weapon Model Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
+	TObjectPtr<UStaticMeshComponent> AK47StaticMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
 	TObjectPtr<UStaticMeshComponent> ReceiverMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
@@ -175,12 +178,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
 	FRotator ADSRelativeRotation = FRotator(0.0f, 0.0f, 0.0f);
 
-	// 3rd Person Tactical Mesh Attachment Transforms (relative to hand_r / GripPoint)
+	// 3rd Person Tactical Mesh Attachment Transforms (relative to weapon_r socket)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
-	FVector ThirdPersonRelativeLocation = FVector(2.0f, -1.0f, 4.0f);
+	FVector ThirdPersonRelativeLocation = FVector::ZeroVector;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
-	FRotator ThirdPersonRelativeRotation = FRotator(0.0f, 0.0f, 0.0f);
+	FRotator ThirdPersonRelativeRotation = FRotator::ZeroRotator;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
 	float ADSSpeed = 16.0f;

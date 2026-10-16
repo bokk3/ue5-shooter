@@ -12,12 +12,14 @@ enum class EFPSMovementMode : uint8
 	Sprinting,
 	Sliding,
 	Crouching,
-	Mantling
+	Mantling,
+	BallisticDiving
 };
 
 /**
  * AAA FPS Custom Character Movement Component
- * Supports Tactical Sprinting, Momentum Sliding, Smooth Crouching, and Procedural Mantling.
+ * Supports Tactical Sprinting, Momentum Sliding, Smooth Crouching, Procedural Mantling,
+ * and Max Payne Omnidirectional Ballistic Dives.
  */
 UCLASS()
 class NOBLEFERMI_API UFPSCharacterMovementComponent : public UCharacterMovementComponent
@@ -40,6 +42,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "FPS Movement")
 	bool IsSliding() const { return CurrentFPSMode == EFPSMovementMode::Sliding; }
 
+	UFUNCTION(BlueprintPure, Category = "FPS Movement")
+	bool IsBallisticDiving() const { return bIsBallisticDiving; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Movement")
+	bool IsInDiveLandingSlide() const { return bIsDiveLandingSlide; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Movement")
+	FVector GetBallisticDiveDirection() const { return BallisticDiveDirection; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Movement")
+	float GetDiveCooldownRemaining() const { return DiveCooldownRemaining; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Movement")
+	bool CanStartBallisticDive() const { return !bIsBallisticDiving && DiveCooldownRemaining <= 0.0f && CurrentStamina >= MinDiveStamina && IsMovingOnGround(); }
+
 	// Input Intents
 	UFUNCTION(BlueprintCallable, Category = "FPS Movement")
 	void SetWantsToSprint(bool bSprint);
@@ -52,6 +69,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Movement")
 	bool TryMantle();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Movement|Ballistic Dive")
+	bool TryStartBallisticDive(const FVector& DesiredWorldDirection);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Movement|Ballistic Dive")
+	void StopBallisticDive();
 
 	// Speeds and Modifiers
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Speeds")
@@ -68,6 +91,25 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Speeds")
 	float SlideFriction = 0.6f;
+
+	// Max Payne Ballistic Dive Tuning
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Ballistic Dive")
+	float DiveHorizontalLaunchSpeed = 820.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Ballistic Dive")
+	float DiveVerticalLaunchSpeed = 340.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Ballistic Dive")
+	float DiveStaminaCost = 35.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Ballistic Dive")
+	float MinDiveStamina = 25.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Ballistic Dive")
+	float DiveLandingSlideDuration = 0.45f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Ballistic Dive")
+	float DiveCooldownDuration = 1.2f;
 
 	// Mantling Settings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Movement|Mantle")
@@ -110,7 +152,14 @@ private:
 
 	bool bWantsToSprint = false;
 	bool bIsSliding = false;
+	bool bIsBallisticDiving = false;
+	bool bHasLeftGroundDuringDive = false;
+	bool bIsDiveLandingSlide = false;
 	bool bIsStaminaExhausted = false;
 	float TimeSinceLastSprint = 0.0f;
+	float DiveAirborneTime = 0.0f;
+	float DiveLandingSlideTimer = 0.0f;
+	float DiveCooldownRemaining = 0.0f;
 	FVector SlideDirection = FVector::ZeroVector;
+	FVector BallisticDiveDirection = FVector::ForwardVector;
 };

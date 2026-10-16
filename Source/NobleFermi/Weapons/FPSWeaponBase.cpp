@@ -1,5 +1,8 @@
 #include "Weapons/FPSWeaponBase.h"
 #include "Combat/FPSHealthComponent.h"
+#include "Combat/FPSBallisticTracer.h"
+#include "Combat/FPSFermiTimeBubble.h"
+#include "Weapons/FPSDilatedBulletActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
@@ -98,11 +101,62 @@ AFPSWeaponBase::AFPSWeaponBase()
 	// 10. Front Iron Sight Post & Tritium Pip (Co-witnessed at Z = +6.2cm)
 	SetupMeshComp(FrontSightPostMesh, TEXT("FrontSightPostMesh"), CubeMesh, FVector(33.0f, 0.0f, 4.6f), FRotator::ZeroRotator, FVector(0.015f, 0.012f, 0.030f));
 	SetupMeshComp(FrontSightDotMesh, TEXT("FrontSightDotMesh"), SphereMesh, FVector(33.0f, 0.0f, 6.2f), FRotator::ZeroRotator, FVector(0.005f, 0.005f, 0.005f));
+
+	// 11. 3D AK-47 Rifle Mesh (aligned 1:1 with weapon_r bone socket on SK_BaseMale)
+	AK47StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AK47StaticMesh"));
+	AK47StaticMesh->SetupAttachment(WeaponMesh);
+	AK47StaticMesh->SetMobility(EComponentMobility::Movable);
+	AK47StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AK47StaticMesh->SetCastShadow(true);
+	AK47StaticMesh->SetRelativeLocation(FVector::ZeroVector);
+	AK47StaticMesh->SetRelativeRotation(FRotator::ZeroRotator);
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> AK47MeshFinder(TEXT("/Game/Characters/BaseMale/SM_AK47.SM_AK47"));
+	if (AK47MeshFinder.Succeeded())
+	{
+		AK47StaticMesh->SetStaticMesh(AK47MeshFinder.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKSteelMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKWoodMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKBakeMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"));
+	if (AKSteelMatFinder.Succeeded()) AK47StaticMesh->SetMaterial(0, AKSteelMatFinder.Object);
+	if (AKWoodMatFinder.Succeeded()) AK47StaticMesh->SetMaterial(1, AKWoodMatFinder.Object);
+	if (AKBakeMatFinder.Succeeded()) AK47StaticMesh->SetMaterial(2, AKBakeMatFinder.Object);
 }
 
 void AFPSWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (AK47StaticMesh && !AK47StaticMesh->GetStaticMesh())
+	{
+		UStaticMesh* LoadedAK47 = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Characters/BaseMale/SM_AK47.SM_AK47"));
+		if (LoadedAK47)
+		{
+			AK47StaticMesh->SetStaticMesh(LoadedAK47);
+		}
+	}
+
+	if (AK47StaticMesh && AK47StaticMesh->GetStaticMesh())
+	{
+		UMaterialInterface* SteelMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
+		UMaterialInterface* WoodMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"));
+		UMaterialInterface* BakeMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"));
+		if (SteelMat) AK47StaticMesh->SetMaterial(0, SteelMat);
+		if (WoodMat) AK47StaticMesh->SetMaterial(1, WoodMat);
+		if (BakeMat) AK47StaticMesh->SetMaterial(2, BakeMat);
+
+		// Hide legacy procedural box/cylinder weapon shapes when 3D AK-47 mesh is active
+		TArray<UStaticMeshComponent*> LegacyParts = {
+			ReceiverMesh, TopRailMesh, HandguardMesh, BarrelMesh, MuzzleCompMesh,
+			GripMesh, BufferTubeMesh, StockMesh, MagazineMesh, SightBaseMesh,
+			SightHoodMesh, ReticleDotMesh, FrontSightPostMesh, FrontSightDotMesh
+		};
+		for (UStaticMeshComponent* Comp : LegacyParts)
+		{
+			if (Comp) Comp->SetVisibility(false);
+		}
+	}
 
 	// Initialize tactical dynamic material finishes
 	auto ApplyCompColor = [](UStaticMeshComponent* Comp, const FLinearColor& Color)
@@ -351,8 +405,12 @@ void AFPSWeaponBase::FireShot()
 			FVector CameraLoc = PC->PlayerCameraManager->GetCameraLocation();
 			FRotator CameraRot = PC->PlayerCameraManager->GetCameraRotation();
 
-			// Dynamic spread bloom
-			CurrentSpread = FMath::Min(MaxSpread, CurrentSpread + SpreadPerShot);
+			// Dynamic spread bloom (reduced by 55% during Max Payne Ballistic Dive for crisp mid-air marksmanship)
+			AFPSCharacter* ShooterFPSChar = Cast<AFPSCharacter>(PawnOwner);
+			const bool bIsDiving = (ShooterFPSChar && ShooterFPSChar->IsBallisticDiving());
+			const float DiveSpreadScale = bIsDiving ? 0.45f : 1.0f;
+
+			CurrentSpread = FMath::Min(MaxSpread * DiveSpreadScale, CurrentSpread + SpreadPerShot * DiveSpreadScale);
 			float SpreadHalfAngleRad = FMath::DegreesToRadians(CurrentSpread * 0.5f);
 			FVector ShotDirection = FMath::VRandCone(CameraRot.Vector(), SpreadHalfAngleRad);
 
@@ -379,23 +437,80 @@ void AFPSWeaponBase::FireShot()
 					RadarSubsystem->ReportGunfire(PawnOwner, PawnOwner->GetActorLocation(), ShooterTeam, bIsSuppressed);
 				}
 
-				if (World->LineTraceSingleByChannel(HitResult, CameraLoc, TraceEnd, ECC_Visibility, TraceParams))
-				{
-					AActor* HitActor = HitResult.GetActor();
-					if (HitActor)
-					{
-						UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
-						if (HealthComp)
-						{
-							HealthComp->ApplyDamage(BaseDamage, PawnOwner, HitResult);
+				const FVector MuzzleWorldLoc = GetActorLocation() + GetActorForwardVector() * 48.0f + FVector(0.0f, 0.0f, 4.0f);
+				const bool bShooterInTimeBubble = bIsDiving
+					|| (ShooterFPSChar && ShooterFPSChar->IsFermiTimeBubbleActive())
+					|| AFPSFermiTimeBubble::IsLocationInsideAnyBubble(World, CameraLoc)
+					|| AFPSFermiTimeBubble::IsLocationInsideAnyBubble(World, MuzzleWorldLoc);
 
-							// Trigger tactical hitmarker feedback on shooter's HUD
-							AFPSCharacter* ShooterChar = Cast<AFPSCharacter>(PawnOwner);
-							if (ShooterChar && ShooterChar->GetActiveHUDWidget())
+				if (bShooterInTimeBubble)
+				{
+					// Case 1: Shooter is inside an active Fermi Bubble
+					// Convert hitscan immediately into a physical 3D dilated slug starting at muzzle/eye location
+					AFPSDilatedBulletActor* DilatedBullet = World->SpawnActor<AFPSDilatedBulletActor>(AFPSDilatedBulletActor::StaticClass(), MuzzleWorldLoc, ShotDirection.Rotation());
+					if (DilatedBullet)
+					{
+						DilatedBullet->InitializeSlug(MuzzleWorldLoc, ShotDirection, BaseDamage, MaxRange, PawnOwner);
+					}
+				}
+				else
+				{
+					// Case 2: Shooter is outside. Check if hitscan ray intersects any active Fermi Bubble
+					// First, test world geometry line trace to find hit distance
+					const bool bHitWorld = World->LineTraceSingleByChannel(HitResult, CameraLoc, TraceEnd, ECC_Visibility, TraceParams);
+					const float WorldHitDistance = bHitWorld ? HitResult.Distance : MaxRange;
+
+					FVector BubbleEntryLoc = FVector::ZeroVector;
+					float BubbleEntryDist = 0.0f;
+					const bool bEntersBubble = AFPSFermiTimeBubble::FindEarliestBubbleEntry(World, CameraLoc, TraceEnd, WorldHitDistance, BubbleEntryLoc, BubbleEntryDist);
+
+					if (bEntersBubble && BubbleEntryDist < WorldHitDistance)
+					{
+						// Ray encounters bubble boundary BEFORE hitting world geometry!
+						// Terminate ray at boundary and spawn physical dilated slug cruising inward
+						AFPSBallisticTracer* LeadTracer = World->SpawnActor<AFPSBallisticTracer>(AFPSBallisticTracer::StaticClass(), MuzzleWorldLoc, ShotDirection.Rotation());
+						if (LeadTracer)
+						{
+							LeadTracer->InitializeTracer(MuzzleWorldLoc, BubbleEntryLoc, false, false);
+						}
+
+						const float RemainingDist = FMath::Max(100.0f, MaxRange - BubbleEntryDist);
+						AFPSDilatedBulletActor* DilatedBullet = World->SpawnActor<AFPSDilatedBulletActor>(AFPSDilatedBulletActor::StaticClass(), BubbleEntryLoc, ShotDirection.Rotation());
+						if (DilatedBullet)
+						{
+							DilatedBullet->InitializeSlug(BubbleEntryLoc, ShotDirection, BaseDamage, RemainingDist, PawnOwner);
+						}
+					}
+					else
+					{
+						// Ray does NOT enter any bubble before hitting geometry (or at all). Standard instantaneous hitscan resolution!
+						FVector TracerImpactPoint = TraceEnd;
+						if (bHitWorld)
+						{
+							TracerImpactPoint = HitResult.ImpactPoint;
+							AActor* HitActor = HitResult.GetActor();
+							if (HitActor)
 							{
-								const bool bIsHead = (HitResult.BoneName == FName(TEXT("head")));
-								ShooterChar->GetActiveHUDWidget()->TriggerHitmarker(bIsHead ? EFPSHitmarkerType::Headshot : EFPSHitmarkerType::Standard);
+								UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
+								if (HealthComp)
+								{
+									HealthComp->ApplyDamage(BaseDamage, PawnOwner, HitResult);
+
+									// Trigger tactical hitmarker feedback on shooter's HUD
+									if (ShooterFPSChar && ShooterFPSChar->GetActiveHUDWidget())
+									{
+										const bool bIsHead = (HitResult.BoneName == FName(TEXT("head")));
+										ShooterFPSChar->GetActiveHUDWidget()->TriggerHitmarker(bIsHead ? EFPSHitmarkerType::Headshot : EFPSHitmarkerType::Standard);
+									}
+								}
 							}
+						}
+
+						// Visual tracer streak
+						AFPSBallisticTracer* Tracer = World->SpawnActor<AFPSBallisticTracer>(AFPSBallisticTracer::StaticClass(), MuzzleWorldLoc, ShotDirection.Rotation());
+						if (Tracer)
+						{
+							Tracer->InitializeTracer(MuzzleWorldLoc, TracerImpactPoint, false, false);
 						}
 					}
 				}
