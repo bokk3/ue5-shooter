@@ -124,6 +124,7 @@ Double-click [`Launch_DedicatedServer.bat`](file:///C:/Users/Boris/Documents/ant
 noble-fermi/
 ├── Config/                      # Engine, Game, Input and Packaging configuration (.ini)
 ├── Docs/                        # Technical guides & documentation
+│   ├── PLAYER_LOCOMOTION_AND_STANCES_PLAN.md # Roadmap & pipeline for weapon stances, 8-way locomotion, jumping, crouching, sliding
 │   ├── FERMI_PARADOX_ENGINE.md              # Deep-dive physics & architecture of Dive, Chrono Bubble & Quantum Swap
 │   ├── ARCHITECTURE_AND_MECHANICS_GUIDE.md  # System architecture, 21-bone anatomy, ballistics & HUD reference
 │   ├── AGENT_STARTER_PROMPT_AND_PROJECT_STATE.md # Master project history & AI agent onboarding prompt
@@ -148,6 +149,7 @@ noble-fermi/
 
 ## Detailed Documentation
 
+- [**Player Locomotion, Weapon Stances & Kinematics Plan**](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Docs/PLAYER_LOCOMOTION_AND_STANCES_PLAN.md): Step-by-step roadmap, Blender animation pipeline, mathematical formulas, and state machine architecture for weapon lowering/aiming, 8-way locomotion, jumping, crouching, and tactical sliding.
 - [**The Fermi Paradox Engine Specification**](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Docs/FERMI_PARADOX_ENGINE.md): Complete physics equations, sequence diagrams, and C++ architecture for Omnidirectional Ballistic Dives, Localized Time-Dilation Bubbles, Acoustic Hologram Decoys, and Mid-Air Quantum Phase-Swapping.
 - [**Architecture & Mechanics Guide**](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Docs/ARCHITECTURE_AND_MECHANICS_GUIDE.md): Mathematical formulations for spring aim punch, skeletal bone dimensions, damage tables, and networking pipeline.
 - [**Getting Started Guide**](file:///C:/Users/Boris/Documents/antigravity/noble-fermi/Docs/GETTING_STARTED.md): Step-by-step instructions for launching, customization controls, Fermi Paradox Engine combat controls, VPS server configuration, and source compilation.
