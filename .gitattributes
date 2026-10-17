@@ -17,3 +17,10 @@
 *.mp3 filter=lfs diff=lfs merge=lfs -text
 *.ogg filter=lfs diff=lfs merge=lfs -text
 *.flac filter=lfs diff=lfs merge=lfs -text
+
+# GitHub Linguist Overrides (Treat web prototypes as documentation to reflect accurate C++ codebase statistics)
+web/** linguist-documentation
+WebData/** linguist-documentation
+*.html linguist-detectable=false
+*.css linguist-detectable=false
+*.js linguist-detectable=false
