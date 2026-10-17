@@ -5,7 +5,9 @@
 #include "Inventory/FPSInventoryComponent.h"
 #include "Weapons/FPSWeaponBase.h"
 #include "Radar/FPSRadarSubsystem.h"
+#include "Economy/FPSEconomySubsystem.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Rendering/DrawElements.h"
@@ -226,8 +228,8 @@ public:
 			DrawLine(ScreenW - Margin + VX * 0.3f, ScreenH - Margin - CornerLen + VY * 0.3f, ScreenW - Margin + VX * 0.3f, ScreenH - Margin + VY * 0.3f, LineThick, VisorFrameTint, 1);
 
 			// Top-Right Floating AR Telemetry Link (Frameless, Scaled 1.20x)
-			const float TeleW = 185.0f * HUDScale;
-			const float TeleH = 34.0f * HUDScale;
+			const float TeleW = 215.0f * HUDScale;
+			const float TeleH = 46.0f * HUDScale;
 			const float TeleX = ScreenW - TeleW - Margin + VX * 0.45f;
 			const float TeleY = Margin + 4.0f + VY * 0.45f;
 			DrawSkewedRect(TeleX - 10.0f * HUDScale, TeleY - 3.0f * HUDScale, TeleW, TeleH, -8.0f * HUDScale,
@@ -237,9 +239,47 @@ public:
 
 			DrawGlowText(TeleX, TeleY, TEXT("AR-VISOR // TAC-LINK 128HZ"), FontMicro, TealPrimary * FLinearColor(1, 1, 1, 0.80f), 0.5f);
 			const float SpeedMetersPerSec = OwningHUD->PlayerSpeed / 100.0f;
-			DrawGlowText(TeleX + 18.0f * HUDScale, TeleY + 14.0f * HUDScale,
+			DrawGlowText(TeleX + 18.0f * HUDScale, TeleY + 13.0f * HUDScale,
 				FString::Printf(TEXT("VEL: %04.1f M/S  //  SYNC: OK"), SpeedMetersPerSec),
 				FontMicro, FLinearColor(0.75f, 0.88f, 0.95f, 0.60f), 0.5f);
+
+			// Real-Time Persistent Economy Wallet
+			DrawGlowText(TeleX + 6.0f * HUDScale, TeleY + 26.0f * HUDScale,
+				FString::Printf(TEXT("WALLET: %d GOLD  //  %d OPALS"), OwningHUD->CurrentGoldBalance, OwningHUD->CurrentOpalBalance),
+				FontMicro, AmberWarn * FLinearColor(1, 1, 1, 0.95f), 0.6f);
+
+			// Bridge 3: Live Bounty Tracker on In-Game HUD (Active Contracts)
+			if (OwningHUD->CachedBounties.Num() > 0)
+			{
+				const float BountyBoxY = TeleY + TeleH + 6.0f * HUDScale;
+				const int32 NumToDraw = FMath::Min(OwningHUD->CachedBounties.Num(), 3);
+				const float BountyBoxH = (NumToDraw * 13.0f + 16.0f) * HUDScale;
+				DrawSkewedRect(TeleX - 10.0f * HUDScale, BountyBoxY - 2.0f * HUDScale, TeleW, BountyBoxH, -6.0f * HUDScale,
+					FLinearColor(0.0f, 0.05f, 0.08f, 0.0f),
+					FLinearColor(0.01f, 0.10f, 0.15f, 0.35f), 0);
+				DrawLine(TeleX + TeleW - 13.0f * HUDScale, BountyBoxY - 2.0f * HUDScale, TeleX + TeleW - 19.0f * HUDScale, BountyBoxY + BountyBoxH - 2.0f * HUDScale, 1.5f * HUDScale, CyanTactical * FLinearColor(1, 1, 1, 0.5f), 2);
+
+				DrawGlowText(TeleX, BountyBoxY, TEXT("ACTIVE CONTRACTS // DAILY"), FontMicro, CyanTactical * FLinearColor(1, 1, 1, 0.85f), 0.5f);
+
+				for (int32 b = 0; b < NumToDraw; ++b)
+				{
+					const FFPSTacticalBounty& Bounty = OwningHUD->CachedBounties[b];
+					const float LineY = BountyBoxY + 13.0f * HUDScale + (b * 12.0f * HUDScale);
+					FString BountyLine;
+					FLinearColor LineColor;
+					if (Bounty.bCompleted)
+					{
+						BountyLine = FString::Printf(TEXT("[DONE] %s"), *Bounty.Title.ToString().ToUpper());
+						LineColor = FLinearColor(0.2f, 1.0f, 0.45f, 0.90f);
+					}
+					else
+					{
+						BountyLine = FString::Printf(TEXT("[%d/%d] %s"), Bounty.CurrentProgress, Bounty.TargetProgress, *Bounty.Title.ToString().ToUpper());
+						LineColor = FLinearColor(0.85f, 0.92f, 0.98f, 0.75f);
+					}
+					DrawGlowText(TeleX + 4.0f * HUDScale, LineY, BountyLine, FontMicro, LineColor, 0.4f);
+				}
+			}
 		}
 
 		// =========================================================================
@@ -753,46 +793,46 @@ public:
 		// =========================================================================
 		// 4. BOTTOM-RIGHT FLOATING WEAPON SCHEMATIC & 30-ROUND PIP MATRIX
 		// =========================================================================
-		const float AmmoW = 315.0f;
-		const float AmmoX = ScreenW - AmmoW - 36.0f + VX * 0.85f;
-		const float AmmoY = ScreenH - 122.0f + VY * 0.85f;
+		const float AmmoW = 315.0f * HUDScale;
+		const float AmmoX = ScreenW - AmmoW - (32.0f * HUDScale) + VX * 0.64f;
+		const float AmmoY = ScreenH - 138.0f * HUDScale + VY * 0.64f;
 
 		// Right-to-Left Translucent Glass Gradient Strip (0.0 alpha on left -> 0.28 on right)
-		DrawSkewedRect(AmmoX, AmmoY - 8.0f, AmmoW + 12.0f, 92.0f, -BarSkew,
+		DrawSkewedRect(AmmoX, AmmoY - 8.0f * HUDScale, AmmoW + 12.0f * HUDScale, 95.0f * HUDScale, -BarSkew,
 			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f),
 			FLinearColor(0.0f, 0.09f, 0.14f, 0.28f), 0);
 
 		// Glowing Right Spine Accent Bracket
-		const float RightSpineX = AmmoX + AmmoW + 12.0f;
-		DrawLine(RightSpineX - BarSkew, AmmoY - 8.0f, RightSpineX, AmmoY + 84.0f, 2.5f, TealPrimary, 2);
-		DrawLine(RightSpineX - BarSkew - 28.0f, AmmoY - 8.0f, RightSpineX - BarSkew, AmmoY - 8.0f, 1.5f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
-		DrawLine(RightSpineX - 20.0f, AmmoY + 84.0f, RightSpineX, AmmoY + 84.0f, 1.5f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
+		const float RightSpineX = AmmoX + AmmoW + 12.0f * HUDScale;
+		DrawLine(RightSpineX - BarSkew, AmmoY - 8.0f * HUDScale, RightSpineX, AmmoY + 86.0f * HUDScale, 2.8f * HUDScale, TealPrimary, 2);
+		DrawLine(RightSpineX - BarSkew - 28.0f * HUDScale, AmmoY - 8.0f * HUDScale, RightSpineX - BarSkew, AmmoY - 8.0f * HUDScale, 1.8f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
+		DrawLine(RightSpineX - 20.0f * HUDScale, AmmoY + 86.0f * HUDScale, RightSpineX, AmmoY + 86.0f * HUDScale, 1.8f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
 
 		// 4.1 Procedural Vector Carbine Silhouette (Top-Right of Weapon Panel)
 		{
-			const float GunX = AmmoX + 185.0f;
-			const float GunY = AmmoY + 4.0f;
+			const float GunX = AmmoX + 185.0f * HUDScale;
+			const float GunY = AmmoY + 4.0f * HUDScale;
 			const FLinearColor GunLineCol = OwningHUD->bIsADS ? TealPrimary : FLinearColor(0.55f, 0.88f, 0.98f, 0.72f);
 
 			// Buttstock
-			DrawQuad(FVector2f(GunX + 78.0f, GunY + 4.0f), FVector2f(GunX + 104.0f, GunY + 3.0f),
-			         FVector2f(GunX + 104.0f, GunY + 15.0f), FVector2f(GunX + 82.0f, GunY + 10.0f),
+			DrawQuad(FVector2f(GunX + 78.0f * HUDScale, GunY + 4.0f * HUDScale), FVector2f(GunX + 104.0f * HUDScale, GunY + 3.0f * HUDScale),
+			         FVector2f(GunX + 104.0f * HUDScale, GunY + 15.0f * HUDScale), FVector2f(GunX + 82.0f * HUDScale, GunY + 10.0f * HUDScale),
 			         GunLineCol * 0.5f, GunLineCol * 0.5f, GunLineCol * 0.5f, GunLineCol * 0.5f, 2);
 			// Upper & Lower Receiver
-			DrawSkewedRect(GunX + 38.0f, GunY + 3.0f, 40.0f, 9.0f, -2.0f, GunLineCol * 0.75f, GunLineCol * 0.65f, 2);
+			DrawSkewedRect(GunX + 38.0f * HUDScale, GunY + 3.0f * HUDScale, 40.0f * HUDScale, 9.0f * HUDScale, -2.0f * HUDScale, GunLineCol * 0.75f, GunLineCol * 0.65f, 2);
 			// M-LOK Handguard
-			DrawSkewedRect(GunX + 12.0f, GunY + 4.0f, 26.0f, 6.0f, -1.0f, GunLineCol * 0.65f, GunLineCol * 0.75f, 2);
+			DrawSkewedRect(GunX + 12.0f * HUDScale, GunY + 4.0f * HUDScale, 26.0f * HUDScale, 6.0f * HUDScale, -1.0f * HUDScale, GunLineCol * 0.65f, GunLineCol * 0.75f, 2);
 			// Rifled Barrel & Compensator
-			DrawLine(GunX - 8.0f, GunY + 6.5f, GunX + 12.0f, GunY + 6.5f, 2.2f, GunLineCol, 3);
-			DrawLine(GunX - 11.0f, GunY + 5.5f, GunX - 6.0f, GunY + 5.5f, 3.0f, GunLineCol, 3);
+			DrawLine(GunX - 8.0f * HUDScale, GunY + 6.5f * HUDScale, GunX + 12.0f * HUDScale, GunY + 6.5f * HUDScale, 2.4f * HUDScale, GunLineCol, 3);
+			DrawLine(GunX - 11.0f * HUDScale, GunY + 5.5f * HUDScale, GunX - 6.0f * HUDScale, GunY + 5.5f * HUDScale, 3.2f * HUDScale, GunLineCol, 3);
 			// Reflex Red-Dot Optic Hood
-			DrawLine(GunX + 48.0f, GunY + 3.0f, GunX + 50.0f, GunY - 2.5f, 1.5f, TealPrimary, 3);
-			DrawLine(GunX + 50.0f, GunY - 2.5f, GunX + 60.0f, GunY - 2.5f, 1.5f, TealPrimary, 3);
-			DrawLine(GunX + 60.0f, GunY - 2.5f, GunX + 61.0f, GunY + 3.0f, 1.5f, TealPrimary, 3);
+			DrawLine(GunX + 48.0f * HUDScale, GunY + 3.0f * HUDScale, GunX + 50.0f * HUDScale, GunY - 2.5f * HUDScale, 1.8f * HUDScale, TealPrimary, 3);
+			DrawLine(GunX + 50.0f * HUDScale, GunY - 2.5f * HUDScale, GunX + 60.0f * HUDScale, GunY - 2.5f * HUDScale, 1.8f * HUDScale, TealPrimary, 3);
+			DrawLine(GunX + 60.0f * HUDScale, GunY - 2.5f * HUDScale, GunX + 61.0f * HUDScale, GunY + 3.0f * HUDScale, 1.8f * HUDScale, TealPrimary, 3);
 			// Swept Pistol Grip
-			DrawLine(GunX + 68.0f, GunY + 11.0f, GunX + 73.0f, GunY + 22.0f, 3.2f, GunLineCol * 0.7f, 2);
+			DrawLine(GunX + 68.0f * HUDScale, GunY + 11.0f * HUDScale, GunX + 73.0f * HUDScale, GunY + 22.0f * HUDScale, 3.4f * HUDScale, GunLineCol * 0.7f, 2);
 			// Curved 30-Round STANAG Magazine
-			DrawLine(GunX + 46.0f, GunY + 12.0f, GunX + 41.0f, GunY + 25.0f, 4.2f,
+			DrawLine(GunX + 46.0f * HUDScale, GunY + 12.0f * HUDScale, GunX + 41.0f * HUDScale, GunY + 25.0f * HUDScale, 4.4f * HUDScale,
 				OwningHUD->AmmoInClip <= 5 ? CrimsonAlert : (GunLineCol * 0.85f), 2);
 		}
 
@@ -802,19 +842,19 @@ public:
 			? (FMath::Sin(TimeSec * 12.0f) > 0.0f ? CrimsonAlert : AmberWarn)
 			: HudWhite;
 
-		DrawGlowText(AmmoX + 14.0f, AmmoY - 4.0f, FString::Printf(TEXT("%02d"), OwningHUD->AmmoInClip), FontBigAmmo, ClipTextColor, 0.9f);
-		DrawLine(AmmoX + 84.0f, AmmoY + 6.0f, AmmoX + 76.0f, AmmoY + 38.0f, 1.8f, TealPrimary * FLinearColor(1, 1, 1, 0.55f), 2);
-		DrawGlowText(AmmoX + 88.0f, AmmoY + 4.0f, TEXT("RESERVE"), FontMicro, FLinearColor(0.6f, 0.82f, 0.92f, 0.65f), 0.5f);
-		DrawGlowText(AmmoX + 88.0f, AmmoY + 15.0f, FString::Printf(TEXT("%03d"), OwningHUD->AmmoReserve), FontBold, FLinearColor(0.78f, 0.92f, 0.98f, 0.90f), 0.8f);
+		DrawGlowText(AmmoX + 14.0f * HUDScale, AmmoY - 4.0f * HUDScale, FString::Printf(TEXT("%02d"), OwningHUD->AmmoInClip), FontBigAmmo, ClipTextColor, 0.9f);
+		DrawLine(AmmoX + 84.0f * HUDScale, AmmoY + 6.0f * HUDScale, AmmoX + 76.0f * HUDScale, AmmoY + 38.0f * HUDScale, 2.0f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.55f), 2);
+		DrawGlowText(AmmoX + 88.0f * HUDScale, AmmoY + 4.0f * HUDScale, TEXT("RESERVE"), FontMicro, FLinearColor(0.6f, 0.82f, 0.92f, 0.65f), 0.5f);
+		DrawGlowText(AmmoX + 88.0f * HUDScale, AmmoY + 15.0f * HUDScale, FString::Printf(TEXT("%03d"), OwningHUD->AmmoReserve), FontBold, FLinearColor(0.78f, 0.92f, 0.98f, 0.90f), 0.8f);
 
 		// 4.3 30-Round Individual Bullet Pip Matrix
 		const int32 MagCap = FMath::Clamp(OwningHUD->MagazineCapacity, 1, 40);
-		const float PipStartX = AmmoX + 16.0f;
-		const float PipY = AmmoY + 48.0f;
-		const float TotalPipW = 280.0f;
+		const float PipStartX = AmmoX + 16.0f * HUDScale;
+		const float PipY = AmmoY + 48.0f * HUDScale;
+		const float TotalPipW = 280.0f * HUDScale;
 		const float PipStep = TotalPipW / (float)MagCap;
-		const float PipW = FMath::Max(2.5f, PipStep - 2.6f);
-		const float PipH = 11.0f;
+		const float PipW = FMath::Max(2.8f * HUDScale, PipStep - 2.8f * HUDScale);
+		const float PipH = 11.5f * HUDScale;
 
 		for (int32 b = 0; b < MagCap; ++b)
 		{
@@ -840,27 +880,27 @@ public:
 				PipCol = (b == OwningHUD->AmmoInClip - 1) ? HudWhite : TealPrimary * FLinearColor(1, 1, 1, 0.90f);
 			}
 
-			DrawSkewedRect(BX, PipY, PipW, PipH, -2.5f, PipCol, PipCol * 1.15f, 2);
+			DrawSkewedRect(BX, PipY, PipW, PipH, -2.5f * HUDScale, PipCol, PipCol * 1.15f, 2);
 		}
 
 		// 4.4 Weapon Title, 3-Mode Fire Selector & Tactical Equipment Slots
 		const FString WeaponTitle = OwningHUD->ActiveWeaponName.IsEmpty()
 			? TEXT("AK-47 TACTICAL // 7.62x39MM")
 			: OwningHUD->ActiveWeaponName.ToString().ToUpper();
-		DrawGlowText(AmmoX + 16.0f, AmmoY + 65.0f, WeaponTitle, FontSmall, TealPrimary, 0.75f);
+		DrawGlowText(AmmoX + 16.0f * HUDScale, AmmoY + 65.0f * HUDScale, WeaponTitle, FontSmall, TealPrimary, 0.75f);
 
 		// Fire Selector Pills: [ AUTO ]  BURST  SEMI
 		const TCHAR* Modes[] = { TEXT("AUTO"), TEXT("BURST"), TEXT("SEMI") };
 		for (int32 m = 0; m < 3; ++m)
 		{
-			const float MX = AmmoX + 188.0f + m * 38.0f;
-			const float MY = AmmoY + 65.0f;
+			const float MX = AmmoX + 188.0f * HUDScale + m * (38.0f * HUDScale);
+			const float MY = AmmoY + 65.0f * HUDScale;
 			const bool bActiveMode = (OwningHUD->ActiveFireModeIndex == m);
 			if (bActiveMode)
 			{
-				DrawSkewedRect(MX - 4.0f, MY - 1.0f, 34.0f, 13.0f, -3.0f,
+				DrawSkewedRect(MX - 4.0f * HUDScale, MY - 1.0f * HUDScale, 36.0f * HUDScale, 14.0f * HUDScale, -3.0f * HUDScale,
 					FLinearColor(0.0f, 0.94f, 0.86f, 0.28f), FLinearColor(0.0f, 0.94f, 0.86f, 0.14f), 1);
-				DrawLine(MX - 4.0f, MY + 12.0f, MX + 30.0f, MY + 12.0f, 1.5f, TealPrimary, 2);
+				DrawLine(MX - 4.0f * HUDScale, MY + 13.0f * HUDScale, MX + 32.0f * HUDScale, MY + 13.0f * HUDScale, 1.6f * HUDScale, TealPrimary, 2);
 			}
 			DrawGlowText(MX, MY, Modes[m], FontMicro,
 				bActiveMode ? HudWhite : FLinearColor(0.5f, 0.65f, 0.75f, 0.45f), bActiveMode ? 0.8f : 0.0f);
@@ -884,7 +924,7 @@ public:
 			EchoStatusStr = TEXT("[G] FRAG  //  [Q] DEPLOY FERMI ECHO");
 			EchoCol = TealPrimary;
 		}
-		DrawGlowText(AmmoX + 82.0f, AmmoY - 22.0f, EchoStatusStr, FontMicro, EchoCol, 0.75f);
+		DrawGlowText(AmmoX + 82.0f * HUDScale, AmmoY - 22.0f * HUDScale, EchoStatusStr, FontMicro, EchoCol, 0.75f);
 
 		// =========================================================================
 		// 4.8 ACTIVE FERMI TIME-DILATION VIGNETTE & DIGITAL CHRONOMETER TICKER
@@ -894,7 +934,7 @@ public:
 			const float Pulse = 0.65f + 0.35f * FMath::Sin(TimeSec * 14.0f);
 			const FLinearColor EdgeCyan(0.0f, 0.92f, 0.86f, 0.16f * Pulse);
 			const FLinearColor InnerClear(0.0f, 0.92f, 0.86f, 0.0f);
-			const float VigThickness = 42.0f;
+			const float VigThickness = 48.0f * HUDScale;
 
 			// Top, Bottom, Left, Right subtle cyan peripheral vignette strips
 			DrawQuad(FVector2f(0.0f, 0.0f), FVector2f(ScreenW, 0.0f), FVector2f(ScreenW, VigThickness), FVector2f(0.0f, VigThickness),
@@ -907,11 +947,11 @@ public:
 				InnerClear, EdgeCyan, EdgeCyan, InnerClear, 1);
 
 			// Digital Chronometer Ticker below top compass tape
-			const float ChronoX = ScreenW * 0.5f - 108.0f + VX * 0.4f;
-			const float ChronoY = 64.0f + VY * 0.4f;
-			DrawSkewedRect(ChronoX - 8.0f, ChronoY - 3.0f, 232.0f, 18.0f, -4.0f,
+			const float ChronoX = ScreenW * 0.5f - 118.0f * HUDScale + VX * 0.35f;
+			const float ChronoY = 64.0f * HUDScale + VY * 0.35f;
+			DrawSkewedRect(ChronoX - 8.0f * HUDScale, ChronoY - 3.0f * HUDScale, 240.0f * HUDScale, 20.0f * HUDScale, -4.0f * HUDScale,
 				FLinearColor(0.0f, 0.25f, 0.30f, 0.42f), FLinearColor(0.0f, 0.45f, 0.52f, 0.22f), 2);
-			DrawLine(ChronoX - 8.0f, ChronoY + 15.0f, ChronoX + 224.0f, ChronoY + 15.0f, 1.5f, TealPrimary, 3);
+			DrawLine(ChronoX - 8.0f * HUDScale, ChronoY + 17.0f * HUDScale, ChronoX + 232.0f * HUDScale, ChronoY + 17.0f * HUDScale, 1.8f * HUDScale, TealPrimary, 3);
 			DrawGlowText(ChronoX, ChronoY,
 				FString::Printf(TEXT("CHRONO FIELD // 0.25x c  [%.2fs]"), OwningHUD->FermiBubbleTimeRemaining),
 				FontSmall, TealPrimary, 0.9f, 4);
@@ -927,7 +967,7 @@ public:
 		}
 
 		// =========================================================================
-		// 5. CENTER MULTI-LAYER RETICLE, RADIAL RELOAD RING & 3D DAMAGE ARCS
+		// 5. CENTER MULTI-LAYER RETICLE, RADIAL RELOAD RING & DIRECTIONAL THREAT RADAR
 		// =========================================================================
 		const float CX = ScreenW * 0.5f;
 		const float CY = ScreenH * 0.5f;
@@ -936,103 +976,362 @@ public:
 		const float CrosshairAlpha = FMath::Clamp(1.0f - OwningHUD->ADSAlpha * 1.25f, 0.0f, 1.0f);
 		if (CrosshairAlpha > 0.02f && !OwningHUD->bIsReloading)
 		{
-			const float Gap = FMath::Clamp(OwningHUD->CurrentSpreadRadius, 7.0f, 42.0f);
-			const float Len = 9.0f;
-			const float TBracket = 3.0f;
+			const float Gap = FMath::Clamp(OwningHUD->CurrentSpreadRadius * HUDScale, 8.0f * HUDScale, 50.0f * HUDScale);
+			const float Len = 9.0f * HUDScale;
+			const float TBracket = 3.0f * HUDScale;
 
 			const FLinearColor DarkOutline(0.0f, 0.02f, 0.04f, 0.52f * CrosshairAlpha);
 			const FLinearColor BrightCore(0.92f, 0.99f, 1.0f, 0.92f * CrosshairAlpha);
 			const FLinearColor TealTip(0.0f, 0.94f, 0.86f, 0.88f * CrosshairAlpha);
 
 			// Dark Contrast Backing Lines
-			DrawLine(CX, CY - Gap - Len - 1.0f, CX, CY - Gap + 1.0f, 3.0f, DarkOutline, 2);
-			DrawLine(CX, CY + Gap - 1.0f, CX, CY + Gap + Len + 1.0f, 3.0f, DarkOutline, 2);
-			DrawLine(CX - Gap - Len - 1.0f, CY, CX - Gap + 1.0f, CY, 3.0f, DarkOutline, 2);
-			DrawLine(CX + Gap - 1.0f, CY, CX + Gap + Len + 1.0f, CY, 3.0f, DarkOutline, 2);
+			DrawLine(CX, CY - Gap - Len - 1.0f, CX, CY - Gap + 1.0f, 3.5f * HUDScale, DarkOutline, 2);
+			DrawLine(CX, CY + Gap - 1.0f, CX, CY + Gap + Len + 1.0f, 3.5f * HUDScale, DarkOutline, 2);
+			DrawLine(CX - Gap - Len - 1.0f, CY, CX - Gap + 1.0f, CY, 3.5f * HUDScale, DarkOutline, 2);
+			DrawLine(CX + Gap - 1.0f, CY, CX + Gap + Len + 1.0f, CY, 3.5f * HUDScale, DarkOutline, 2);
 
 			// Crisp Bright Core Pips
-			DrawLine(CX, CY - Gap - Len, CX, CY - Gap, 1.4f, BrightCore, 3);
-			DrawLine(CX, CY + Gap, CX, CY + Gap + Len, 1.4f, BrightCore, 3);
-			DrawLine(CX - Gap - Len, CY, CX - Gap, CY, 1.4f, BrightCore, 3);
-			DrawLine(CX + Gap, CY, CX + Gap + Len, CY, 1.4f, BrightCore, 3);
+			DrawLine(CX, CY - Gap - Len, CX, CY - Gap, 1.6f * HUDScale, BrightCore, 3);
+			DrawLine(CX, CY + Gap, CX, CY + Gap + Len, 1.6f * HUDScale, BrightCore, 3);
+			DrawLine(CX - Gap - Len, CY, CX - Gap, CY, 1.6f * HUDScale, BrightCore, 3);
+			DrawLine(CX + Gap, CY, CX + Gap + Len, CY, 1.6f * HUDScale, BrightCore, 3);
 
 			// Inner Tactical T-Brackets on Pip Tips
-			DrawLine(CX - TBracket, CY - Gap, CX + TBracket, CY - Gap, 1.2f, TealTip, 3);
-			DrawLine(CX - TBracket, CY + Gap, CX + TBracket, CY + Gap, 1.2f, TealTip, 3);
-			DrawLine(CX - Gap, CY - TBracket, CX - Gap, CY + TBracket, 1.2f, TealTip, 3);
-			DrawLine(CX + Gap, CY - TBracket, CX + Gap, CY + TBracket, 1.2f, TealTip, 3);
+			DrawLine(CX - TBracket, CY - Gap, CX + TBracket, CY - Gap, 1.4f * HUDScale, TealTip, 3);
+			DrawLine(CX - TBracket, CY + Gap, CX + TBracket, CY + Gap, 1.4f * HUDScale, TealTip, 3);
+			DrawLine(CX - Gap, CY - TBracket, CX - Gap, CY + TBracket, 1.4f * HUDScale, TealTip, 3);
+			DrawLine(CX + Gap, CY - TBracket, CX + Gap, CY + TBracket, 1.4f * HUDScale, TealTip, 3);
 
 			// Precision Center Micro-Dot
-			DrawDiamond(CX, CY, 1.6f, 1.0f, TealTip, true, 3);
+			DrawDiamond(CX, CY, 1.8f * HUDScale, 1.0f * HUDScale, TealTip, true, 3);
 		}
 
 		// 5.2 Center Radial 4-Phase Reload Progress Ring
 		if (OwningHUD->bIsReloading)
 		{
-			const float RRadius = 26.0f;
+			const float RRadius = 26.0f * HUDScale;
 			const float Prog = FMath::Clamp(OwningHUD->ReloadProgress, 0.0f, 1.0f);
 
 			// Background Ring Track
-			DrawArc(CX, CY, RRadius, 0.0f, 360.0f, 2.2f, FLinearColor(0.0f, 0.12f, 0.18f, 0.45f), 36, 2);
+			DrawArc(CX, CY, RRadius, 0.0f, 360.0f, 2.4f * HUDScale, FLinearColor(0.0f, 0.12f, 0.18f, 0.45f), 36, 2);
 			// Active Sweeping Progress Arc (-90 deg top clockwise)
-			DrawArc(CX, CY, RRadius, -90.0f, -90.0f + Prog * 360.0f, 2.8f, AmberWarn, 36, 3);
+			DrawArc(CX, CY, RRadius, -90.0f, -90.0f + Prog * 360.0f, 3.2f * HUDScale, AmberWarn, 36, 3);
 
 			// 4-Phase Stage Label
 			const TCHAR* PhaseStr = (Prog < 0.20f) ? TEXT("PHASE 1 // CANT")
 			                      : (Prog < 0.42f) ? TEXT("PHASE 2 // MAG DROP")
 			                      : (Prog < 0.76f) ? TEXT("PHASE 3 // MAG LOCK")
 			                                       : TEXT("PHASE 4 // BOLT SNAP");
-			DrawGlowText(CX - 48.0f, CY + RRadius + 8.0f, PhaseStr, FontMicro, AmberWarn, 0.85f);
+			DrawGlowText(CX - 52.0f * HUDScale, CY + RRadius + 9.0f * HUDScale, PhaseStr, FontMicro, AmberWarn, 0.85f);
 		}
 		else if (OwningHUD->AmmoInClip <= 5)
 		{
 			const float PulseAlpha = 0.55f + 0.40f * FMath::Sin(TimeSec * 10.0f);
-			DrawGlowText(CX - 38.0f, CY + 34.0f,
+			DrawGlowText(CX - 42.0f * HUDScale, CY + 38.0f * HUDScale,
 				OwningHUD->AmmoInClip == 0 ? TEXT("[ R ] EMPTY // RELOAD") : TEXT("[ R ] LOW AMMO"),
 				FontMicro, FLinearColor(1.0f, 0.35f, 0.15f, PulseAlpha), 0.8f);
 		}
 
-		// 5.3 Animated Kinetic Hitmarker (Expands on impact, Crimson + Outer Diamond on Headshot)
+		// 5.3 Animated Kinetic Hitmarker
+		// Differentiated Visual Feedback:
+		// - White X: Standard limb/flesh hit
+		// - Cobalt Blue X + Shield Icon: Hit absorbed by enemy Level IV Ceramic Armor Plate
+		// - Crimson Red Double-X (Expanding): Critical Headshot / Confirmed Elimination
 		if (OwningHUD->HitmarkerTimer > 0.0f)
 		{
 			const float NormHit = FMath::Clamp(OwningHUD->HitmarkerTimer / 0.25f, 0.0f, 1.0f);
-			const float Expand = (1.0f - NormHit) * 5.0f;
-			const float InnerR = 5.0f + Expand * 0.4f;
-			const float OuterR = 13.0f + Expand;
-
+			const bool bKill = (OwningHUD->CurrentHitmarker == EFPSHitmarkerType::Kill);
 			const bool bHeadshot = (OwningHUD->CurrentHitmarker == EFPSHitmarkerType::Headshot);
-			const FLinearColor HitCol = bHeadshot
-				? FLinearColor(1.0f, 0.12f, 0.20f, NormHit)
-				: FLinearColor(0.95f, 1.0f, 1.0f, NormHit);
+			const bool bShield = (OwningHUD->CurrentHitmarker == EFPSHitmarkerType::ShieldBreak);
+
+			const float Expand = (1.0f - NormHit) * (bKill ? 12.0f : (bHeadshot ? 8.0f : 5.0f)) * HUDScale;
+			const float InnerR = (5.0f + Expand * 0.4f) * HUDScale;
+			const float OuterR = (13.0f + Expand) * HUDScale;
+
+			FLinearColor HitCol = FLinearColor(0.96f, 0.98f, 1.0f, NormHit); // Standard White X
+			if (bShield)
+			{
+				HitCol = FLinearColor(0.0f, 0.65f, 1.0f, NormHit); // Cobalt Blue #00A8FF
+			}
+			else if (bHeadshot || bKill)
+			{
+				HitCol = FLinearColor(1.0f, 0.12f, 0.20f, NormHit); // Crimson Red #FF2A54
+			}
 
 			// Dark Shadow Underlay
-			const FLinearColor HitShadow(0.0f, 0.0f, 0.0f, NormHit * 0.6f);
-			DrawLine(CX - OuterR, CY - OuterR, CX - InnerR, CY - InnerR, 3.2f, HitShadow, 3);
-			DrawLine(CX + OuterR, CY - OuterR, CX + InnerR, CY - InnerR, 3.2f, HitShadow, 3);
-			DrawLine(CX - OuterR, CY + OuterR, CX - InnerR, CY + InnerR, 3.2f, HitShadow, 3);
-			DrawLine(CX + OuterR, CY + OuterR, CX + InnerR, CY + InnerR, 3.2f, HitShadow, 3);
+			const FLinearColor HitShadow(0.0f, 0.0f, 0.0f, NormHit * 0.65f);
+			DrawLine(CX - OuterR, CY - OuterR, CX - InnerR, CY - InnerR, 3.8f * HUDScale, HitShadow, 3);
+			DrawLine(CX + OuterR, CY - OuterR, CX + InnerR, CY - InnerR, 3.8f * HUDScale, HitShadow, 3);
+			DrawLine(CX - OuterR, CY + OuterR, CX - InnerR, CY + InnerR, 3.8f * HUDScale, HitShadow, 3);
+			DrawLine(CX + OuterR, CY + OuterR, CX + InnerR, CY + InnerR, 3.8f * HUDScale, HitShadow, 3);
 
 			// Primary Hitmarker Cross
-			DrawLine(CX - OuterR, CY - OuterR, CX - InnerR, CY - InnerR, 1.8f, HitCol, 4);
-			DrawLine(CX + OuterR, CY - OuterR, CX + InnerR, CY - InnerR, 1.8f, HitCol, 4);
-			DrawLine(CX - OuterR, CY + OuterR, CX - InnerR, CY + InnerR, 1.8f, HitCol, 4);
-			DrawLine(CX + OuterR, CY + OuterR, CX + InnerR, CY + InnerR, 1.8f, HitCol, 4);
+			DrawLine(CX - OuterR, CY - OuterR, CX - InnerR, CY - InnerR, 2.2f * HUDScale, HitCol, 4);
+			DrawLine(CX + OuterR, CY - OuterR, CX + InnerR, CY - InnerR, 2.2f * HUDScale, HitCol, 4);
+			DrawLine(CX - OuterR, CY + OuterR, CX - InnerR, CY + InnerR, 2.2f * HUDScale, HitCol, 4);
+			DrawLine(CX + OuterR, CY + OuterR, CX + InnerR, CY + InnerR, 2.2f * HUDScale, HitCol, 4);
 
-			// Double-tick lethal accent for headshots
-			if (bHeadshot)
+			// Cobalt Blue Shield Icon: 4-Corner Level IV Armor Plate Brackets & Outline
+			if (bShield)
 			{
-				DrawDiamond(CX, CY, OuterR * 0.85f, 1.4f, FLinearColor(1.0f, 0.4f, 0.1f, NormHit * 0.85f), false, 4);
+				const float ShR = OuterR + 5.0f * HUDScale;
+				const float ShW = 7.0f * HUDScale;
+				DrawLine(CX - ShR, CY - ShR, CX - ShR + ShW, CY - ShR, 2.2f * HUDScale, HitCol, 4);
+				DrawLine(CX - ShR, CY - ShR, CX - ShR, CY - ShR + ShW, 2.2f * HUDScale, HitCol, 4);
+				DrawLine(CX + ShR, CY - ShR, CX + ShR - ShW, CY - ShR, 2.2f * HUDScale, HitCol, 4);
+				DrawLine(CX + ShR, CY - ShR, CX + ShR, CY - ShR + ShW, 2.2f * HUDScale, HitCol, 4);
+				DrawLine(CX - ShR, CY + ShR, CX - ShR + ShW, CY + ShR, 2.2f * HUDScale, HitCol, 4);
+				DrawLine(CX - ShR, CY + ShR, CX - ShR, CY + ShR - ShW, 2.2f * HUDScale, HitCol, 4);
+				DrawLine(CX + ShR, CY + ShR, CX + ShR - ShW, CY + ShR, 2.2f * HUDScale, HitCol, 4);
+				DrawLine(CX + ShR, CY + ShR, CX + ShR, CY + ShR - ShW, 2.2f * HUDScale, HitCol, 4);
+
+				DrawDiamond(CX, CY, ShR + 2.0f * HUDScale, 1.4f * HUDScale, HitCol * FLinearColor(1, 1, 1, 0.75f), false, 4);
+			}
+
+			// Crimson Red Double-X (Expanding): Critical Headshot / Confirmed Elimination
+			if (bHeadshot || bKill)
+			{
+				const float OuterX_Inner = OuterR + 3.0f * HUDScale;
+				const float OuterX_Outer = OuterR + (8.0f + Expand * 0.5f) * HUDScale;
+				DrawLine(CX - OuterX_Outer, CY - OuterX_Outer, CX - OuterX_Inner, CY - OuterX_Inner, 2.4f * HUDScale, HitCol, 4);
+				DrawLine(CX + OuterX_Outer, CY - OuterX_Outer, CX + OuterX_Inner, CY - OuterX_Inner, 2.4f * HUDScale, HitCol, 4);
+				DrawLine(CX - OuterX_Outer, CY + OuterX_Outer, CX - OuterX_Inner, CY + OuterX_Inner, 2.4f * HUDScale, HitCol, 4);
+				DrawLine(CX + OuterX_Outer, CY + OuterX_Outer, CX + OuterX_Inner, CY + OuterX_Inner, 2.4f * HUDScale, HitCol, 4);
+
+				DrawDiamond(CX, CY, OuterR * 0.95f, 2.0f * HUDScale, FLinearColor(1.0f, 0.45f, 0.15f, NormHit * 0.90f), false, 4);
 			}
 		}
 
-		// 5.4 3D Directional Damage Indicator Arc
+		// 5.4 Killstreak Combo Counter (2x DOUBLE, 3x TRIPLE, UNSTOPPABLE)
+		if (OwningHUD->CurrentComboCount >= 2 && OwningHUD->ComboDecayTimer > 0.0f)
+		{
+			const float ComboRatio = FMath::Clamp(OwningHUD->ComboDecayTimer / FMath::Max(0.1f, OwningHUD->MaxComboWindow), 0.0f, 1.0f);
+			const float BarW = 150.0f * HUDScale;
+			const float BarH = 20.0f * HUDScale;
+			const float ComboX = CX - (BarW * 0.5f);
+			const float ComboY = CY + 60.0f * HUDScale;
+
+			FString ComboStr;
+			FLinearColor ComboCol;
+			if (OwningHUD->CurrentComboCount == 2)
+			{
+				ComboStr = TEXT("2x DOUBLE");
+				ComboCol = AmberWarn;
+			}
+			else if (OwningHUD->CurrentComboCount == 3)
+			{
+				ComboStr = TEXT("3x TRIPLE");
+				ComboCol = FLinearColor(1.0f, 0.45f, 0.0f, 1.0f);
+			}
+			else if (OwningHUD->CurrentComboCount == 4)
+			{
+				ComboStr = TEXT("4x QUAD FEED");
+				ComboCol = CrimsonAlert;
+			}
+			else
+			{
+				ComboStr = FString::Printf(TEXT("👑 %dx UNSTOPPABLE"), OwningHUD->CurrentComboCount);
+				ComboCol = FLinearColor(1.0f, 0.15f, 0.85f, 1.0f);
+			}
+
+			// Background Glass Panel
+			DrawSkewedRect(ComboX, ComboY, BarW, BarH, -4.0f * HUDScale,
+				FLinearColor(0.02f, 0.04f, 0.07f, 0.70f),
+				FLinearColor(0.04f, 0.08f, 0.14f, 0.80f), 2);
+
+			// Decaying Combo Timer Meter Bar
+			const float MeterW = BarW * ComboRatio;
+			if (MeterW > 2.0f)
+			{
+				DrawLine(ComboX, ComboY + BarH - 2.0f * HUDScale, ComboX + MeterW, ComboY + BarH - 2.0f * HUDScale, 2.4f * HUDScale, ComboCol, 3);
+			}
+
+			// Combo Title Text
+			DrawGlowText(ComboX + 16.0f * HUDScale, ComboY + 2.0f * HUDScale, ComboStr, FontMicro, ComboCol, 0.85f, 4);
+		}
+
+		// 5.5 Tactical Style & Combat Accolade Ticker
+		if (OwningHUD->ActiveAccolades.Num() > 0)
+		{
+			const float AccBaseY = CY + 84.0f * HUDScale + (OwningHUD->CurrentComboCount >= 2 ? 22.0f * HUDScale : 0.0f);
+			const int32 NumAcc = FMath::Min(OwningHUD->ActiveAccolades.Num(), 3);
+			for (int32 a = 0; a < NumAcc; ++a)
+			{
+				const FFPSCombatAccolade& Acc = OwningHUD->ActiveAccolades[OwningHUD->ActiveAccolades.Num() - 1 - a];
+				const float Elapsed = Acc.InitialLifetime - Acc.LifetimeRemaining;
+				// Pop-in scale interpolation
+				const float PopScale = (Elapsed < 0.12f)
+					? FMath::Lerp(0.40f, 1.08f, Elapsed / 0.12f)
+					: (Elapsed < 0.22f ? FMath::Lerp(1.08f, 1.0f, (Elapsed - 0.12f) / 0.10f) : 1.0f);
+				const float FadeAlpha = FMath::Clamp(Acc.LifetimeRemaining / 0.35f, 0.0f, 1.0f);
+				const float AccY = AccBaseY + (a * 22.0f * HUDScale);
+
+				const float EstimatedTextW = (Acc.Title.Len() * 6.8f + 24.0f) * HUDScale;
+				const float PillW = FMath::Max(180.0f * HUDScale, EstimatedTextW) * PopScale;
+				const float PillX = CX - (PillW * 0.5f);
+
+				// Tactical Glass Pill & Accent Underline
+				DrawLine(PillX, AccY + 14.0f * HUDScale, PillX + PillW, AccY + 14.0f * HUDScale, 1.4f * HUDScale, Acc.AccentColor * FLinearColor(1, 1, 1, FadeAlpha * 0.65f), 3);
+				DrawLine(PillX, AccY + 4.0f * HUDScale, PillX + 8.0f * HUDScale, AccY + 14.0f * HUDScale, 1.4f * HUDScale, Acc.AccentColor * FLinearColor(1, 1, 1, FadeAlpha * 0.85f), 3);
+				DrawLine(PillX + PillW, AccY + 4.0f * HUDScale, PillX + PillW - 8.0f * HUDScale, AccY + 14.0f * HUDScale, 1.4f * HUDScale, Acc.AccentColor * FLinearColor(1, 1, 1, FadeAlpha * 0.85f), 3);
+
+				// Accolade Text
+				DrawGlowText(PillX + 12.0f * HUDScale, AccY, Acc.Title, FontMicro, Acc.AccentColor * FLinearColor(1, 1, 1, FadeAlpha), 0.85f, 4);
+			}
+		}
+
+		// 5.4 Legacy 3D Directional Damage Indicator Arc
 		if (OwningHUD->DamageIndicatorTimer > 0.0f)
 		{
 			const float DmgAlpha = FMath::Clamp(OwningHUD->DamageIndicatorTimer / 1.2f, 0.0f, 1.0f);
 			const float CenterDeg = OwningHUD->DamageIndicatorAngle - 90.0f;
-			const float DmgRadius = 78.0f;
-			DrawArc(CX, CY, DmgRadius, CenterDeg - 26.0f, CenterDeg + 26.0f, 4.0f, FLinearColor(1.0f, 0.10f, 0.18f, DmgAlpha * 0.85f), 18, 3);
-			DrawArc(CX, CY, DmgRadius + 4.0f, CenterDeg - 14.0f, CenterDeg + 14.0f, 2.0f, FLinearColor(1.0f, 0.55f, 0.55f, DmgAlpha * 0.95f), 12, 4);
+			const float DmgRadius = 85.0f * HUDScale;
+			DrawArc(CX, CY, DmgRadius, CenterDeg - 26.0f, CenterDeg + 26.0f, 4.4f * HUDScale, FLinearColor(1.0f, 0.10f, 0.18f, DmgAlpha * 0.85f), 18, 3);
+			DrawArc(CX, CY, DmgRadius + 4.0f * HUDScale, CenterDeg - 14.0f, CenterDeg + 14.0f, 2.2f * HUDScale, FLinearColor(1.0f, 0.55f, 0.55f, DmgAlpha * 0.95f), 12, 4);
+		}
+
+		// 5.6 Center-Screen Directional Hit & Visual Audio Semicircle + Chevron Radar (Deaf Accessibility)
+		if (OwningHUD->bEnableVisualAudioRadar)
+		{
+			const float ThreatRadius = 165.0f * HUDScale;
+
+			for (const FFPSThreatIndicator& Ind : OwningHUD->ActiveThreatIndicators)
+		{
+			const float LifeRatio = FMath::Clamp(Ind.LifetimeRemaining / FMath::Max(0.01f, Ind.InitialLifetime), 0.0f, 1.0f);
+			if (LifeRatio <= 0.001f) continue;
+
+			FLinearColor BaseColor;
+			switch (Ind.Type)
+			{
+			case EThreatIndicatorType::Damage:
+				BaseColor = CrimsonAlert; // Crimson #FF2A54
+				break;
+			case EThreatIndicatorType::Gunfire:
+				BaseColor = AmberWarn;    // Amber #FFB300
+				break;
+			case EThreatIndicatorType::Footstep:
+			default:
+				BaseColor = CyanTactical; // Cyan #00E5FF
+				break;
+			}
+
+			const float ThetaDeg = Ind.RelativeAngleDeg;
+			const float HalfSpanDeg = (Ind.Type == EThreatIndicatorType::Damage) ? 52.0f : 44.0f;
+			const int32 ArcSteps = 20;
+			const float ArcThickness = (Ind.Type == EThreatIndicatorType::Damage ? 4.4f : 3.4f) * HUDScale * FMath::Clamp(Ind.Intensity, 0.8f, 1.8f);
+
+			// Draw multi-segment smooth curved arc with cosine alpha tapering toward ends
+			for (int32 s = 0; s < ArcSteps; ++s)
+			{
+				const float StepT0 = (float)s / (float)ArcSteps;
+				const float StepT1 = (float)(s + 1) / (float)ArcSteps;
+
+				const float Deg0 = ThetaDeg + FMath::Lerp(-HalfSpanDeg, HalfSpanDeg, StepT0);
+				const float Deg1 = ThetaDeg + FMath::Lerp(-HalfSpanDeg, HalfSpanDeg, StepT1);
+
+				const float Rad0 = FMath::DegreesToRadians(Deg0);
+				const float Rad1 = FMath::DegreesToRadians(Deg1);
+
+				// Screen coordinates: 0° is straight ahead (top: Y = -R, X = 0), +90° is right (X = +R, Y = 0)
+				const float X0 = CX + ThreatRadius * FMath::Sin(Rad0);
+				const float Y0 = CY - ThreatRadius * FMath::Cos(Rad0);
+				const float X1 = CX + ThreatRadius * FMath::Sin(Rad1);
+				const float Y1 = CY - ThreatRadius * FMath::Cos(Rad1);
+
+				// Cosine alpha taper: 1.0 at center, 0.0 at arc tips
+				const float CenterNorm0 = (StepT0 - 0.5f) * 2.0f; // [-1, 1]
+				const float CenterNorm1 = (StepT1 - 0.5f) * 2.0f;
+				const float Taper0 = FMath::Max(0.0f, FMath::Cos(CenterNorm0 * PI * 0.5f));
+				const float Taper1 = FMath::Max(0.0f, FMath::Cos(CenterNorm1 * PI * 0.5f));
+
+				const float Alpha0 = LifeRatio * Taper0 * 0.95f;
+				const float Alpha1 = LifeRatio * Taper1 * 0.95f;
+
+				// Dark contrast drop-shadow underlay
+				DrawGradientLine(X0, Y0, X1, Y1, ArcThickness + 1.8f * HUDScale,
+					FLinearColor(0.0f, 0.01f, 0.02f, Alpha0 * 0.65f),
+					FLinearColor(0.0f, 0.01f, 0.02f, Alpha1 * 0.65f), 3);
+
+				// Glowing core arc
+				DrawGradientLine(X0, Y0, X1, Y1, ArcThickness,
+					BaseColor * FLinearColor(1, 1, 1, Alpha0),
+					BaseColor * FLinearColor(1, 1, 1, Alpha1), 4);
+			}
+
+			// Draw sharp outward-pointing chevron/arrow just outside the peak of the semicircle
+			{
+				const float RadPeak = FMath::DegreesToRadians(ThetaDeg);
+				const float SinP = FMath::Sin(RadPeak);
+				const float CosP = FMath::Cos(RadPeak);
+
+				const float ChevDist = ThreatRadius + 8.0f * HUDScale;
+				const float ChevLen = 14.0f * HUDScale;
+				const float ChevSpread = 10.0f * HUDScale;
+
+				// Peak tip pointing outward
+				const float TipX = CX + (ChevDist + ChevLen) * SinP;
+				const float TipY = CY - (ChevDist + ChevLen) * CosP;
+
+				// Base center
+				const float BaseX = CX + ChevDist * SinP;
+				const float BaseY = CY - ChevDist * CosP;
+
+				// Perpendicular unit vector in screen coordinates: (cos(theta), sin(theta))
+				const float PerpX = CosP;
+				const float PerpY = SinP;
+
+				const float LeftX = BaseX - PerpX * ChevSpread;
+				const float LeftY = BaseY - PerpY * ChevSpread;
+				const float RightX = BaseX + PerpX * ChevSpread;
+				const float RightY = BaseY + PerpY * ChevSpread;
+
+				const float ChevAlpha = LifeRatio * 0.95f;
+				const FLinearColor ChevColor = BaseColor * FLinearColor(1, 1, 1, ChevAlpha);
+				const FLinearColor ChevShadow(0.0f, 0.01f, 0.02f, ChevAlpha * 0.65f);
+				const float ChevThick = 2.4f * HUDScale;
+
+				// Drop-shadow chevron
+				DrawLine(LeftX, LeftY, TipX, TipY, ChevThick + 1.6f * HUDScale, ChevShadow, 3);
+				DrawLine(RightX, RightY, TipX, TipY, ChevThick + 1.6f * HUDScale, ChevShadow, 3);
+
+				// Colored chevron
+				DrawLine(LeftX, LeftY, TipX, TipY, ChevThick, ChevColor, 5);
+				DrawLine(RightX, RightY, TipX, TipY, ChevThick, ChevColor, 5);
+
+				// Inner notch accent
+				const float NotchX = BaseX + SinP * (ChevLen * 0.35f);
+				const float NotchY = BaseY - CosP * (ChevLen * 0.35f);
+				DrawLine(LeftX, LeftY, NotchX, NotchY, ChevThick * 0.8f, ChevColor * FLinearColor(1, 1, 1, 0.75f), 5);
+				DrawLine(RightX, RightY, NotchX, NotchY, ChevThick * 0.8f, ChevColor * FLinearColor(1, 1, 1, 0.75f), 5);
+			}
+		}
+		}
+
+		// 5.7 3D-Projected "[ ! BAITED ]" Diamond Indicator Above Baited Enemies
+		for (const FFPSBaitedTargetMarker& Marker : OwningHUD->ActiveBaitedMarkers)
+		{
+			const float MX = FMath::Clamp(Marker.ScreenPos.X, 60.0f * HUDScale, ScreenW - 60.0f * HUDScale);
+			const float MY = FMath::Clamp(Marker.ScreenPos.Y, 55.0f * HUDScale, ScreenH - 80.0f * HUDScale);
+			const float Pulse = 0.82f + 0.18f * FMath::Sin(TimeSec * 16.0f);
+			const FLinearColor BaitCol = FLinearColor(1.0f, 0.70f, 0.0f, 0.96f * Pulse);
+			const FLinearColor BaitAlert = FLinearColor(0.0f, 0.96f, 0.65f, 0.95f);
+
+			// Pulsing Outer & Inner Tactical Diamond
+			DrawDiamond(MX, MY, 9.5f * Pulse * HUDScale, 2.0f * HUDScale, BaitCol, false, 5);
+			DrawDiamond(MX, MY, 4.5f * HUDScale, 1.5f * HUDScale, BaitAlert, true, 5);
+
+			// Floating Pill & "[ ! BAITED ]" Readout Above Diamond
+			const float PillW = 96.0f * HUDScale;
+			const float PillH = 16.0f * HUDScale;
+			const float PillX = MX - PillW * 0.5f;
+			const float PillY = MY - 28.0f * HUDScale;
+
+			DrawSkewedRect(PillX, PillY, PillW, PillH, -3.0f * HUDScale,
+				FLinearColor(0.02f, 0.06f, 0.09f, 0.78f),
+				FLinearColor(0.04f, 0.12f, 0.16f, 0.82f), 4);
+			DrawLine(PillX, PillY + PillH, PillX + PillW * FMath::Clamp(Marker.RemainingRatio, 0.05f, 1.0f), PillY + PillH,
+				2.2f * HUDScale, BaitAlert, 5);
+			DrawGlowText(PillX + 10.0f * HUDScale, PillY + 1.5f * HUDScale, TEXT("[ ! BAITED ]"), FontMicro, BaitCol, 0.9f, 6);
 		}
 
 		return LayerId + 8;
@@ -1055,6 +1354,30 @@ UFPSHUDWidget::UFPSHUDWidget(const FObjectInitializer& ObjectInitializer)
 void UFPSHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
+		{
+			CurrentGoldBalance = Economy->GetGoldBalance();
+			CurrentOpalBalance = Economy->GetOpalBalance();
+			CachedBounties = Economy->GetActiveBounties();
+			Economy->OnCurrencyChanged.AddDynamic(this, &UFPSHUDWidget::HandleCurrencyChanged);
+			Economy->OnBountyCompleted.AddDynamic(this, &UFPSHUDWidget::HandleBountyCompleted);
+		}
+	}
+}
+
+void UFPSHUDWidget::HandleCurrencyChanged(int32 NewGold, int32 NewOpals)
+{
+	CurrentGoldBalance = NewGold;
+	CurrentOpalBalance = NewOpals;
+}
+
+void UFPSHUDWidget::HandleBountyCompleted(const FFPSTacticalBounty& CompletedBounty)
+{
+	// Trigger accolade banner on HUD when a Daily Contract completes mid-match
+	TriggerAccolade(TEXT("CONTRACT COMPLETE // +GOLD & OPALS!"), CompletedBounty.GoldReward, FLinearColor(1.0f, 0.84f, 0.0f));
 }
 
 void UFPSHUDWidget::SetOwningCharacter(AFPSCharacter* InCharacter)
@@ -1075,6 +1398,17 @@ void UFPSHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
 	HUDTimeSeconds += InDeltaTime;
+
+	// Keep HUD persistent economy & active contracts telemetry synchronized
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
+		{
+			CurrentGoldBalance = Economy->GetGoldBalance();
+			CurrentOpalBalance = Economy->GetOpalBalance();
+			CachedBounties = Economy->GetActiveBounties();
+		}
+	}
 
 	if (HitmarkerTimer > 0.0f)
 	{
@@ -1194,12 +1528,88 @@ void UFPSHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		LastCameraPitch = CameraPitch;
 
 		// Subtle breathing + movement + angular turn sway on the AR visor
-		const float WalkBobY = (PlayerSpeed > 20.0f) ? FMath::Sin(HUDTimeSeconds * 9.5f) * 2.2f : FMath::Sin(HUDTimeSeconds * 2.0f) * 0.8f;
-		const float TargetLagX = FMath::Clamp(-DeltaYaw * 2.8f, -14.0f, 14.0f);
-		const float TargetLagY = FMath::Clamp(DeltaPitch * 2.4f + WalkBobY, -12.0f, 12.0f);
+		// 25% Shake & Lag Reduction (0.75x)
+		const float WalkBobY = (PlayerSpeed > 20.0f) ? FMath::Sin(HUDTimeSeconds * 9.5f) * 1.65f : FMath::Sin(HUDTimeSeconds * 2.0f) * 0.60f;
+		const float TargetLagX = FMath::Clamp(-DeltaYaw * 2.1f, -10.5f, 10.5f);
+		const float TargetLagY = FMath::Clamp(DeltaPitch * 1.8f + WalkBobY, -9.0f, 9.0f);
 
 		VisorLagOffset.X = FMath::FInterpTo(VisorLagOffset.X, TargetLagX, InDeltaTime, 10.0f);
 		VisorLagOffset.Y = FMath::FInterpTo(VisorLagOffset.Y, TargetLagY, InDeltaTime, 10.0f);
+	}
+
+	// Update 3D-to-2D Projected "[ ! BAITED ]" Diamond Indicators above baited enemies
+	ActiveBaitedMarkers.Reset();
+	if (UWorld* World = GetWorld())
+	{
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			int32 ViewportX = 1920, ViewportY = 1080;
+			PC->GetViewportSize(ViewportX, ViewportY);
+			const FVector2f LocalSize = MyGeometry.GetLocalSize();
+			const float ScaleX = (ViewportX > 0 && LocalSize.X > 10.0f) ? (LocalSize.X / (float)ViewportX) : 1.0f;
+			const float ScaleY = (ViewportY > 0 && LocalSize.Y > 10.0f) ? (LocalSize.Y / (float)ViewportY) : 1.0f;
+
+			for (TActorIterator<AFPSCharacter> It(World); It; ++It)
+			{
+				AFPSCharacter* BotChar = *It;
+				if (!BotChar || BotChar == OwningCharacter.Get() || !BotChar->IsBaitedByDecoy()) continue;
+
+				const FVector HeadWorldPos = BotChar->GetActorLocation() + FVector(0.0f, 0.0f, 115.0f);
+				FVector2D ProjectedScreen;
+				if (PC->ProjectWorldLocationToScreen(HeadWorldPos, ProjectedScreen, true))
+				{
+					FFPSBaitedTargetMarker Marker;
+					Marker.ScreenPos = FVector2f((float)ProjectedScreen.X * ScaleX, (float)ProjectedScreen.Y * ScaleY);
+					Marker.RemainingRatio = BotChar->GetBaitedRemainingRatio();
+					Marker.Callsign = BotChar->GetBotCallsign();
+					ActiveBaitedMarkers.Add(Marker);
+				}
+			}
+		}
+	}
+
+	// Update Active Threat Indicators (Deaf Accessibility Radar)
+	for (int32 i = ActiveThreatIndicators.Num() - 1; i >= 0; --i)
+	{
+		ActiveThreatIndicators[i].LifetimeRemaining -= InDeltaTime;
+		if (ActiveThreatIndicators[i].LifetimeRemaining <= 0.0f)
+		{
+			ActiveThreatIndicators.RemoveAt(i);
+			continue;
+		}
+
+		// Recalculate relative angle dynamically to current camera heading
+		const FVector CamLoc = OwningCharacter.IsValid() ? OwningCharacter->GetActorLocation() : PlayerLocation;
+		const FRotator CamRot = FRotator(0.0f, CameraYaw, 0.0f);
+		const FVector Fwd = CamRot.Vector();
+		const FVector Right = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
+		const FVector ToSource = (ActiveThreatIndicators[i].WorldSourceLocation - CamLoc).GetSafeNormal2D();
+		if (!ToSource.IsNearlyZero())
+		{
+			const float FwdDot = FVector::DotProduct(ToSource, Fwd);
+			const float RightDot = FVector::DotProduct(ToSource, Right);
+			ActiveThreatIndicators[i].RelativeAngleDeg = FMath::RadiansToDegrees(FMath::Atan2(RightDot, FwdDot));
+		}
+	}
+
+	// Update Accolades
+	for (int32 i = ActiveAccolades.Num() - 1; i >= 0; --i)
+	{
+		ActiveAccolades[i].LifetimeRemaining -= InDeltaTime;
+		if (ActiveAccolades[i].LifetimeRemaining <= 0.0f)
+		{
+			ActiveAccolades.RemoveAt(i);
+		}
+	}
+
+	// Update Killstreak Combo Decay
+	if (ComboDecayTimer > 0.0f)
+	{
+		ComboDecayTimer = FMath::Max(0.0f, ComboDecayTimer - InDeltaTime);
+		if (ComboDecayTimer <= 0.0f)
+		{
+			CurrentComboCount = 0;
+		}
 	}
 }
 
@@ -1208,6 +1618,91 @@ void UFPSHUDWidget::TriggerHitmarker(EFPSHitmarkerType HitType)
 	CurrentHitmarker = HitType;
 	HitmarkerTimer = 0.25f;
 	OnShowHitmarker(HitType);
+}
+
+void UFPSHUDWidget::TriggerAccolade(const FString& Title, int32 ScoreBonus, const FLinearColor& AccentColor)
+{
+	FFPSCombatAccolade NewAcc;
+	NewAcc.Title = Title;
+	NewAcc.ScoreBonus = ScoreBonus;
+	NewAcc.AccentColor = AccentColor;
+	NewAcc.LifetimeRemaining = 2.4f;
+	NewAcc.InitialLifetime = 2.4f;
+
+	if (ActiveAccolades.Num() >= 3)
+	{
+		ActiveAccolades.RemoveAt(0);
+	}
+	ActiveAccolades.Add(NewAcc);
+
+	if (OwningCharacter.IsValid())
+	{
+		if (AFPSPlayerState* PS = OwningCharacter->GetPlayerState<AFPSPlayerState>())
+		{
+			PS->AddCombatScore(ScoreBonus);
+		}
+	}
+}
+
+void UFPSHUDWidget::RegisterKillForCombo()
+{
+	if (ComboDecayTimer > 0.0f)
+	{
+		CurrentComboCount++;
+	}
+	else
+	{
+		CurrentComboCount = 1;
+	}
+	ComboDecayTimer = MaxComboWindow;
+
+	FString ComboTitle;
+	int32 ComboReward = 0;
+	FLinearColor AccentCol = FLinearColor(1.0f, 0.702f, 0.0f);
+
+	if (CurrentComboCount == 2)
+	{
+		ComboTitle = TEXT("🔥 2x DOUBLE KILL (+50 GOLD)");
+		ComboReward = 50;
+		AccentCol = FLinearColor(1.0f, 0.702f, 0.0f);
+	}
+	else if (CurrentComboCount == 3)
+	{
+		ComboTitle = TEXT("⚡ 3x TRIPLE KILL (+100 GOLD)");
+		ComboReward = 100;
+		AccentCol = FLinearColor(1.0f, 0.45f, 0.0f);
+	}
+	else if (CurrentComboCount == 4)
+	{
+		ComboTitle = TEXT("💀 4x QUAD FEED (+150 GOLD)");
+		ComboReward = 150;
+		AccentCol = FLinearColor(1.0f, 0.15f, 0.25f);
+	}
+	else if (CurrentComboCount >= 5)
+	{
+		ComboTitle = FString::Printf(TEXT("👑 %dx UNSTOPPABLE (+250 GOLD)"), CurrentComboCount);
+		ComboReward = 250;
+		AccentCol = FLinearColor(1.0f, 0.10f, 0.90f);
+	}
+
+	if (ComboReward > 0)
+	{
+		if (OwningCharacter.IsValid())
+		{
+			OwningCharacter->AwardCombatAccolade(ComboTitle, ComboReward, AccentCol);
+		}
+		else
+		{
+			TriggerAccolade(ComboTitle, ComboReward, AccentCol);
+			if (UGameInstance* GI = GetGameInstance())
+			{
+				if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
+				{
+					Economy->AddGold(ComboReward, ComboTitle);
+				}
+			}
+		}
+	}
 }
 
 void UFPSHUDWidget::TriggerDamageIndicator(FVector DamageSourceLocation, FVector InPlayerLocation, FRotator PlayerCameraRotation)
@@ -1225,7 +1720,68 @@ void UFPSHUDWidget::TriggerDamageIndicator(FVector DamageSourceLocation, FVector
 	DamageIndicatorAngle = AngleDeg;
 	DamageIndicatorTimer = 1.2f;
 
+	AddDirectionalIndicator(DamageSourceLocation, 1.2f, EThreatIndicatorType::Damage);
+
 	OnShowDamageIndicator(AngleDeg);
+}
+
+void UFPSHUDWidget::AddDirectionalIndicator(FVector WorldSourceLocation, float Intensity, EThreatIndicatorType Type)
+{
+	float Duration = 1.2f;
+	if (Type == EThreatIndicatorType::Footstep)
+	{
+		Duration = 0.6f;
+	}
+	else if (Type == EThreatIndicatorType::Gunfire)
+	{
+		Duration = 0.9f;
+	}
+
+	const FVector CamLoc = OwningCharacter.IsValid() ? OwningCharacter->GetActorLocation() : PlayerLocation;
+	const FRotator CamRot = FRotator(0.0f, CameraYaw, 0.0f);
+	const FVector Fwd = CamRot.Vector();
+	const FVector Right = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
+	const FVector ToSource = (WorldSourceLocation - CamLoc).GetSafeNormal2D();
+
+	float ThreatAngleDeg = 0.0f;
+	if (!ToSource.IsNearlyZero())
+	{
+		const float FwdDot = FVector::DotProduct(ToSource, Fwd);
+		const float RightDot = FVector::DotProduct(ToSource, Right);
+		ThreatAngleDeg = FMath::RadiansToDegrees(FMath::Atan2(RightDot, FwdDot));
+	}
+
+	// Merge with existing indicator of the same type within 18 degrees
+	bool bMerged = false;
+	for (FFPSThreatIndicator& Existing : ActiveThreatIndicators)
+	{
+		if (Existing.Type == Type)
+		{
+			const float AngleDelta = FMath::Abs(FRotator::NormalizeAxis(Existing.RelativeAngleDeg - ThreatAngleDeg));
+			if (AngleDelta < 18.0f)
+			{
+				Existing.LifetimeRemaining = Duration;
+				Existing.InitialLifetime = Duration;
+				Existing.Intensity = FMath::Clamp(Existing.Intensity + Intensity * 0.4f, 0.6f, 2.5f);
+				Existing.WorldSourceLocation = FMath::Lerp(Existing.WorldSourceLocation, WorldSourceLocation, 0.5f);
+				Existing.RelativeAngleDeg = ThreatAngleDeg;
+				bMerged = true;
+				break;
+			}
+		}
+	}
+
+	if (!bMerged)
+	{
+		FFPSThreatIndicator NewInd;
+		NewInd.WorldSourceLocation = WorldSourceLocation;
+		NewInd.Intensity = FMath::Clamp(Intensity, 0.5f, 2.5f);
+		NewInd.Type = Type;
+		NewInd.LifetimeRemaining = Duration;
+		NewInd.InitialLifetime = Duration;
+		NewInd.RelativeAngleDeg = ThreatAngleDeg;
+		ActiveThreatIndicators.Add(NewInd);
+	}
 }
 
 void UFPSHUDWidget::UpdateAmmoDisplay(int32 CurrentAmmo, int32 ReserveAmmo, const FText& WeaponName)

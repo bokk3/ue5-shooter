@@ -1,280 +1,1349 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NOBLE FERMI // Tactical Military Warfare (128-Tick Multiplayer)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOBLE FERMI // Unreal Engine 5.8 Tactical Warfare & Chrono-Ballistics</title>
+
+  <!-- High-Res Vector SVG, PNG & Multi-Size ICO Favicons -->
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+  <link rel="shortcut icon" href="favicon.ico" />
+
+  <!-- Fonts: Space Grotesk, Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            obsidian: '#030712',
+            abyss: '#050B16',
+            tacticalCyan: '#00E5FF',
+            afterburnerAmber: '#FFB300',
+            crimsonAlert: '#FF2A54',
+            emeraldReady: '#00E676',
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- GSAP & ScrollTrigger + Lenis Smooth Scroll -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+
   <style>
-    .glow-cyan { box-shadow: 0 0 25px rgba(6, 182, 212, 0.35); }
-    .glow-cyan-text { text-shadow: 0 0 10px rgba(6, 182, 212, 0.7); }
-    .glow-gold-text { text-shadow: 0 0 10px rgba(245, 158, 11, 0.7); }
+    :root {
+      /* Strict micro-interaction easing token */
+      --ease-luxury: cubic-bezier(0.22, 1, 0.36, 1);
+      --cyan-glow: rgba(0, 229, 255, 0.35);
+      --amber-glow: rgba(255, 179, 0, 0.35);
+      --panel-bg: rgba(5, 12, 22, 0.82);
+      --panel-border: rgba(6, 182, 212, 0.26);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html.lenis, html.lenis body {
+      height: auto;
+    }
+
+    .lenis.lenis-smooth {
+      scroll-behavior: auto !important;
+    }
+
+    .lenis.lenis-smooth [data-lenis-prevent] {
+      overscroll-behavior: contain;
+    }
+
+    body {
+      background-color: #030712;
+      color: #f1f5f9;
+      overflow-x: hidden;
+      selection-background-color: rgba(0, 229, 255, 0.25);
+    }
+
+    ::selection {
+      background: rgba(0, 229, 255, 0.25);
+      color: #00E5FF;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #030712;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(6, 182, 212, 0.35);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 229, 255, 0.7);
+    }
+
+    /* Signature Glows */
+    .glow-cyan {
+      box-shadow: 0 0 28px rgba(0, 229, 255, 0.22), inset 0 0 14px rgba(0, 229, 255, 0.08);
+    }
+    .glow-cyan-text {
+      text-shadow: 0 0 14px rgba(0, 229, 255, 0.65);
+    }
+    .glow-gold-text {
+      text-shadow: 0 0 14px rgba(255, 179, 0, 0.65);
+    }
+    .glow-amber {
+      box-shadow: 0 0 30px rgba(255, 179, 0, 0.25), inset 0 0 12px rgba(255, 179, 0, 0.12);
+    }
+
+    /* Luxury Tactical Glass Panel & Precision Edging */
     .hud-card {
       border: 1px solid rgba(6, 182, 212, 0.25);
-      background: linear-gradient(135deg, rgba(8, 20, 32, 0.85) 0%, rgba(5, 12, 22, 0.95) 100%);
-      transition: all 0.3s ease;
+      background: linear-gradient(145deg, rgba(8, 20, 34, 0.86) 0%, rgba(4, 10, 18, 0.94) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition:
+        transform 0.55s var(--ease-luxury),
+        border-color 0.55s var(--ease-luxury),
+        box-shadow 0.55s var(--ease-luxury),
+        background-color 0.55s var(--ease-luxury);
     }
+
     .hud-card:hover {
-      border-color: rgba(6, 182, 212, 0.6);
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(6, 182, 212, 0.15);
+      border-color: rgba(0, 229, 255, 0.62);
+      transform: translateY(-3px);
+      box-shadow: 0 18px 42px -12px rgba(0, 229, 255, 0.18), 0 0 1px 1px rgba(0, 229, 255, 0.25);
     }
+
+    /* Signature 4-Corner Tactical Brackets with Micro-Interaction Expansion */
     .hud-corner {
       position: relative;
     }
-    .hud-corner::before {
+    .hud-corner::before,
+    .hud-corner::after,
+    .hud-corner > .corner-tr,
+    .hud-corner > .corner-bl {
       content: '';
       position: absolute;
-      top: -2px;
-      left: -2px;
-      width: 8px;
-      height: 8px;
-      border-top: 2px solid #06b6d4;
-      border-left: 2px solid #06b6d4;
+      width: 9px;
+      height: 9px;
+      pointer-events: none;
+      transition:
+        width 0.45s var(--ease-luxury),
+        height 0.45s var(--ease-luxury),
+        border-color 0.45s var(--ease-luxury),
+        transform 0.45s var(--ease-luxury);
+      z-index: 20;
+    }
+    .hud-corner::before {
+      top: -1px;
+      left: -1px;
+      border-top: 2px solid #00E5FF;
+      border-left: 2px solid #00E5FF;
     }
     .hud-corner::after {
+      bottom: -1px;
+      right: -1px;
+      border-bottom: 2px solid #00E5FF;
+      border-right: 2px solid #00E5FF;
+    }
+    .hud-corner > .corner-tr {
+      top: -1px;
+      right: -1px;
+      border-top: 2px solid rgba(255, 179, 0, 0.75);
+      border-right: 2px solid rgba(255, 179, 0, 0.75);
+    }
+    .hud-corner > .corner-bl {
+      bottom: -1px;
+      left: -1px;
+      border-bottom: 2px solid rgba(255, 179, 0, 0.75);
+      border-left: 2px solid rgba(255, 179, 0, 0.75);
+    }
+    .hud-corner:hover::before,
+    .hud-corner:hover::after {
+      width: 14px;
+      height: 14px;
+      border-color: #FFB300;
+    }
+
+    /* Micro-Interaction Buttons */
+    .btn-luxury {
+      position: relative;
+      overflow: hidden;
+      transition:
+        transform 0.45s var(--ease-luxury),
+        box-shadow 0.45s var(--ease-luxury),
+        border-color 0.45s var(--ease-luxury),
+        background-color 0.45s var(--ease-luxury),
+        color 0.45s var(--ease-luxury);
+    }
+    .btn-luxury:hover {
+      transform: translateY(-2px) scale(1.015);
+    }
+    .btn-luxury:active {
+      transform: translateY(0px) scale(0.99);
+    }
+    .btn-luxury::after {
       content: '';
       position: absolute;
-      bottom: -2px;
-      right: -2px;
-      width: 8px;
-      height: 8px;
-      border-bottom: 2px solid #06b6d4;
-      border-right: 2px solid #06b6d4;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 25%, rgba(255, 255, 255, 0.18) 50%, transparent 75%);
+      transform: translateX(-120%);
+      transition: transform 0.75s var(--ease-luxury);
+      pointer-events: none;
+    }
+    .btn-luxury:hover::after {
+      transform: translateX(120%);
+    }
+
+    /* Sticky Deck Cards for GSAP Scroll-Linked Progressive Reveals */
+    .sticky-deck-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .sticky-card-section {
+      position: sticky;
+      top: 5.5rem;
+      min-height: calc(100vh - 7rem);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      will-change: transform, opacity, filter;
+      transform-origin: center top;
+      margin-bottom: 4.5rem;
+    }
+    .sticky-card-inner {
+      width: 100%;
+      max-width: 80rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.85), 0 0 1px 1px rgba(0, 229, 255, 0.22);
+    }
+
+    /* Top Edge Specular Horizon Line */
+    .specular-top-edge {
+      background: linear-gradient(90deg, transparent 0%, rgba(0, 229, 255, 0.75) 35%, rgba(255, 179, 0, 0.85) 65%, transparent 100%);
+      height: 1px;
+      width: 100%;
+    }
+
+    /* Interactive Telemetry Pill Tabs */
+    .telemetry-tab {
+      transition:
+        background-color 0.4s var(--ease-luxury),
+        border-color 0.4s var(--ease-luxury),
+        color 0.4s var(--ease-luxury),
+        transform 0.4s var(--ease-luxury);
+    }
+    .telemetry-tab.active {
+      background: rgba(0, 229, 255, 0.14);
+      border-color: #00E5FF;
+      color: #00E5FF;
+      box-shadow: 0 0 18px rgba(0, 229, 255, 0.2);
+    }
+
+    /* Accessibility: Full prefers-reduced-motion Support */
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .sticky-card-section {
+        position: relative !important;
+        top: 0 !important;
+        margin-bottom: 2.5rem !important;
+        transform: none !important;
+        opacity: 1 !important;
+        filter: none !important;
+      }
+    }
+
+    body.reduced-motion-forced .sticky-card-section {
+      position: relative !important;
+      top: 0 !important;
+      margin-bottom: 2.5rem !important;
+      transform: none !important;
+      opacity: 1 !important;
+      filter: none !important;
     }
   </style>
 </head>
-<body class="bg-[#030712] text-slate-100 font-sans select-none overflow-x-hidden m-0 p-0 min-h-screen flex flex-col justify-between">
-  <!-- Top Navigation & Live Telemetry -->
-  <header class="bg-slate-950/90 border-b border-cyan-900/40 backdrop-blur-md px-6 py-4 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="w-3 h-3 bg-amber-400 rounded-sm rotate-45 shadow-[0_0_8px_#f59e0b]"></div>
-        <span class="text-xl font-black tracking-widest text-amber-400 font-mono glow-gold-text">NOBLE FERMI</span>
-        <span class="text-xs font-mono text-cyan-400/80 px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/40">v1.0.0 MONOLITHIC</span>
-      </div>
 
-      <nav class="flex items-center space-x-6 text-xs font-mono">
-        <a href="#servers" class="text-slate-300 hover:text-cyan-400 transition">SERVERS</a>
-        <a href="#features" class="text-slate-300 hover:text-cyan-400 transition">GUNSMITH</a>
-        <a href="body_mechanics.html" class="text-slate-300 hover:text-cyan-400 transition">3D OPERATOR</a>
-        <a href="multiplayer.html" class="text-slate-300 hover:text-cyan-400 transition">MW2 COMBAT</a>
-        <a href="#download" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded shadow transition">LAUNCH GAME</a>
+<body class="bg-[#030712] text-slate-100 font-sans antialiased selection:bg-cyan-500/20 selection:text-cyan-300 relative min-h-screen">
+
+  <!-- =====================================================================
+       LIVE EMULATED WATER DROPLETS IN A SEA OF PIXELS (ANTIGRAVITY / CLAUDE)
+       Interactive 2D Damped Wave Propagation & Quantized Pixel Matrix Canvas
+       ===================================================================== -->
+  <canvas
+    id="pixelSeaCanvas"
+    aria-hidden="true"
+    class="fixed inset-0 w-full h-full pointer-events-none z-0"
+  ></canvas>
+
+  <!-- Subtle Radial Depth Vignette over Pixel Sea -->
+  <div
+    aria-hidden="true"
+    class="fixed inset-0 pointer-events-none z-0"
+    style="background: radial-gradient(circle at 50% 35%, transparent 15%, rgba(3, 7, 18, 0.55) 70%, rgba(3, 7, 18, 0.9) 100%);"
+  ></div>
+
+  <!-- =====================================================================
+       TOP NAVIGATION & LIVE ENGINE TELEMETRY BAR
+       ===================================================================== -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-[#030712]/80 border-b border-cyan-500/25 backdrop-blur-xl">
+    <div class="specular-top-edge"></div>
+    <div class="max-w-7xl mx-auto px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <!-- Brand Identity (Battle-Scarred Full Wordmark + Favicon Crest) -->
+      <a href="#hero" class="flex items-center space-x-3.5 group focus:outline-none">
+        <img
+          src="assets/favicon.svg"
+          alt="Noble Fermi Emblem"
+          class="w-8 h-8 object-contain drop-shadow-[0_0_10px_rgba(0,229,255,0.45)] transition-transform duration-500 group-hover:scale-110"
+          style="transition-timing-function: var(--ease-luxury);"
+        />
+        <img
+          src="assets/logo.png"
+          alt="NOBLE FERMI"
+          class="h-8 sm:h-9 w-auto object-contain drop-shadow-[0_0_14px_rgba(255,179,0,0.35)]"
+        />
+        <span class="hidden xl:inline-block text-[11px] font-mono text-cyan-300 px-2.5 py-0.5 rounded bg-cyan-950/70 border border-cyan-500/35">
+          UE 5.8 // C++20 MONOLITH
+        </span>
+      </a>
+
+      <!-- Navigation Links -->
+      <nav aria-label="Primary Navigation" class="hidden lg:flex items-center space-x-7 text-xs font-mono tracking-wider">
+        <a href="#card-chrono" class="text-slate-300 hover:text-tacticalCyan transition-colors duration-300">01 // CHRONO ENGINE</a>
+        <a href="#card-anatomy" class="text-slate-300 hover:text-tacticalCyan transition-colors duration-300">02 // 21-BONE &amp; ARMOR</a>
+        <a href="#card-netcode" class="text-slate-300 hover:text-tacticalCyan transition-colors duration-300">03 // 128-HZ NETCODE</a>
+        <a href="#card-deploy" class="text-slate-300 hover:text-tacticalCyan transition-colors duration-300">04 // DEPLOYMENT</a>
       </nav>
+
+      <!-- Right Controls: Droplet Pulse, Reduced Motion Toggle & Launch CTA -->
+      <div class="flex items-center space-x-3 text-xs font-mono">
+        <button
+          id="btn-droplet-pulse"
+          type="button"
+          onclick="emitManualWavePulse()"
+          title="Emit Hydro-Pixel Ripple Wave"
+          class="btn-luxury hidden sm:inline-flex items-center space-x-2 px-3 py-1.5 rounded bg-slate-900/90 border border-cyan-500/35 text-cyan-300 hover:border-cyan-400"
+        >
+          <span class="w-1.5 h-1.5 rounded-full bg-tacticalCyan animate-ping"></span>
+          <span>PULSE PIXEL SEA</span>
+        </button>
+
+        <button
+          id="btn-motion-toggle"
+          type="button"
+          onclick="toggleReducedMotionMode()"
+          aria-pressed="false"
+          class="btn-luxury px-2.5 py-1.5 rounded bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:border-amber-400/60 hover:text-amber-300"
+          title="Toggle Accessibility Reduced Motion"
+        >
+          <span id="motion-status-label">MOTION: FULL</span>
+        </button>
+
+        <a
+          href="#card-deploy"
+          class="btn-luxury px-4 py-1.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-bold rounded shadow-[0_0_20px_rgba(255,179,0,0.35)]"
+        >
+          DEPLOY BUILD
+        </a>
+      </div>
     </div>
   </header>
 
-  <!-- Hero Section -->
-  <section class="relative py-16 md:py-24 px-6 border-b border-cyan-950/60 overflow-hidden">
-    <!-- Ambient Grid Background -->
-    <div class="absolute inset-0 bg-[radial-gradient(#082f49_1px,transparent_1px)] [background-size:24px_24px] opacity-25 pointer-events-none"></div>
+  <!-- =====================================================================
+       MAIN CONTENT CONTAINER
+       ===================================================================== -->
+  <main class="relative z-10 pt-24">
 
-    <div class="max-w-5xl mx-auto text-center relative z-10">
-      <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 font-mono text-xs mb-6 glow-cyan">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>128-HZ DEDICATED SERVER NETWORK AUTHORITATIVE</span>
+    <!-- ===================================================================
+         HERO SECTION (Interactive Pixel-Droplet Field + Telemetry Command)
+         =================================================================== -->
+    <section id="hero" class="relative min-h-[90vh] flex flex-col justify-center px-6 py-16 md:py-24">
+      <div class="max-w-6xl mx-auto w-full">
+
+        <!-- Live Telemetry Status Pill -->
+        <div class="reveal-hero inline-flex flex-wrap items-center gap-3 px-3.5 py-1.5 rounded-full bg-cyan-950/55 border border-cyan-500/40 text-cyan-300 font-mono text-xs mb-6 glow-cyan">
+          <span class="w-2 h-2 rounded-full bg-emeraldReady animate-pulse"></span>
+          <span>128-HZ AUTHORITATIVE SERVER</span>
+          <span class="text-cyan-600">//</span>
+          <span class="text-amber-300">IOSTORE CONTAINER VERIFIED</span>
+          <span class="text-cyan-600">//</span>
+          <span id="hero-cursor-coords" class="text-slate-300">FIELD: [000, 000]</span>
+        </div>
+
+        <!-- Full Battle-Scarred "NOBLE FERMI" Wordmark Showcase (Bullet Hole + Hacksaw Incision) -->
+        <div class="reveal-hero mb-8">
+          <div
+            onclick="emitManualWavePulse()"
+            title="Click to Emit Quantum Wave Pulse"
+            class="hud-card hud-corner p-5 sm:p-7 rounded-xl cursor-pointer group inline-block max-w-full"
+          >
+            <span class="corner-tr"></span><span class="corner-bl"></span>
+            <img
+              src="assets/logo.png"
+              alt="NOBLE FERMI — Battle-Scarred Heavy Metal Wordmark with 7.62mm Bullet Hole & Hacksaw Incision"
+              class="w-full max-w-3xl h-auto object-contain drop-shadow-[0_12px_32px_rgba(0,0,0,0.85)] transition-transform duration-700 group-hover:scale-[1.015]"
+              style="transition-timing-function: var(--ease-luxury);"
+            />
+            <div class="mt-3 pt-2.5 border-t border-cyan-950/80 flex flex-wrap items-center justify-between gap-4 text-[11px] font-mono text-slate-400">
+              <span>INSIGNIA: <strong class="text-slate-200">7.62MM AP IMPACT CRATER &amp; SERRATED HACKSAW SHEAR</strong></span>
+              <div class="flex items-center space-x-3">
+                <a href="assets/logo.png" download onclick="event.stopPropagation()" class="text-amber-400 hover:underline">[DOWNLOAD HIGH-RES PNG]</a>
+                <span>&bull;</span>
+                <a href="assets/logo.svg" download onclick="event.stopPropagation()" class="text-tacticalCyan hover:underline">[DOWNLOAD VECTOR SVG]</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Display Title + Subtitle -->
+        <div class="reveal-hero mb-8">
+          <h1 class="font-display text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-[1.06] mb-5 uppercase">
+            AUTHORITATIVE <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-tacticalCyan to-teal-300 glow-cyan-text">CHRONO-TACTICAL</span>
+            BALLISTIC WARFARE.
+          </h1>
+
+          <p class="text-base sm:text-lg md:text-xl text-slate-300/95 max-w-3xl leading-relaxed font-light">
+            Engineered natively in <strong class="text-white font-medium">Unreal Engine 5.8 C++20</strong>. Noble Fermi fuses high-lethality 3rd-person over-the-shoulder gunplay, physical Level IV ceramic plate fracture, localized <span class="text-cyan-300 font-mono text-sm">0.25x</span> relativistic time-dilation spheres, and acoustic hologram phase-swapping into a single monolithic binary.
+          </p>
+        </div>
+
+        <!-- Primary Action Row & Direct Connect Bar -->
+        <div class="reveal-hero flex flex-wrap items-center gap-4 mb-12 font-mono text-xs sm:text-sm">
+          <a
+            href="#card-chrono"
+            class="btn-luxury px-7 py-4 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-bold rounded-md glow-amber flex items-center space-x-3"
+          >
+            <span>INSPECT ENGINE ARCHITECTURE</span>
+            <span>&darr;</span>
+          </a>
+
+          <button
+            type="button"
+            onclick="emitManualWavePulse()"
+            class="btn-luxury px-6 py-4 bg-slate-950/85 border border-cyan-500/45 text-cyan-300 font-semibold rounded-md hover:bg-cyan-950/40 flex items-center space-x-2.5"
+          >
+            <span class="w-2 h-2 rounded-full bg-tacticalCyan"></span>
+            <span>DROP QUANTUM RIPPLE IN PIXEL SEA</span>
+          </button>
+
+          <!-- Direct Connect IP Pill -->
+          <div class="hud-corner flex items-center gap-3 bg-slate-950/90 border border-cyan-900/60 px-4 py-3 rounded-md">
+            <span class="corner-tr"></span>
+            <span class="corner-bl"></span>
+            <span class="text-slate-400 text-xs">DIRECT IP:</span>
+            <code id="server-ip" class="px-2.5 py-1 bg-black/90 rounded border border-cyan-500/30 text-tacticalCyan font-bold text-xs">127.0.0.1:7777</code>
+            <button
+              type="button"
+              onclick="copyIp()"
+              id="btn-copy-ip"
+              class="btn-luxury px-3 py-1 bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-400/40 text-cyan-200 rounded text-xs font-bold"
+            >
+              COPY
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Live Architectural Metric Pillars -->
+        <div class="reveal-hero grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="hud-card hud-corner p-5 rounded-md">
+            <span class="corner-tr"></span><span class="corner-bl"></span>
+            <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest mb-1">SERVER TICKRATE</div>
+            <div class="text-2xl sm:text-3xl font-display font-bold text-tacticalCyan glow-cyan-text">128.0 HZ</div>
+            <div class="text-[11px] font-mono text-emeraldReady mt-1">7.81ms Frame Budget</div>
+          </div>
+
+          <div class="hud-card hud-corner p-5 rounded-md">
+            <span class="corner-tr"></span><span class="corner-bl"></span>
+            <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest mb-1">CHRONO DILATION</div>
+            <div class="text-2xl sm:text-3xl font-display font-bold text-amber-400 glow-gold-text">0.25x c</div>
+            <div class="text-[11px] font-mono text-slate-300 mt-1">450cm Relativistic Sphere</div>
+          </div>
+
+          <div class="hud-card hud-corner p-5 rounded-md">
+            <span class="corner-tr"></span><span class="corner-bl"></span>
+            <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest mb-1">SKELETAL RIG</div>
+            <div class="text-2xl sm:text-3xl font-display font-bold text-white">21 BONES</div>
+            <div class="text-[11px] font-mono text-cyan-300 mt-1">Two-Bone Left-Hand IK</div>
+          </div>
+
+          <div class="hud-card hud-corner p-5 rounded-md">
+            <span class="corner-tr"></span><span class="corner-bl"></span>
+            <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest mb-1">UI RENDERING</div>
+            <div class="text-2xl sm:text-3xl font-display font-bold text-emeraldReady">PURE SLATE</div>
+            <div class="text-[11px] font-mono text-slate-300 mt-1">Zero-UMG Vertex HUD</div>
+          </div>
+        </div>
+
       </div>
+    </section>
 
-      <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white mb-6 uppercase">
-        MODERN MILITARY <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">TACTICAL WARFARE</span>
-      </h1>
-
-      <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-10 leading-relaxed">
-        Recreating the golden-era tactical multiplayer feel of classic MW2. Powered by authoritative 128-tick networking, an anatomically precise 21-bone human male skeletal model, Level IV ceramic body armor, and a pure Slate C++ hardware-accelerated start menu with real-time 3D character customization.
-      </p>
-
-      <!-- Action Buttons -->
-      <div class="flex flex-wrap items-center justify-center gap-4 font-mono text-sm">
-        <a href="body_mechanics.html" class="px-8 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-lg shadow-xl shadow-amber-950/50 transition transform hover:-translate-y-0.5">
-          ENTER 3D OPERATOR CUSTOMIZER &rarr;
-        </a>
-        <a href="multiplayer.html" class="px-8 py-3.5 bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 font-bold rounded-lg shadow-xl transition transform hover:-translate-y-0.5">
-          SIMULATE MW2 BATTLEFIELD
-        </a>
-      </div>
-
-      <!-- Quick Server IP Copy Bar -->
-      <div class="mt-10 inline-flex flex-wrap items-center justify-center gap-3 bg-slate-950/90 border border-slate-800 p-2.5 rounded-lg font-mono text-xs shadow-2xl">
-        <span class="text-slate-400">DEFAULT DIRECT CONNECT IP:</span>
-        <code id="server-ip" class="px-3 py-1 bg-black rounded border border-cyan-900/50 text-cyan-400 font-bold">127.0.0.1:7777</code>
-        <button onclick="copyIp()" id="btn-copy-ip" class="px-3 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 rounded font-bold transition">
-          COPY IP
-        </button>
-        <span class="text-emerald-400 flex items-center space-x-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-          <span>128 TICKRATE</span>
-        </span>
-      </div>
-    </div>
-  </section>
-
-  <!-- Interactive Modules Grid -->
-  <section id="features" class="py-16 px-6 max-w-7xl mx-auto w-full">
-    <div class="text-center mb-12">
-      <h2 class="text-xs font-mono font-bold text-cyan-400 uppercase tracking-widest mb-2">/// ARCHITECTURAL MODULES</h2>
-      <h3 class="text-2xl md:text-3xl font-black text-white">INTERACTIVE TACTICAL SYSTEMS</h3>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <!-- Card 1: 3D Operator & Body Mechanics -->
-      <a href="body_mechanics.html" class="hud-card hud-corner p-6 rounded-lg block group">
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-mono text-amber-400 font-bold">MODULE 01</span>
-          <span class="px-2 py-0.5 bg-amber-950 text-amber-400 text-[10px] font-mono rounded">3D TURNTABLE</span>
-        </div>
-        <h4 class="text-lg font-bold text-white group-hover:text-cyan-400 transition mb-2">
-          Human Male Body Mechanics & Customizer
-        </h4>
-        <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-          180 cm standing height, 82 kg anthropometry across 21 anatomical bones. Includes Level IV ceramic plates, 2nd-order spring aim punch, and live turntable rotation while in ADS.
-        </p>
-        <div class="text-xs font-mono text-cyan-400 group-hover:underline flex items-center space-x-1">
-          <span>EXPLORE ANATOMY</span>
-          <span>&rarr;</span>
-        </div>
-      </a>
-
-      <!-- Card 2: Gunsmith & Loadouts -->
-      <a href="gunsmith.html" class="hud-card hud-corner p-6 rounded-lg block group">
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-mono text-amber-400 font-bold">MODULE 02</span>
-          <span class="px-2 py-0.5 bg-cyan-950 text-cyan-400 text-[10px] font-mono rounded">5 ARCHETYPES</span>
-        </div>
-        <h4 class="text-lg font-bold text-white group-hover:text-cyan-400 transition mb-2">
-          MW2 Gunsmith & Combat Loadouts
-        </h4>
-        <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-          Assault (M4A1), Spec Ops Stealth (MP5SD), Heavy Gunner (L86 LSW), Recon Sniper (Intervention .50), and Rusher (Vector .45). Recoil graphs and optic attachments.
-        </p>
-        <div class="text-xs font-mono text-cyan-400 group-hover:underline flex items-center space-x-1">
-          <span>OPEN GUNSMITH</span>
-          <span>&rarr;</span>
-        </div>
-      </a>
-
-      <!-- Card 3: MW2 Multiplayer Battlefield -->
-      <a href="multiplayer.html" class="hud-card hud-corner p-6 rounded-lg block group">
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-mono text-amber-400 font-bold">MODULE 03</span>
-          <span class="px-2 py-0.5 bg-rose-950 text-rose-400 text-[10px] font-mono rounded">KILLSTREAKS</span>
-        </div>
-        <h4 class="text-lg font-bold text-white group-hover:text-cyan-400 transition mb-2">
-          Battlefield & Classic Killstreaks
-        </h4>
-        <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-          Interactive battlefield with rotating UAV radar sweep, Predator missile target acquisition, AC-130 gunship strikes, and Tactical Nuke countdown.
-        </p>
-        <div class="text-xs font-mono text-cyan-400 group-hover:underline flex items-center space-x-1">
-          <span>LAUNCH BATTLEFIELD</span>
-          <span>&rarr;</span>
-        </div>
-      </a>
-
-      <!-- Card 4: Dedicated Server & VPS Browser -->
-      <a href="server_browser.html" class="hud-card hud-corner p-6 rounded-lg block group">
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-mono text-amber-400 font-bold">MODULE 04</span>
-          <span class="px-2 py-0.5 bg-emerald-950 text-emerald-400 text-[10px] font-mono rounded">128 TICK</span>
-        </div>
-        <h4 class="text-lg font-bold text-white group-hover:text-cyan-400 transition mb-2">
-          Server Browser & VPS Hosting
-        </h4>
-        <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-          Dedicated VPS command line arguments, direct IP connection tests, listen room peer hosting, and 128-tick performance benchmark monitor.
-        </p>
-        <div class="text-xs font-mono text-cyan-400 group-hover:underline flex items-center space-x-1">
-          <span>VIEW SERVERS</span>
-          <span>&rarr;</span>
-        </div>
-      </a>
-
-      <!-- Card 5: Ballistics & Recoil Simulator -->
-      <a href="combat.html" class="hud-card hud-corner p-6 rounded-lg block group">
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-mono text-amber-400 font-bold">MODULE 05</span>
-          <span class="px-2 py-0.5 bg-cyan-950 text-cyan-400 text-[10px] font-mono rounded">BALLISTICS</span>
-        </div>
-        <h4 class="text-lg font-bold text-white group-hover:text-cyan-400 transition mb-2">
-          Weapon Ballistics & TTK Calculator
-        </h4>
-        <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-          Interactive bullet trajectory simulator, weapon kick patterns, velocity falloff tables, and time-to-kill analysis against Level IV ceramic armor.
-        </p>
-        <div class="text-xs font-mono text-cyan-400 group-hover:underline flex items-center space-x-1">
-          <span>ANALYZE BALLISTICS</span>
-          <span>&rarr;</span>
-        </div>
-      </a>
-
-      <!-- Card 6: Acoustic Occlusion & Radar -->
-      <a href="radar.html" class="hud-card hud-corner p-6 rounded-lg block group">
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-mono text-amber-400 font-bold">MODULE 06</span>
-          <span class="px-2 py-0.5 bg-purple-950 text-purple-400 text-[10px] font-mono rounded">ACOUSTICS</span>
-        </div>
-        <h4 class="text-lg font-bold text-white group-hover:text-cyan-400 transition mb-2">
-          Radar & Acoustic Occlusion Simulation
-        </h4>
-        <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-          Geometric sound raycast attenuation, directional footstep audio cues, suppressor acoustic signature muffling, and concussion flashbang blindness.
-        </p>
-        <div class="text-xs font-mono text-cyan-400 group-hover:underline flex items-center space-x-1">
-          <span>SIMULATE AUDIO</span>
-          <span>&rarr;</span>
-        </div>
-      </a>
-    </div>
-  </section>
-
-  <!-- Download & Getting Started Section -->
-  <section id="download" class="py-16 px-6 bg-slate-950/90 border-t border-cyan-950/60">
-    <div class="max-w-4xl mx-auto">
-      <div class="text-center mb-8">
-        <h2 class="text-xs font-mono font-bold text-amber-400 uppercase tracking-widest mb-2">/// DEPLOYMENT</h2>
-        <h3 class="text-2xl md:text-3xl font-black text-white">STANDALONE GAME & VPS SERVERS</h3>
-      </div>
-
-      <div class="bg-black/80 border border-slate-800 p-6 rounded-lg shadow-2xl font-mono text-xs space-y-4">
+    <!-- ===================================================================
+         SCROLL-LINKED PROGRESSIVE REVEALS (GSAP STICKY STACK)
+         Each section smoothly scales down into the background as the next
+         sticky card slides over it.
+         =================================================================== -->
+    <section aria-label="Core Engine Systems" class="px-4 sm:px-6 pb-28">
+      <div class="max-w-7xl mx-auto mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-cyan-950/80 pb-6">
         <div>
-          <span class="text-slate-400">1. Instant Universal Game Launcher (Menu, 3D Customization & Combat Match):</span>
-          <pre class="bg-slate-900 p-3 rounded mt-1 text-cyan-400 overflow-x-auto">.\Launch_Menu.bat
-# or direct executable:
-Packaged\Windows\NobleFermi.exe -windowed -ResX=1280 -ResY=720 -log
-# Click "DEPLOY NOW" inside the menu to enter the Rust Tactical combat map!</pre>
+          <div class="text-xs font-mono font-bold text-tacticalCyan uppercase tracking-[0.25em] mb-2">
+            /// SCROLL-LINKED ARCHITECTURAL DECK
+          </div>
+          <h2 class="text-2xl sm:text-4xl font-display font-bold text-white uppercase tracking-tight">
+            SYSTEMS ENGINEERED IN C++20
+          </h2>
         </div>
+        <div class="text-xs font-mono text-slate-400">
+          EASING TOKEN: <span class="text-amber-400">cubic-bezier(0.22, 1, 0.36, 1)</span>
+        </div>
+      </div>
 
-        <div>
-          <span class="text-slate-400">2. Launch 128-Tick Dedicated VPS Server (Rust Tactical):</span>
-          <pre class="bg-slate-900 p-3 rounded mt-1 text-amber-400 overflow-x-auto">.\Launch_DedicatedServer.bat
-# Headless command for Linux/Windows VPS:
+      <div id="sticky-deck" class="sticky-deck-wrapper">
+
+        <!-- ===============================================================
+             STICKY CARD 01: THE FERMI PARADOX ENGINE (CHRONO DIVE & SWAP)
+             =============================================================== -->
+        <article id="card-chrono" class="sticky-card-section z-10">
+          <div class="sticky-card-inner hud-card hud-corner p-6 sm:p-10 lg:p-12">
+            <span class="corner-tr"></span><span class="corner-bl"></span>
+            <div class="specular-top-edge mb-8"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <!-- Left Column: Narrative & Mechanics -->
+              <div class="lg:col-span-7 space-y-6">
+                <div class="flex flex-wrap items-center gap-3 font-mono text-xs">
+                  <span class="px-2.5 py-1 rounded bg-cyan-950 border border-cyan-500/40 text-tacticalCyan font-bold">
+                    CHAPTER 01 / 04
+                  </span>
+                  <span class="text-amber-400">AFPSFermiTimeBubble &amp; AFPSFermiDecoyActor</span>
+                </div>
+
+                <h3 class="text-3xl sm:text-4xl font-display font-bold text-white tracking-tight uppercase">
+                  THE <span class="text-tacticalCyan glow-cyan-text">FERMI ECHO</span> &amp; RELATIVISTIC CHRONO-DIVE
+                </h3>
+
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                  Combat in Noble Fermi revolves around manipulating localized spacetime and acoustic threat triangulation. Triggering a <strong class="text-white">Ballistic Dive</strong> while sprinting deploys a <code class="text-cyan-300 font-mono">450.0f cm</code> chrono-dilation field that decelerates incoming hitscan rounds into physical, dodgeable <code class="text-amber-300 font-mono">AFPSDilatedBulletActor</code> projectiles traveling at <code class="text-cyan-300 font-mono">850 cm/s</code>.
+                </p>
+
+                <!-- Interactive Mode Switcher inside Card 01 -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 font-mono text-xs">
+                  <button
+                    type="button"
+                    onclick="selectChronoSpec(0)"
+                    id="chrono-tab-0"
+                    class="telemetry-tab active text-left p-3.5 rounded border border-cyan-500/30 bg-slate-950/70"
+                  >
+                    <div class="font-bold text-white mb-1">[ALT] CHRONO DIVE</div>
+                    <div class="text-[11px] text-slate-400">0.25x Bubble + +20 Stamina Near-Miss Graze</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick="selectChronoSpec(1)"
+                    id="chrono-tab-1"
+                    class="telemetry-tab text-left p-3.5 rounded border border-slate-800 bg-slate-950/70"
+                  >
+                    <div class="font-bold text-white mb-1">[Q] ACOUSTIC DECOY</div>
+                    <div class="text-[11px] text-slate-400">620 cm/s Hologram + 2,500cm Bot Baiting</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick="selectChronoSpec(2)"
+                    id="chrono-tab-2"
+                    class="telemetry-tab text-left p-3.5 rounded border border-slate-800 bg-slate-950/70"
+                  >
+                    <div class="font-bold text-white mb-1">[Q+Q] QUANTUM SWAP</div>
+                    <div class="text-[11px] text-slate-400">Instant Phase-Teleport + Momentum Preservation</div>
+                  </button>
+                </div>
+
+                <!-- Dynamic Telemetry Readout Box -->
+                <div id="chrono-spec-readout" class="bg-black/75 border border-cyan-900/60 rounded p-4 font-mono text-xs text-slate-300 space-y-1.5">
+                  <div class="text-tacticalCyan font-bold">// TELEMETRY: AFPSFermiTimeBubble::Tick()</div>
+                  <div>&bull; Incoming hitscan raycasts intersect sphere boundary &rarr; convert to physical 3D brass slug</div>
+                  <div>&bull; Passing within <span class="text-amber-400">120.0f cm</span> of player capsule triggers <span class="text-emeraldReady">BULLET DODGE (+50 GOLD)</span> &amp; refunds +20 Stamina</div>
+                </div>
+              </div>
+
+              <!-- Right Column: Live Interactive Chrono-Field Visualizer -->
+              <div class="lg:col-span-5">
+                <div class="bg-[#02060D] border border-cyan-500/30 rounded-lg p-5 relative overflow-hidden">
+                  <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-4">
+                    <span class="text-tacticalCyan font-bold">CHRONO-SPHERE FIELD MONITOR</span>
+                    <span class="px-2 py-0.5 rounded bg-emerald-950/80 text-emeraldReady border border-emerald-500/30">0.25x ACTIVE</span>
+                  </div>
+
+                  <!-- SVG Vector Schematic of the Fermi Time Bubble & Dilated Slugs -->
+                  <svg viewBox="0 0 360 260" class="w-full h-auto rounded bg-[#030914] border border-slate-800/80">
+                    <defs>
+                      <radialGradient id="bubbleGrad" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.04" />
+                        <stop offset="72%" stop-color="#00E5FF" stop-opacity="0.16" />
+                        <stop offset="100%" stop-color="#00E5FF" stop-opacity="0.45" />
+                      </radialGradient>
+                    </defs>
+                    <!-- Grid lines -->
+                    <g stroke="rgba(6, 182, 212, 0.1)" stroke-width="1">
+                      <line x1="0" y1="65" x2="360" y2="65" />
+                      <line x1="0" y1="130" x2="360" y2="130" />
+                      <line x1="0" y1="195" x2="360" y2="195" />
+                      <line x1="90" y1="0" x2="90" y2="260" />
+                      <line x1="180" y1="0" x2="180" y2="260" />
+                      <line x1="270" y1="0" x2="270" y2="260" />
+                    </g>
+
+                    <!-- Fermi Time Dilation Sphere (r=92) -->
+                    <circle cx="180" cy="130" r="92" fill="url(#bubbleGrad)" stroke="#00E5FF" stroke-width="1.5" stroke-dasharray="6 4" />
+                    <circle cx="180" cy="130" r="52" fill="none" stroke="rgba(255, 179, 0, 0.35)" stroke-width="1" stroke-dasharray="3 3" />
+
+                    <!-- Incoming Fast Hitscan Vector (Left of Sphere) -->
+                    <line x1="16" y1="95" x2="92" y2="112" stroke="#FF2A54" stroke-width="2" />
+                    <circle cx="92" cy="112" r="4" fill="#FFB300" />
+                    <text x="20" y="84" fill="#FF2A54" font-family="JetBrains Mono" font-size="8">HITSCAN ENTRY</text>
+
+                    <!-- Dilated Slow-Mo Projectile Trail Inside Sphere -->
+                    <line x1="92" y1="112" x2="195" y2="134" stroke="#FFB300" stroke-width="2.5" stroke-dasharray="4 2" />
+                    <polygon points="202,135 191,130 193,139" fill="#00E5FF" />
+                    <text x="112" y="104" fill="#FFB300" font-family="JetBrains Mono" font-size="8">850 CM/S SLUG</text>
+
+                    <!-- Operator & Hologram Swap Vector -->
+                    <circle cx="170" cy="152" r="6" fill="#00E676" />
+                    <text x="145" y="172" fill="#00E676" font-family="JetBrains Mono" font-size="8">OPERATOR (120CM GRAZE)</text>
+
+                    <!-- Baited Bot Target Indicator -->
+                    <g transform="translate(268, 52)">
+                      <polygon points="0,-9 9,0 0,9 -9,0" fill="none" stroke="#FFB300" stroke-width="1.5" />
+                      <text x="-34" y="-14" fill="#FFB300" font-family="JetBrains Mono" font-size="8" font-weight="bold">[ ! BAITED ]</text>
+                    </g>
+                  </svg>
+
+                  <div class="mt-4 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <span>RADIUS: <strong class="text-white">450.0 CM</strong></span>
+                    <span>GRAZE REFUND: <strong class="text-emeraldReady">+20 STAMINA</strong></span>
+                    <span>GOLD: <strong class="text-amber-400">+50..150G</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===============================================================
+             STICKY CARD 02: 21-BONE ANTHROPOMETRY & LEVEL IV ARMOR SHATTER
+             =============================================================== -->
+        <article id="card-anatomy" class="sticky-card-section z-20">
+          <div class="sticky-card-inner hud-card hud-corner p-6 sm:p-10 lg:p-12">
+            <span class="corner-tr"></span><span class="corner-bl"></span>
+            <div class="specular-top-edge mb-8"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <!-- Left Column: Specs & Hit Zones -->
+              <div class="lg:col-span-7 space-y-6">
+                <div class="flex flex-wrap items-center gap-3 font-mono text-xs">
+                  <span class="px-2.5 py-1 rounded bg-amber-950/90 border border-amber-500/40 text-amber-400 font-bold">
+                    CHAPTER 02 / 04
+                  </span>
+                  <span class="text-cyan-300">SK_BaseMale // UFPSAnimInstance // Two-Bone IK</span>
+                </div>
+
+                <h3 class="text-3xl sm:text-4xl font-display font-bold text-white tracking-tight uppercase">
+                  21-BONE ANATOMY &amp; <span class="text-amber-400 glow-gold-text">LVL-IV CERAMIC SHATTER</span>
+                </h3>
+
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                  Every operator and tactical bot shares a unified 180 cm, 82 kg 21-bone skeletal hierarchy driven by <code class="text-cyan-300 font-mono">UFPSAnimInstance</code> with live left-hand Two-Bone IK locked to <code class="text-amber-300 font-mono">weapon_l_ik</code>. Depleting an opponent's 100-point Level IV ceramic shield triggers <code class="text-cyan-300 font-mono">MulticastTriggerArmorPlateShatter</code>, ejecting a physical tumbling plate shard with ballistic sparks.
+                </p>
+
+                <!-- Anatomical Multiplier Matrix -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
+                  <div class="p-3.5 rounded bg-slate-950/85 border border-rose-500/40">
+                    <div class="text-rose-400 font-bold">HEAD / CRANIUM</div>
+                    <div class="text-xl font-display font-bold text-white mt-1">2.50x DMG</div>
+                    <div class="text-[10px] text-slate-400 mt-1">Pops Ballistic Helmet</div>
+                  </div>
+
+                  <div class="p-3.5 rounded bg-slate-950/85 border border-cyan-500/40">
+                    <div class="text-tacticalCyan font-bold">UPPER CHEST</div>
+                    <div class="text-xl font-display font-bold text-white mt-1">1.00x DMG</div>
+                    <div class="text-[10px] text-slate-400 mt-1">Lvl-IV Plate Carrier</div>
+                  </div>
+
+                  <div class="p-3.5 rounded bg-slate-950/85 border border-amber-500/40">
+                    <div class="text-amber-400 font-bold">CLAVICLE / NECK</div>
+                    <div class="text-xl font-display font-bold text-white mt-1">1.20x DMG</div>
+                    <div class="text-[10px] text-slate-400 mt-1">High-Trauma Zone</div>
+                  </div>
+
+                  <div class="p-3.5 rounded bg-slate-950/85 border border-slate-700">
+                    <div class="text-emeraldReady font-bold">EXTREMITIES</div>
+                    <div class="text-xl font-display font-bold text-white mt-1">0.75x DMG</div>
+                    <div class="text-[10px] text-slate-400 mt-1">Procedural Limb Flinch</div>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4 pt-1 font-mono text-xs text-slate-400">
+                  <span>SOCKETS: <strong class="text-cyan-300">weapon_r</strong> &bull; <strong class="text-cyan-300">weapon_l_ik</strong> &bull; <strong class="text-amber-300">Muzzle_Flash_Socket</strong></span>
+                </div>
+              </div>
+
+              <!-- Right Column: Interactive Hit-Zone & Armor Fracture Inspector -->
+              <div class="lg:col-span-5">
+                <div class="bg-[#02060D] border border-amber-500/30 rounded-lg p-5">
+                  <div class="flex items-center justify-between text-[11px] font-mono mb-4">
+                    <span class="text-amber-400 font-bold">PHYSICAL TRAUMA &amp; COSMETIC RIG</span>
+                    <span id="plate-state-badge" class="px-2 py-0.5 rounded bg-cyan-950 text-tacticalCyan border border-cyan-500/30">LVL-IV INTACT (100)</span>
+                  </div>
+
+                  <!-- Interactive Armor & Helmet Simulation Controls -->
+                  <div class="space-y-3 font-mono text-xs">
+                    <div class="p-3.5 rounded bg-slate-950 border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <div class="text-white font-bold">SPINE_03 // CERAMIC CARRIER</div>
+                        <div id="plate-readout-desc" class="text-[11px] text-slate-400">4-Cell Cobalt Armor Matrix Active</div>
+                      </div>
+                      <button
+                        type="button"
+                        onclick="triggerDemoPlateShatter()"
+                        class="btn-luxury px-3 py-1.5 rounded bg-cyan-950 hover:bg-cyan-900 border border-cyan-400/50 text-cyan-200 font-bold"
+                      >
+                        TEST SHATTER
+                      </button>
+                    </div>
+
+                    <div class="p-3.5 rounded bg-slate-950 border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <div class="text-white font-bold">HEAD // BALLISTIC HELMET</div>
+                        <div id="helmet-readout-desc" class="text-[11px] text-slate-400">2.5x Lethal Impulse Detachment</div>
+                      </div>
+                      <button
+                        type="button"
+                        onclick="triggerDemoHelmetPop()"
+                        class="btn-luxury px-3 py-1.5 rounded bg-rose-950 hover:bg-rose-900 border border-rose-400/50 text-rose-200 font-bold"
+                      >
+                        TEST HELMET POP
+                      </button>
+                    </div>
+
+                    <div class="p-3.5 rounded bg-slate-950 border border-slate-800">
+                      <div class="flex justify-between text-[11px] text-slate-400 mb-2">
+                        <span>RUNTIME MATERIAL INSTANCES (MID)</span>
+                        <span class="text-amber-400">4 CAMO PRESETS</span>
+                      </div>
+                      <div class="grid grid-cols-4 gap-2 text-[10px] text-center">
+                        <span class="py-1 rounded bg-slate-900 border border-cyan-500/30 text-cyan-300">URBAN</span>
+                        <span class="py-1 rounded bg-slate-900 border border-emerald-500/30 text-emerald-300">WOODLAND</span>
+                        <span class="py-1 rounded bg-slate-900 border border-amber-500/30 text-amber-300">DESERT</span>
+                        <span class="py-1 rounded bg-slate-900 border border-slate-600 text-slate-200">BLACKOUT</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===============================================================
+             STICKY CARD 03: 128-HZ AUTHORITATIVE NETCODE & ACOUSTIC RADAR
+             =============================================================== -->
+        <article id="card-netcode" class="sticky-card-section z-30">
+          <div class="sticky-card-inner hud-card hud-corner p-6 sm:p-10 lg:p-12">
+            <span class="corner-tr"></span><span class="corner-bl"></span>
+            <div class="specular-top-edge mb-8"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div class="lg:col-span-7 space-y-6">
+                <div class="flex flex-wrap items-center gap-3 font-mono text-xs">
+                  <span class="px-2.5 py-1 rounded bg-emerald-950/90 border border-emerald-500/40 text-emeraldReady font-bold">
+                    CHAPTER 03 / 04
+                  </span>
+                  <span class="text-cyan-300">UFPSRadarSubsystem // UFPSAudioSubsystem // 128-Hz Tick</span>
+                </div>
+
+                <h3 class="text-3xl sm:text-4xl font-display font-bold text-white tracking-tight uppercase">
+                  128-TICK REPLICATION &amp; <span class="text-emeraldReady">ACOUSTIC RAYCAST RADAR</span>
+                </h3>
+
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                  Built for zero-compromise competitive integrity on the <strong class="text-white">60m &times; 60m Rust Tactical Arena</strong>. Every unsuppressed gunshot and footstep propagates through <code class="text-cyan-300 font-mono">UFPSRadarSubsystem</code> and <code class="text-amber-300 font-mono">UFPSAudioSubsystem</code>, driving both the 36-segment circular phosphor minimap and the center-screen Deaf Accessibility semicircle chevron radar.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
+                  <div class="p-4 rounded bg-slate-950/80 border border-cyan-900/60">
+                    <div class="text-tacticalCyan font-bold mb-1">3-LANE TACTICAL BOT AI</div>
+                    <p class="text-slate-400 leading-relaxed">
+                      Autonomous Team Bravo operators (<span class="text-white">VIPER-1, SPECTRE-2, JACKAL-3, PHANTOM-4</span>) patrol Container Yard (Flag A), Center Oil Derrick (Flag B), and Pipeline Bunker (Flag C).
+                    </p>
+                  </div>
+
+                  <div class="p-4 rounded bg-slate-950/80 border border-amber-900/60">
+                    <div class="text-amber-400 font-bold mb-1">PERSISTENT ECONOMY &amp; BOUNTIES</div>
+                    <p class="text-slate-400 leading-relaxed">
+                      Real-time combat accolades (<span class="text-white">Matrix Dodge, Fermi Phantom, Chrono Diver, Armor Breaker</span>) credit persistent Gold &amp; Opal balances via <code class="text-cyan-300">UFPSEconomySubsystem</code>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Column: Live 128-Hz Telemetry & Lane Matrix -->
+              <div class="lg:col-span-5">
+                <div class="bg-[#02060D] border border-emerald-500/30 rounded-lg p-5 font-mono text-xs space-y-4">
+                  <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <span class="text-emeraldReady font-bold">RUST TACTICAL // 3-LANE TOPOLOGY</span>
+                    <span class="text-slate-400">60M &times; 60M</span>
+                  </div>
+
+                  <div class="space-y-2.5">
+                    <div class="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-cyan-500/25">
+                      <span class="text-tacticalCyan font-bold">FLAG A // CONTAINER YARD</span>
+                      <span class="text-slate-400">[-14.0m, -10.0m]</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-amber-500/25">
+                      <span class="text-amber-400 font-bold">FLAG B // OIL DERRICK CORE</span>
+                      <span class="text-slate-400">[+00.0m, +00.0m]</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-emerald-500/25">
+                      <span class="text-emeraldReady font-bold">FLAG C // PIPELINE BUNKER</span>
+                      <span class="text-slate-400">[+14.0m, +10.0m]</span>
+                    </div>
+                  </div>
+
+                  <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>AUDIO COOKING: <strong class="text-white">34 WAV IOSTORE</strong></span>
+                    <span>TICK: <strong class="text-emeraldReady">128 HZ LOCKED</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===============================================================
+             STICKY CARD 04: MONOLITHIC DEPLOYMENT & DEDICATED VPS CLI
+             =============================================================== -->
+        <article id="card-deploy" class="sticky-card-section z-40">
+          <div class="sticky-card-inner hud-card hud-corner p-6 sm:p-10 lg:p-12">
+            <span class="corner-tr"></span><span class="corner-bl"></span>
+            <div class="specular-top-edge mb-8"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              <div class="lg:col-span-5 space-y-5">
+                <div class="flex flex-wrap items-center gap-3 font-mono text-xs">
+                  <span class="px-2.5 py-1 rounded bg-amber-950 border border-amber-500/40 text-amber-400 font-bold">
+                    CHAPTER 04 / 04
+                  </span>
+                  <span class="text-cyan-300">STANDALONE CLIENT &amp; HEADLESS SERVER</span>
+                </div>
+
+                <h3 class="text-3xl sm:text-4xl font-display font-bold text-white tracking-tight uppercase">
+                  MONOLITHIC <span class="text-amber-400 glow-gold-text">DEPLOYMENT</span> TERMINAL
+                </h3>
+
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                  Launch directly into the 3-zone Modern Warfare glass command lobby with live 3-point rim lighting on <code class="text-cyan-300 font-mono">AFPSCharacterPreviewActor</code>, or spin up an authoritative 128-tick headless dedicated server on Windows or Linux VPS infrastructure.
+                </p>
+
+                <div class="p-4 rounded bg-slate-950/90 border border-slate-800 font-mono text-xs space-y-2 text-slate-300">
+                  <div class="text-tacticalCyan font-bold">KEYBIND QUICK REFERENCE</div>
+                  <div class="grid grid-cols-2 gap-y-1.5 text-[11px]">
+                    <span><strong class="text-amber-400">[WASD + SHIFT]</strong> Tac-Sprint</span>
+                    <span><strong class="text-amber-400">[C / CTRL]</strong> Tactical Slide</span>
+                    <span><strong class="text-amber-400">[ALT / SPACE]</strong> Chrono Dive</span>
+                    <span><strong class="text-amber-400">[Q]</strong> Fermi Echo / Swap</span>
+                    <span><strong class="text-amber-400">[RMB]</strong> OTS / Optic ADS</span>
+                    <span><strong class="text-amber-400">[ESC]</strong> Live Tactical Overlay</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Column: Copyable CLI Blocks -->
+              <div class="lg:col-span-7 space-y-4 font-mono text-xs">
+                <div class="bg-black/90 border border-cyan-900/60 p-5 rounded-lg">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-cyan-300 font-bold">1 // UNIVERSAL CLIENT LAUNCHER (3D LOBBY &rarr; RUST TACTICAL)</span>
+                    <button
+                      type="button"
+                      onclick="copyCommand('cmd-client', this)"
+                      class="btn-luxury px-2.5 py-1 rounded bg-cyan-950 border border-cyan-500/40 text-cyan-300 text-[11px]"
+                    >
+                      COPY CMD
+                    </button>
+                  </div>
+                  <pre id="cmd-client" class="bg-slate-950 p-3.5 rounded text-tacticalCyan overflow-x-auto border border-slate-800/80 leading-relaxed">.\Launch_Menu.bat
+# Or run packaged monolithic binary directly:
+Packaged\Windows\NobleFermi.exe -windowed -ResX=1280 -ResY=720 -log</pre>
+                </div>
+
+                <div class="bg-black/90 border border-amber-900/60 p-5 rounded-lg">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-amber-400 font-bold">2 // 128-TICK HEADLESS DEDICATED VPS SERVER</span>
+                    <button
+                      type="button"
+                      onclick="copyCommand('cmd-server', this)"
+                      class="btn-luxury px-2.5 py-1 rounded bg-amber-950 border border-amber-500/40 text-amber-300 text-[11px]"
+                    >
+                      COPY CMD
+                    </button>
+                  </div>
+                  <pre id="cmd-server" class="bg-slate-950 p-3.5 rounded text-amber-400 overflow-x-auto border border-slate-800/80 leading-relaxed">.\Launch_DedicatedServer.bat
+# Headless command for Windows / Linux VPS:
 Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode -server -nullrhi -log -PORT=7777 -TickRate=128 -MaxPlayers=18</pre>
-        </div>
+                </div>
 
-        <div class="pt-2 flex flex-wrap items-center justify-between gap-4 text-slate-400 border-t border-slate-800">
-          <span>ENGINE: UNREAL ENGINE 5.8 C++20</span>
-          <span>TARGET: MONOLITHIC STANDALONE</span>
-          <span>NET: 128-HZ REPLICATION</span>
-        </div>
+                <div class="flex flex-wrap items-center justify-between gap-4 pt-2 px-1 text-[11px] text-slate-400">
+                  <span>ENGINE: <strong class="text-slate-200">UNREAL ENGINE 5.8 C++20</strong></span>
+                  <span>CONTAINER: <strong class="text-cyan-300">IOSTORE (.UTOC / .UCAS)</strong></span>
+                  <span>REPLICATION: <strong class="text-emeraldReady">128-HZ AUTHORITATIVE</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- =====================================================================
+       FOOTER
+       ===================================================================== -->
+  <footer class="relative z-10 bg-[#02050B]/90 border-t border-cyan-950/70 px-6 py-8 font-mono text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-2.5 h-2.5 bg-tacticalCyan rotate-45 shadow-[0_0_8px_#00E5FF]"></div>
+        <span class="text-slate-200 font-bold tracking-widest">NOBLE FERMI // TACTICAL OPS</span>
+      </div>
+      <div>
+        UNREAL ENGINE 5.8 MONOLITHIC ARCHITECTURE &copy; 2026. ALL RIGHTS RESERVED.
       </div>
     </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="bg-black border-t border-slate-900 px-6 py-6 font-mono text-xs text-slate-500 text-center">
-    <p>NOBLE FERMI // MODERN MILITARY TACTICAL WARFARE &copy; 2026. ALL RIGHTS RESERVED.</p>
   </footer>
 
+  <!-- =====================================================================
+       INTERACTIVE MOTION & HYDRO-PIXEL WAVE ENGINE
+       1. Live 2D Water-Droplet Wave Propagation in a Sea of Pixels
+       2. Lenis Smooth Scroll + GSAP ScrollTrigger Sticky Scale-Down Reveal
+       3. Full prefers-reduced-motion Accessibility Support
+       ===================================================================== -->
   <script>
+    // ---------------------------------------------------------------------
+    // 0. ACCESSIBILITY & REDUCED MOTION DETECTION
+    // ---------------------------------------------------------------------
+    const mediaReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let isReducedMotion = mediaReducedMotion.matches;
+    let lenisInstance = null;
+
+    function updateMotionUI() {
+      const btn = document.getElementById('btn-motion-toggle');
+      const label = document.getElementById('motion-status-label');
+      if (isReducedMotion) {
+        document.body.classList.add('reduced-motion-forced');
+        if (btn) btn.setAttribute('aria-pressed', 'true');
+        if (label) label.textContent = 'MOTION: REDUCED';
+      } else {
+        document.body.classList.remove('reduced-motion-forced');
+        if (btn) btn.setAttribute('aria-pressed', 'false');
+        if (label) label.textContent = 'MOTION: FULL';
+      }
+    }
+
+    function toggleReducedMotionMode() {
+      isReducedMotion = !isReducedMotion;
+      updateMotionUI();
+      initScrollAnimations();
+      if (isReducedMotion) {
+        renderStaticPixelSea();
+      }
+    }
+
+    mediaReducedMotion.addEventListener('change', (e) => {
+      isReducedMotion = e.matches;
+      updateMotionUI();
+      initScrollAnimations();
+    });
+
+    // ---------------------------------------------------------------------
+    // 1. EMULATED WATER DROPLETS IN A SEA OF PIXELS (ANTIGRAVITY / CLAUDE)
+    //    Real-time 2D Damped Wave Equation on a Quantized Micro-Pixel Grid
+    // ---------------------------------------------------------------------
+    const canvas = document.getElementById('pixelSeaCanvas');
+    const ctx = canvas.getContext('2d', { alpha: true });
+
+    // Simulation grid resolution (each cell corresponds to one quantized pixel node)
+    const CELL_PITCH = 14; // px spacing between quantized pixel nodes
+    const PIXEL_SIZE = 3.2; // base size of each pixel square in the sea
+    const DAMPING = 0.968; // fluid viscosity / wave decay
+
+    let cols = 0;
+    let rows = 0;
+    let bufCurr = new Float32Array(0);
+    let bufPrev = new Float32Array(0);
+
+    let pointerX = -9999;
+    let pointerY = -9999;
+    let lastGridX = -1;
+    let lastGridY = -1;
+
+    function resizePixelSea() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      cols = Math.ceil(w / CELL_PITCH) + 2;
+      rows = Math.ceil(h / CELL_PITCH) + 2;
+      bufCurr = new Float32Array(cols * rows);
+      bufPrev = new Float32Array(cols * rows);
+
+      if (isReducedMotion) {
+        renderStaticPixelSea();
+      } else {
+        // Seed an initial welcoming droplet ripple near center
+        dropWaterRipple(Math.floor(cols * 0.5), Math.floor(rows * 0.38), 3.6, 3);
+      }
+    }
+
+    function dropWaterRipple(gx, gy, strength = 2.8, radius = 2) {
+      if (gx < 2 || gx >= cols - 2 || gy < 2 || gy >= rows - 2) return;
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const distSq = dx * dx + dy * dy;
+          if (distSq <= radius * radius) {
+            const falloff = Math.cos((Math.sqrt(distSq) / (radius + 0.5)) * (Math.PI * 0.5));
+            const idx = (gy + dy) * cols + (gx + dx);
+            bufPrev[idx] = Math.max(-6.0, Math.min(6.0, bufPrev[idx] + strength * falloff));
+          }
+        }
+      }
+    }
+
+    function emitManualWavePulse() {
+      if (isReducedMotion) return;
+      const gx = Math.floor(cols * (0.25 + Math.random() * 0.5));
+      const gy = Math.floor(rows * (0.25 + Math.random() * 0.5));
+      dropWaterRipple(gx, gy, 4.8, 4);
+    }
+
+    // Mouse / Pointer Live Interaction
+    window.addEventListener('pointermove', (e) => {
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+
+      const coordsEl = document.getElementById('hero-cursor-coords');
+      if (coordsEl) {
+        const nx = String(Math.round(pointerX)).padStart(4, '0');
+        const ny = String(Math.round(pointerY)).padStart(4, '0');
+        coordsEl.textContent = `FIELD: [${nx}, ${ny}]`;
+      }
+
+      if (isReducedMotion) return;
+
+      const gx = Math.floor(pointerX / CELL_PITCH);
+      const gy = Math.floor(pointerY / CELL_PITCH);
+
+      // Interpolate along fast mouse movement so wakes are continuous liquid trails
+      if (lastGridX >= 0 && lastGridY >= 0) {
+        const dx = gx - lastGridX;
+        const dy = gy - lastGridY;
+        const steps = Math.min(12, Math.max(Math.abs(dx), Math.abs(dy)));
+        for (let s = 0; s <= steps; s++) {
+          const t = steps === 0 ? 0 : s / steps;
+          const ix = Math.round(lastGridX + dx * t);
+          const iy = Math.round(lastGridY + dy * t);
+          dropWaterRipple(ix, iy, 1.55, 2);
+        }
+      } else {
+        dropWaterRipple(gx, gy, 2.2, 2);
+      }
+
+      lastGridX = gx;
+      lastGridY = gy;
+    }, { passive: true });
+
+    window.addEventListener('pointerdown', (e) => {
+      if (isReducedMotion) return;
+      const gx = Math.floor(e.clientX / CELL_PITCH);
+      const gy = Math.floor(e.clientY / CELL_PITCH);
+      dropWaterRipple(gx, gy, 4.5, 4);
+    }, { passive: true });
+
+    // Step 2D Wave Equation & Render Quantized Sea of Pixels
+    let lastAmbientDropTime = 0;
+    function stepAndRenderPixelSea(timestamp) {
+      if (isReducedMotion) return;
+
+      // Autonomous rain / quantum water droplets falling into the sea of pixels
+      if (timestamp - lastAmbientDropTime > 420) {
+        lastAmbientDropTime = timestamp;
+        const rx = 3 + Math.floor(Math.random() * (cols - 6));
+        const ry = 3 + Math.floor(Math.random() * (rows - 6));
+        dropWaterRipple(rx, ry, 2.6 + Math.random() * 1.8, 2 + Math.floor(Math.random() * 2));
+      }
+
+      // 1. Wave propagation step: u_next = (u_left + u_right + u_up + u_down)/2 - u_current
+      for (let y = 1; y < rows - 1; y++) {
+        const rowOffset = y * cols;
+        for (let x = 1; x < cols - 1; x++) {
+          const i = rowOffset + x;
+          const val = (
+            (bufPrev[i - 1] +
+             bufPrev[i + 1] +
+             bufPrev[i - cols] +
+             bufPrev[i + cols]) * 0.5 - bufCurr[i]
+          ) * DAMPING;
+          bufCurr[i] = val;
+        }
+      }
+
+      // Swap wave buffers
+      const temp = bufPrev;
+      bufPrev = bufCurr;
+      bufCurr = temp;
+
+      // 2. Render the Sea of Pixels
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+      for (let y = 1; y < rows - 1; y++) {
+        const rowOffset = y * cols;
+        const baseY = y * CELL_PITCH;
+
+        for (let x = 1; x < cols - 1; x++) {
+          const i = rowOffset + x;
+          const hVal = bufCurr[i];
+          const absH = Math.abs(hVal);
+
+          // Compute refractive gradient vector (dx, dy) from wave slope
+          const gradX = bufCurr[i + 1] - bufCurr[i - 1];
+          const gradY = bufCurr[i + cols] - bufCurr[i - cols];
+
+          const px = x * CELL_PITCH + gradX * 2.4;
+          const py = baseY + gradY * 2.4;
+
+          if (absH < 0.03) {
+            // Calm baseline pixel node in the dark sea
+            ctx.fillStyle = 'rgba(14, 48, 72, 0.28)';
+            ctx.fillRect(px, py, 2.0, 2.0);
+          } else {
+            // Energized water-droplet crest: blends Tactical Cyan (#00E5FF) & Afterburner Amber (#FFB300)
+            const intensity = Math.min(1.0, absH / 1.8);
+            const size = PIXEL_SIZE + intensity * 3.4;
+            const half = size * 0.5;
+
+            if (hVal > 0.65) {
+              // Specular Amber / Cyan Crest
+              const alpha = Math.min(0.95, 0.28 + intensity * 0.68);
+              ctx.fillStyle = intensity > 0.78
+                ? `rgba(255, 189, 46, ${alpha.toFixed(2)})`
+                : `rgba(0, 229, 255, ${alpha.toFixed(2)})`;
+            } else {
+              // Deep Bioluminescent Cyan Trough
+              const alpha = Math.min(0.82, 0.20 + intensity * 0.55);
+              ctx.fillStyle = `rgba(6, 182, 212, ${alpha.toFixed(2)})`;
+            }
+
+            ctx.fillRect(px - half, py - half, size, size);
+          }
+        }
+      }
+
+      requestAnimationFrame(stepAndRenderPixelSea);
+    }
+
+    function renderStaticPixelSea() {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.20)';
+      for (let y = 1; y < rows - 1; y++) {
+        for (let x = 1; x < cols - 1; x++) {
+          ctx.fillRect(x * CELL_PITCH, y * CELL_PITCH, 2.0, 2.0);
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // 2. LENIS SMOOTH SCROLL + GSAP SCROLL-LINKED PROGRESSIVE REVEALS
+    // ---------------------------------------------------------------------
+    gsap.registerPlugin(ScrollTrigger);
+
+    function initScrollAnimations() {
+      // Clean up any existing ScrollTriggers or Lenis instance
+      ScrollTrigger.getAll().forEach(t => t.kill());
+      if (lenisInstance) {
+        lenisInstance.destroy();
+        lenisInstance = null;
+      }
+
+      if (isReducedMotion) {
+        gsap.set('.reveal-hero, .sticky-card-inner', { clearProps: 'all' });
+        return;
+      }
+
+      // Initialize Lenis Smooth Scroll with luxury damping
+      if (typeof Lenis !== 'undefined') {
+        lenisInstance = new Lenis({
+          duration: 1.15,
+          easing: (t) => 1 - Math.pow(1 - t, 4),
+          smoothWheel: true,
+        });
+
+        lenisInstance.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add((time) => {
+          if (lenisInstance) lenisInstance.raf(time * 1000);
+        });
+        gsap.ticker.lagSmoothing(0);
+      }
+
+      // Hero Entrance Stagger using cubic-bezier(0.22, 1, 0.36, 1) equivalent power3.out
+      gsap.fromTo(
+        '.reveal-hero',
+        { y: 28, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 1.05,
+          stagger: 0.11,
+          ease: 'power3.out',
+        }
+      );
+
+      // Sticky Card Stack: Each card smoothly scales down & recedes into the background
+      // as the next sticky card slides up over it
+      const cards = gsap.utils.toArray('.sticky-card-section');
+      cards.forEach((card, index) => {
+        if (index === cards.length - 1) return; // Last card stays full scale
+        const inner = card.querySelector('.sticky-card-inner');
+        const nextCard = cards[index + 1];
+
+        gsap.to(inner, {
+          scale: 0.91 - index * 0.015,
+          opacity: 0.34,
+          filter: 'blur(3.5px)',
+          y: -24,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: nextCard,
+            start: 'top 88%',
+            end: 'top 18%',
+            scrub: 0.45,
+          },
+        });
+      });
+    }
+
+    // ---------------------------------------------------------------------
+    // 3. INTERACTIVE TELEMETRY WIDGETS & MICRO-INTERACTIONS
+    // ---------------------------------------------------------------------
+    const chronoSpecs = [
+      {
+        title: '// TELEMETRY: AFPSFermiTimeBubble::Tick()',
+        line1: '• Incoming hitscan raycasts intersect sphere boundary → convert to physical 3D brass slug',
+        line2: '• Passing within <span class="text-amber-400">120.0f cm</span> of player capsule triggers <span class="text-emeraldReady">BULLET DODGE (+50 GOLD)</span> &amp; refunds +20 Stamina'
+      },
+      {
+        title: '// TELEMETRY: AFPSFermiDecoyActor::FireAcousticBurst()',
+        line1: '• Spawns 21-bone phosphor-green wireframe hologram sprinting forward at <span class="text-tacticalCyan">620.0f cm/s</span>',
+        line2: '• Emits unsuppressed blanks every 0.45s, locking nearby enemy bots into <span class="text-amber-400">[ ! BAITED ]</span> state for 2.5s'
+      },
+      {
+        title: '// TELEMETRY: AFPSCharacter::TriggerFermiEchoOrQuantumSwap()',
+        line1: '• Recasting [Q] while decoy is active swaps 3D transforms &amp; preserves mid-air dive velocity vector',
+        line2: '• Eliminating a hostile within 3.0s awards <span class="text-emeraldReady">FERMI PHANTOM (+150 GOLD)</span> &amp; progresses Daily Bounty'
+      }
+    ];
+
+    function selectChronoSpec(idx) {
+      for (let i = 0; i < 3; i++) {
+        const tab = document.getElementById(`chrono-tab-${i}`);
+        if (tab) tab.classList.toggle('active', i === idx);
+      }
+      const box = document.getElementById('chrono-spec-readout');
+      if (box && chronoSpecs[idx]) {
+        box.innerHTML = `
+          <div class="text-tacticalCyan font-bold">${chronoSpecs[idx].title}</div>
+          <div>${chronoSpecs[idx].line1}</div>
+          <div>${chronoSpecs[idx].line2}</div>
+        `;
+      }
+      emitManualWavePulse();
+    }
+
+    let plateIntact = true;
+    function triggerDemoPlateShatter() {
+      plateIntact = !plateIntact;
+      const badge = document.getElementById('plate-state-badge');
+      const desc = document.getElementById('plate-readout-desc');
+      if (!plateIntact) {
+        badge.textContent = 'PLATE SHATTERED (+75G)';
+        badge.className = 'px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-500/40';
+        desc.innerHTML = '<span class="text-amber-400">Shard Ejected (440 cm/s) + 5 Ballistic Spark Tracers</span>';
+      } else {
+        badge.textContent = 'LVL-IV INTACT (100)';
+        badge.className = 'px-2 py-0.5 rounded bg-cyan-950 text-tacticalCyan border border-cyan-500/30';
+        desc.textContent = '4-Cell Cobalt Armor Matrix Active';
+      }
+      emitManualWavePulse();
+    }
+
+    let helmetPopped = false;
+    function triggerDemoHelmetPop() {
+      helmetPopped = !helmetPopped;
+      const desc = document.getElementById('helmet-readout-desc');
+      if (helmetPopped) {
+        desc.innerHTML = '<span class="text-rose-400">ANATOMICAL CRITICAL // Helmet Launched (580 cm/s)</span>';
+      } else {
+        desc.textContent = '2.5x Lethal Impulse Detachment';
+      }
+      emitManualWavePulse();
+    }
+
     function copyIp() {
       const ip = document.getElementById('server-ip').innerText;
       navigator.clipboard.writeText(ip);
       const btn = document.getElementById('btn-copy-ip');
-      btn.innerText = 'COPIED!';
-      btn.classList.add('bg-emerald-800', 'text-white');
-      setTimeout(() => {
-        btn.innerText = 'COPY IP';
-        btn.classList.remove('bg-emerald-800', 'text-white');
-      }, 2000);
+      btn.innerText = 'COPIED';
+      setTimeout(() => { btn.innerText = 'COPY'; }, 1800);
+    }
+
+    function copyCommand(preId, btnEl) {
+      const text = document.getElementById(preId).innerText;
+      navigator.clipboard.writeText(text);
+      const orig = btnEl.innerText;
+      btnEl.innerText = 'COPIED!';
+      setTimeout(() => { btnEl.innerText = orig; }, 1800);
+    }
+
+    // Boot
+    window.addEventListener('resize', resizePixelSea);
+    updateMotionUI();
+    resizePixelSea();
+    initScrollAnimations();
+    if (!isReducedMotion) {
+      requestAnimationFrame(stepAndRenderPixelSea);
     }
   </script>
 </body>

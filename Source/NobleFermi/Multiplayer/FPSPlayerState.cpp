@@ -1,4 +1,5 @@
 #include "Multiplayer/FPSPlayerState.h"
+#include "Economy/FPSEconomySubsystem.h"
 #include "Net/UnrealNetwork.h"
 
 AFPSPlayerState::AFPSPlayerState()
@@ -48,6 +49,37 @@ void AFPSPlayerState::AddAssist(int32 ScoreReward)
 	Assists++;
 	SetScore(GetScore() + ScoreReward);
 	OnRep_StatsChanged();
+}
+
+void AFPSPlayerState::AddCombatScore(int32 AdditionalScore)
+{
+	if (!HasAuthority() || AdditionalScore <= 0) return;
+
+	SetScore(GetScore() + AdditionalScore);
+	OnRep_Score();
+}
+
+void AFPSPlayerState::AwardCombatAccolade(const FString& AccoladeName, int32 GoldReward)
+{
+	if (HasAuthority() && GoldReward > 0)
+	{
+		SetScore(GetScore() + GoldReward);
+		OnRep_Score();
+	}
+
+	// If pawn is not present (or if called outside character flow), credit local player's economy
+	if (!GetPawn() && GoldReward > 0)
+	{
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
+			{
+				Economy->AddGold(GoldReward, AccoladeName);
+			}
+		}
+	}
+
+	OnCombatAccoladeEarned.Broadcast(AccoladeName, GoldReward);
 }
 
 void AFPSPlayerState::SetPlayerTeam(EFPSPlayerTeam NewTeam)

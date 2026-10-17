@@ -19,6 +19,7 @@ enum class EFPSMenuSection : uint8
 	Play UMETA(DisplayName = "Play & Matchmaking"),
 	Customization UMETA(DisplayName = "Operator Customization"),
 	Loadout UMETA(DisplayName = "Weapons & Gunsmith"),
+	DailyRewards UMETA(DisplayName = "Daily Rewards & Armory Vault"),
 	ServerBrowser UMETA(DisplayName = "Server Browser & Host"),
 	Settings UMETA(DisplayName = "Settings"),
 	Career UMETA(DisplayName = "Career & Stats")
@@ -81,6 +82,7 @@ public:
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 private:
@@ -99,9 +101,11 @@ private:
 	TSharedPtr<STextBlock> CamoStatusText;
 	TSharedPtr<STextBlock> HeadgearStatusText;
 	TSharedPtr<STextBlock> VestStatusText;
+	TSharedPtr<STextBlock> WeaponFinishStatusText;
 	TSharedPtr<STextBlock> StanceStatusText;
 	TSharedPtr<STextBlock> RotationSpeedText;
 	TSharedPtr<STextBlock> CenterPillText;
+	TSharedPtr<STextBlock> BountyStatusText;
 
 	// Mode Card Border Pointers for interactive glowing borders
 	TSharedPtr<SBorder> ModeCardBorder0;
@@ -112,7 +116,36 @@ private:
 	TSharedPtr<SBorder> TabIndicatorPlay;
 	TSharedPtr<SBorder> TabIndicatorOperator;
 	TSharedPtr<SBorder> TabIndicatorGunsmith;
+	TSharedPtr<SBorder> TabIndicatorDailyRewards;
 	TSharedPtr<SBorder> TabIndicatorSettings;
+
+	// Top Header Persistent Balance Badges
+	TSharedPtr<STextBlock> GoldBalanceText;
+	TSharedPtr<STextBlock> OpalBalanceText;
+
+	// Minigame Switcher & Telemetry Pointers
+	TSharedPtr<SWidgetSwitcher> MinigameSwitcher;
+	TSharedPtr<STextBlock> WheelRewardText;
+	TSharedPtr<STextBlock> DartRewardText;
+	TSharedPtr<STextBlock> DartTokensText;
+	TSharedPtr<STextBlock> StreakStatusText;
+	TSharedPtr<STextBlock> StreakDaysDisplay;
+
+	// Fortune Wheel Physics State
+	float WheelCurrentAngle = 0.0f;
+	float WheelAngularVelocity = 0.0f;
+	bool bIsWheelSpinning = false;
+	int32 WheelTargetSlice = 0;
+	float WheelSpinDuration = 0.0f;
+	float WheelSpinElapsed = 0.0f;
+	float WheelBurstTimer = 0.0f;
+
+	// Tactical Dartboard State
+	float DartOscillationTime = 0.0f;
+	FVector2D DartReticlePos = FVector2D(0.5f, 0.5f);
+	FVector2D LastDartHitPos = FVector2D(0.5f, 0.5f);
+	bool bHasLastDartHit = false;
+	float DartBurstTimer = 0.0f;
 
 	// 3-Zone Modern Warfare Layout Builders
 	TSharedRef<SWidget> BuildHeader();
@@ -120,9 +153,11 @@ private:
 	TSharedRef<SWidget> BuildLeftBlade();
 	TSharedRef<SWidget> BuildCenterViewportHUD();
 	TSharedRef<SWidget> BuildRightBlade();
+	TSharedRef<SWidget> BuildBountyBoardPanel();
 
 	// Full-screen Subviews
 	TSharedRef<SWidget> BuildGunsmithView();
+	TSharedRef<SWidget> BuildDailyRewardsView();
 	TSharedRef<SWidget> BuildServerBrowserView();
 	TSharedRef<SWidget> BuildSettingsView();
 	TSharedRef<SWidget> BuildFooter();
@@ -140,11 +175,25 @@ private:
 	FReply HandleCamoSelected(uint8 CamoIdx);
 	FReply HandleHeadgearSelected(uint8 HeadgearIdx);
 	FReply HandleVestSelected(uint8 VestIdx);
+	FReply HandleWeaponFinishSelected(uint8 FinishIdx);
 	FReply HandleToggleAimingStance();
 	FReply HandleToggleTurntableRotation();
 	FReply HandleSetRotationSpeed(float Speed);
 	FReply HandleResetTurntableFacing();
 
+	// Economy, Bounties & Minigame handlers
+	FReply HandleSpinWheelClicked();
+	FReply HandleThrowDartClicked();
+	FReply HandleClaimDailyStreakClicked();
+	FReply HandleSimulateNextDayClicked();
+	FReply HandleSwitchMinigame(int32 MinigameIndex);
+	FReply HandleClaimOpalDrop(int32 PackIndex);
+	FReply HandleUnlockCustomizationItem(const FString& ItemID, bool bUseOpals);
+	FReply HandleRerollBountiesClicked();
+	FReply HandleSimulateBountyProgressClicked(int32 BountyIdx);
+
 	void UpdateModeCardVisuals();
 	void UpdateTabVisuals();
+	void UpdateCurrencyHeader();
+	void RefreshDailyRewardsUI();
 };

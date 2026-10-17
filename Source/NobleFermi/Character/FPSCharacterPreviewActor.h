@@ -38,6 +38,15 @@ enum class EOperatorArmorVest : uint8
 	ReconChestRig UMETA(DisplayName = "Recon Tactical Rig")
 };
 
+UENUM(BlueprintType)
+enum class EOperatorWeaponFinish : uint8
+{
+	FactoryBluedSteel UMETA(DisplayName = "Factory Blued Steel"),
+	DesertTanCerakote UMETA(DisplayName = "Desert Tan Cerakote"),
+	CarbonFiberSpecOps UMETA(DisplayName = "Carbon Fiber Spec-Ops"),
+	GoldOpalDamascene UMETA(DisplayName = "24K Gold & Opal Damascene")
+};
+
 /**
  * 3D Rotating Operator Character Model for Menu Customisation.
  * Displays adult human male soldier (180cm, 82kg anthropometry) aiming down sights
@@ -207,6 +216,9 @@ public:
 	void SetArmorVest(EOperatorArmorVest NewVest);
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
+	void SetWeaponFinish(EOperatorWeaponFinish NewFinish);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
 	void SetAimingStance(bool bInAiming);
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
@@ -239,6 +251,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "FPS Operator")
 	EOperatorArmorVest GetCurrentVest() const { return CurrentVest; }
 
+	UFUNCTION(BlueprintPure, Category = "FPS Operator")
+	EOperatorWeaponFinish GetCurrentWeaponFinish() const { return CurrentWeaponFinish; }
+
 	// Configuration
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Operator|Turntable")
 	float RotationSpeed = 18.0f; // degrees per second
@@ -256,12 +271,14 @@ private:
 	EOperatorCamo CurrentCamo = EOperatorCamo::UrbanDigital;
 	EOperatorHeadgear CurrentHeadgear = EOperatorHeadgear::BallisticHelmet;
 	EOperatorArmorVest CurrentVest = EOperatorArmorVest::HeavyPlateCarrier;
+	EOperatorWeaponFinish CurrentWeaponFinish = EOperatorWeaponFinish::FactoryBluedSteel;
 	int32 CurrentStanceIndex = 0; // 0 = Aimed ADS, 1 = Low-Ready, 2 = Walk
 
 	void UpdateAimingPose(float DeltaTime);
 	void ApplyCamoColors();
 	void ApplyHeadgearVisibility();
 	void ApplyVestConfiguration();
+	void ApplyWeaponFinish();
 
 	float AimBreathTimer = 0.0f;
 	FVector BaseWeaponLoc = FVector(52.0f, 10.0f, 140.0f);

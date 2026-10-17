@@ -4,6 +4,8 @@
 #include "Engine/Engine.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Character/FPSCharacter.h"
+#include "UI/FPSHUDWidget.h"
 
 void UFPSAudioSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -120,6 +122,36 @@ void UFPSAudioSubsystem::PlaySpatialSoundWithFalloff(
 	if (EffectiveVolume > 0.001f)
 	{
 		UGameplayStatics::PlaySoundAtLocation(WorldContextObject, Sound, Location, EffectiveVolume, PitchMultiplier);
+
+		// Deaf Accessibility / Visual Audio: Route spatial sounds to directional HUD radar
+		if (PC)
+		{
+			if (AFPSCharacter* LocalChar = Cast<AFPSCharacter>(PC->GetPawn()))
+			{
+				const AActor* ContextActor = Cast<AActor>(WorldContextObject);
+				const APawn* InstigatingPawn = Cast<APawn>(ContextActor);
+				if (!InstigatingPawn && ContextActor)
+				{
+					InstigatingPawn = Cast<APawn>(ContextActor->GetOwner());
+				}
+
+				if (InstigatingPawn != LocalChar)
+				{
+					if (UFPSHUDWidget* LocalHUD = LocalChar->GetActiveHUDWidget())
+					{
+						const FString SoundName = Sound->GetName();
+						if (SoundName.Contains(TEXT("FS_")) || SoundName.Contains(TEXT("Footstep")) || SoundName.Contains(TEXT("Step")))
+						{
+							LocalHUD->AddDirectionalIndicator(Location, FMath::Clamp(EffectiveVolume * 1.5f, 0.4f, 1.4f), EThreatIndicatorType::Footstep);
+						}
+						else if (SoundName.Contains(TEXT("Fire")) || SoundName.Contains(TEXT("Shot")) || SoundName.Contains(TEXT("A_Carbine")))
+						{
+							LocalHUD->AddDirectionalIndicator(Location, FMath::Clamp(EffectiveVolume * 1.8f, 0.6f, 2.2f), EThreatIndicatorType::Gunfire);
+						}
+					}
+				}
+			}
+		}
 	}
 }
 

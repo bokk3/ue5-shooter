@@ -2,15 +2,20 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Multiplayer/FPSPlayerState.h"
 #include "FPSCharacter.generated.h"
 
 class UCameraComponent;
 class USpringArmComponent;
 class USkeletalMeshComponent;
+class UStaticMeshComponent;
 class UFPSCharacterMovementComponent;
 class UFPSHealthComponent;
 class UFPSInventoryComponent;
 class UFPSHUDWidget;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCharacterCombatAccoladeSignature, const FString&, AccoladeName, int32, GoldReward);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBountyEventSignature, FName, EventTag, int32, Count);
 
 /**
  * AAA Tactical Character Class (Primary 3rd-Person Perspective)
@@ -45,6 +50,18 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	TObjectPtr<USkeletalMeshComponent> Mesh1P;
 
+	/** 3rd-Person Level IV Ceramic Plate Carrier attached to spine_03 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
+	TObjectPtr<UStaticMeshComponent> ChestCarrierMesh;
+
+	/** 3rd-Person Tactical Ballistic Helmet attached to head */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
+	TObjectPtr<UStaticMeshComponent> BallisticHelmetMesh;
+
+	/** Physical Ceramic Plate Shard ejected on Level IV Armor Break */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
+	TObjectPtr<UStaticMeshComponent> EjectedPlateShardMesh;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UFPSCharacterMovementComponent> FPSMovementComponent;
 
@@ -71,6 +88,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
 	UFPSInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
+	UFPSHealthComponent* GetHealthComponent() const { return HealthComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Weapons")
+	class AFPSWeaponBase* GetCurrentWeapon() const;
 
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
 	class UFPSBodyMechanicsComponent* GetBodyMechanicsComponent() const { return BodyMechanicsComponent; }
@@ -173,6 +196,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
 	float GetFermiTimeBubbleRemaining() const;
 
+	UFUNCTION(BlueprintPure, Category = "FPS Character|State")
+	bool IsDead() const { return bIsDead; }
+
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
 	bool IsFermiDecoyActive() const;
 
@@ -248,6 +274,90 @@ public:
 	UFUNCTION()
 	void HandleOnDeath(AActor* KillerActor);
 
+	// Damage Handling (Threat Radar Directional Hit)
+	UFUNCTION()
+	void HandleOnDamageTaken(float Damage, AActor* Attacker, const FHitResult& HitResult, bool bIsHeadshot, bool bShieldBroken);
+
+	// Live Escape Menu Input Toggle
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|UI")
+	void ToggleEscapeMenu();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Character|UI")
+	TSubclassOf<class UFPSEscapeMenuWidget> EscapeMenuWidgetClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|UI")
+	TObjectPtr<class UFPSEscapeMenuWidget> ActiveEscapeMenuWidget;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|UI")
+	bool bIsEscapeMenuOpen = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Character|Settings")
+	float MouseSensitivityMultiplier = 1.0f;
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
+	void NotifyEnemyHit(AActor* Victim, const FHitResult& HitInfo, bool bIsHeadshot, bool bShieldBroken, bool bKilled);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
+	void HandleBulletGraze(float Distance);
+
+	UPROPERTY(BlueprintAssignable, Category = "FPS Character|Accolades")
+	FOnCharacterCombatAccoladeSignature OnCombatAccoladeEarned;
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Accolades")
+	void AwardCombatAccolade(const FString& AccoladeName, int32 GoldReward, const FLinearColor& AccentColor = FLinearColor(1.0f, 0.702f, 0.0f));
+
+	UPROPERTY(BlueprintAssignable, Category = "FPS Character|Bounties")
+	FOnBountyEventSignature OnBountyEvent;
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Bounties")
+	void NotifyBountyEvent(FName EventTag, int32 Count = 1);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Cosmetics")
+	void ApplyLoadoutCosmetics(int32 CamoIndex, int32 HeadgearIndex, int32 ArmorIndex, int32 WeaponFinishIndex);
+
+	UFUNCTION(NetMulticast, Unreliable, BlueprintCallable, Category = "FPS Character|Trauma")
+	void MulticastTriggerArmorPlateShatter(FVector ShotDirection, FVector ImpactPoint);
+
+	UFUNCTION(NetMulticast, Unreliable, BlueprintCallable, Category = "FPS Character|Trauma")
+	void MulticastPopBallisticHelmet(FVector ShotDirection);
+
+	// Responsive Tactical Bot AI & Acoustic Decoy-Bait API
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Tactical Bot")
+	void InitializeAsTacticalBot(int32 InBotIndex, const FString& InCallsign, EFPSPlayerTeam InTeam);
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Tactical Bot")
+	bool IsTacticalBot() const { return bIsTacticalBot; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Tactical Bot")
+	EFPSPlayerTeam GetBotTeam() const { return BotTeam; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Tactical Bot")
+	FString GetBotCallsign() const { return BotCallsign; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Tactical Bot")
+	FVector GetBotEyeLocation() const { return GetActorLocation() + FVector(0.0f, 0.0f, 64.0f); }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Tactical Bot")
+	FRotator GetBotAimRotation() const { return BotAimRotation; }
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Tactical Bot")
+	void NotifyBaitedByDecoy(class AFPSFermiDecoyActor* InDecoy, float BaitDuration = 2.5f);
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Tactical Bot")
+	bool IsBaitedByDecoy() const;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Tactical Bot")
+	float GetBaitedRemainingRatio() const { return FMath::Clamp(BaitedRemainingTimer / 2.5f, 0.0f, 1.0f); }
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Settings")
+	void SetFieldOfView(float NewFOV);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Customization")
+	void SetOperatorCamo(uint8 CamoIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Combat")
+	void RedeployOperator();
+
 	// Input Handlers
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -255,6 +365,7 @@ public:
 	void LookUp(float Rate);
 
 protected:
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_Controller() override;
@@ -270,12 +381,14 @@ private:
 	UPROPERTY()
 	TObjectPtr<class AFPSFermiDecoyActor> ActiveFermiDecoy;
 
-	// Tactical Camera, Dive Posture & Locomotion Updates
+	// Tactical Camera, Dive Posture, Gear Physics & Bot AI Updates
 	void UpdateThirdPersonCamera(float DeltaTime);
 	void UpdateBallisticDivePosture(float DeltaTime);
 	void UpdateProceduralCameraBob(float DeltaTime);
 	void UpdateWeaponSway(float DeltaTime);
 	void UpdateLocomotionAnimation(float DeltaTime);
+	void UpdatePhysicalArmorAndHelmetDebris(float DeltaTime);
+	void TickTacticalBotAI(float DeltaTime);
 
 	UPROPERTY()
 	TObjectPtr<class UAnimSequence> CurrentLocomotionAnim;
@@ -285,10 +398,40 @@ private:
 	float CurrentDiveMeshZOffset = -96.0f;
 	float FermiDecoyCooldownRemaining = 0.0f;
 	float QuantumSwapFlashTimer = 0.0f;
+	float FOVPunchTimer = 0.0f;
+	float QuantumSwapKillWindowRemaining = 0.0f;
 	float LastCrouchPressTime = -10.0f;
 	bool bIsHoldingCrouchKey = false;
 	bool bShouldCaptureHUD = false;
 	int32 CaptureHUDFrameCounter = 0;
+
+	// 3rd-Person Armor Plate Shatter & Helmet Pop Physics State
+	bool bIsArmorPlateShattered = false;
+	bool bIsHelmetPopped = false;
+	float ShardFlightTimer = 0.0f;
+	FVector ShardVelocity = FVector::ZeroVector;
+	FRotator ShardAngularVelocity = FRotator::ZeroRotator;
+	float HelmetFlightTimer = 0.0f;
+	FVector HelmetVelocity = FVector::ZeroVector;
+	FRotator HelmetAngularVelocity = FRotator::ZeroRotator;
+	float LimbTraumaFlinchTimer = 0.0f;
+	FRotator LimbTraumaRotOffset = FRotator::ZeroRotator;
+
+	// Tactical Bot AI State
+	bool bIsTacticalBot = false;
+	int32 BotLaneIndex = 0;
+	int32 BotWaypointIndex = 0;
+	FString BotCallsign = TEXT("BRAVO-OP");
+	EFPSPlayerTeam BotTeam = EFPSPlayerTeam::Bravo;
+	FRotator BotAimRotation = FRotator::ZeroRotator;
+	TWeakObjectPtr<class AFPSFermiDecoyActor> BaitedDecoyTarget;
+	float BaitedRemainingTimer = 0.0f;
+	float BotBurstFireTimer = 0.0f;
+	float BotBurstCooldownTimer = 0.0f;
+	float BotStrafeTimer = 0.0f;
+	float BotStrafeSign = 1.0f;
+	float BotWaypointStuckTimer = 0.0f;
+	bool bBotIsFiringBurst = false;
 
 	float BobTimer = 0.0f;
 	FVector DefaultCameraPos;

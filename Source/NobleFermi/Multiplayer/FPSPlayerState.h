@@ -14,6 +14,7 @@ enum class EFPSPlayerTeam : uint8
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnPlayerStatsUpdatedSignature, int32, Kills, int32, Deaths, int32, Score);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStreakEarnedSignature, int32, CurrentStreak);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCombatAccoladeEarnedSignature, const FString&, AccoladeName, int32, GoldReward);
 
 /**
  * AAA FPS Multiplayer PlayerState
@@ -34,6 +35,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "FPS Multiplayer|Events")
 	FOnStreakEarnedSignature OnStreakEarned;
+
+	UPROPERTY(BlueprintAssignable, Category = "FPS Multiplayer|Events")
+	FOnCombatAccoladeEarnedSignature OnCombatAccoladeEarned;
 
 	// Stats
 	UFUNCTION(BlueprintPure, Category = "FPS Stats")
@@ -63,6 +67,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Stats")
 	void AddAssist(int32 ScoreReward = 50);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Stats")
+	void AddCombatScore(int32 AdditionalScore);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Stats")
+	void AwardCombatAccolade(const FString& AccoladeName, int32 GoldReward);
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Stats")
 	void SetPlayerTeam(EFPSPlayerTeam NewTeam);

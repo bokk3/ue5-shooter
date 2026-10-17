@@ -122,7 +122,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Actions")
 	void SetADS(bool bInADS);
 
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Cosmetics")
+	void ApplyLoadoutCosmetics(int32 CamoIndex, int32 HeadgearIndex, int32 ArmorIndex, int32 WeaponFinishIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Actions")
+	void RefillBotAmmo();
+
 	// Getters
+	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
+	FString GetWeaponName() const { return WeaponDisplayName.ToString(); }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
+	int32 GetCurrentClipAmmo() const { return CurrentAmmo; }
+
 	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
 	int32 GetCurrentAmmo() const { return CurrentAmmo; }
 

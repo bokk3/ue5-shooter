@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" fill="none">
+  <defs>
+    <linearGradient id="c" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#80F4FF" />
+      <stop offset="50%" stop-color="#00E5FF" />
+      <stop offset="100%" stop-color="#007799" />
+    </linearGradient>
+    <linearGradient id="a" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#FFE57F" />
+      <stop offset="45%" stop-color="#FFB300" />
+      <stop offset="100%" stop-color="#B25900" />
+    </linearGradient>
+    <linearGradient id="bg" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#0E1E32" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+  </defs>
+
+  <!-- Hexagonal Ballistic Aegis Shield -->
+  <polygon points="128,14 226,56 206,178 128,242 50,178 30,56" fill="url(#bg)" stroke="url(#a)" stroke-width="8" stroke-linejoin="miter" />
+  <polygon points="128,28 210,64 192,170 128,224 64,170 46,64" fill="none" stroke="url(#c)" stroke-width="3" />
+
+  <!-- Tactical Visor Brow -->
+  <polygon points="62,76 128,96 194,76 184,100 128,116 72,100" fill="#00E5FF" />
+
+  <!-- Interlocking NF Monogram -->
+  <path d="M 66 174 L 66 112 L 86 112 L 114 152 L 114 112 L 130 112 L 130 174 L 110 174 L 82 134 L 82 174 Z" fill="url(#a)" />
+  <path d="M 138 174 L 138 112 L 194 112 L 188 128 L 156 128 L 156 140 L 184 140 L 178 156 L 156 156 L 156 174 Z" fill="url(#c)" />
+
+  <!-- Relativistic Chrono Ring Slash -->
+  <path d="M 16 146 Q 128 190 240 110" fill="none" stroke="#00E5FF" stroke-width="6" stroke-linecap="round" />
+  <polygon points="128,184 140,200 128,216 116,200" fill="#FF2A54" stroke="#FFB300" stroke-width="2" />
+</svg>

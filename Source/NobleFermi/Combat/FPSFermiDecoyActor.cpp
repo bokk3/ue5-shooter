@@ -2,19 +2,32 @@
 #include "Combat/FPSFermiTimeBubble.h"
 #include "Combat/FPSBallisticTracer.h"
 #include "Radar/FPSRadarSubsystem.h"
+#include "Character/FPSCharacter.h"
+#include "UI/FPSHUDWidget.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Animation/AnimSequence.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 
 AFPSFermiDecoyActor::AFPSFermiDecoyActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	DecoyCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DecoyCapsule"));
+	DecoyCapsule->InitCapsuleSize(42.0f, 96.0f);
+	DecoyCapsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	DecoyCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+	DecoyCapsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	DecoyCapsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	DecoyCapsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	RootComponent = DecoyCapsule;
+
 	DecoyRoot = CreateDefaultSubobject<USceneComponent>(TEXT("DecoyRoot"));
-	RootComponent = DecoyRoot;
+	DecoyRoot->SetupAttachment(DecoyCapsule);
 
 	HologramMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HologramMesh"));
 	HologramMesh->SetupAttachment(DecoyRoot);
@@ -158,6 +171,9 @@ void AFPSFermiDecoyActor::InitializeDecoy(const FVector& MoveDirection, EFPSPlay
 	}
 	SetActorRotation(SprintDirection.Rotation());
 	SourceTeam = InSourceTeam;
+
+	// Immediately emit an initial acoustic bait burst upon deployment
+	FireAcousticBurst();
 }
 
 void AFPSFermiDecoyActor::SpawnSecondaryTimeBubble()
@@ -259,6 +275,101 @@ void AFPSFermiDecoyActor::FireAcousticBurst()
 		const bool bDilated = AFPSFermiTimeBubble::IsLocationInsideAnyBubble(World, MuzzleStart);
 		Tracer->InitializeTracer(MuzzleStart, TraceEnd, bDilated, true);
 	}
+
+	// Acoustic Decoy Baiting: Nearby enemy bots within 2,500 cm with line-of-sight prioritize turning and firing at the decoy for 2.5s
+	const FVector DecoyTargetChest = GetActorLocation() + FVector(0.0f, 0.0f, 45.0f);
+	for (TActorIterator<AFPSCharacter> It(World); It; ++It)
+	{
+		AFPSCharacter* BotChar = *It;
+		if (!BotChar || BotChar == GetOwner() || BotChar->IsDead() || !BotChar->IsTacticalBot())
+		{
+			continue;
+		}
+
+		const float DistToDecoy = FVector::Dist(BotChar->GetActorLocation(), GetActorLocation());
+		if (DistToDecoy <= 2500.0f)
+		{
+			FHitResult LOSHit;
+			FCollisionQueryParams LOSParams;
+			LOSParams.AddIgnoredActor(this);
+			LOSParams.AddIgnoredActor(BotChar);
+			if (GetOwner())
+			{
+				LOSParams.AddIgnoredActor(GetOwner());
+			}
+
+			const FVector BotEye = BotChar->GetBotEyeLocation();
+			const bool bBlocked = World->LineTraceSingleByChannel(LOSHit, BotEye, DecoyTargetChest, ECC_Visibility, LOSParams);
+			if (!bBlocked || LOSHit.GetActor() == this || DistToDecoy <= 900.0f)
+			{
+				BotChar->NotifyBaitedByDecoy(this, 2.5f);
+			}
+		}
+	}
+}
+
+void AFPSFermiDecoyActor::SetSprintDirection(const FVector& NewDir)
+{
+	SprintDirection = NewDir.GetSafeNormal2D();
+	if (SprintDirection.IsNearlyZero())
+	{
+		SprintDirection = FVector::ForwardVector;
+	}
+	SetActorRotation(SprintDirection.Rotation());
+}
+
+float AFPSFermiDecoyActor::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
+{
+	AActor* Attacker = DamageCauser ? DamageCauser : (EventInstigator ? EventInstigator->GetPawn() : nullptr);
+	OnDecoyHit(Attacker, GetActorLocation());
+	return DamageAmount;
+}
+
+void AFPSFermiDecoyActor::OnDecoyHit(AActor* AttackerActor, const FVector& HitLocation)
+{
+	if (bHasShattered)
+	{
+		return;
+	}
+	bHasShattered = true;
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		Destroy();
+		return;
+	}
+
+	// 1. Decoy Hit Triangulation: Mark shooter's position on radar for 3.0s
+	if (AttackerActor && AttackerActor != GetOwner())
+	{
+		if (UFPSRadarSubsystem* Radar = World->GetSubsystem<UFPSRadarSubsystem>())
+		{
+			// Force hostile gunfire acoustic signature on enemy channel
+			Radar->ReportGunfire(AttackerActor, AttackerActor->GetActorLocation(), EFPSPlayerTeam::Bravo, false);
+		}
+
+		if (AFPSCharacter* OwnerChar = Cast<AFPSCharacter>(GetOwner()))
+		{
+			if (UFPSHUDWidget* HUD = OwnerChar->GetActiveHUDWidget())
+			{
+				// Directional hit blip toward the baited enemy shooter
+				HUD->AddDirectionalIndicator(AttackerActor->GetActorLocation(), 2.8f, EThreatIndicatorType::Gunfire);
+			}
+			OwnerChar->AwardCombatAccolade(TEXT("🎯 DECOY TRIANGULATION (+50 GOLD)"), 50, FLinearColor(0.0f, 0.90f, 1.0f));
+		}
+	}
+
+	// 2. Bright Cyan Hologram Shatter Flash
+	if (BaseEmitterRing && BaseEmitterRing->GetMaterial(0))
+	{
+		if (UMaterialInstanceDynamic* RingMID = Cast<UMaterialInstanceDynamic>(BaseEmitterRing->GetMaterial(0)))
+		{
+			RingMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.0f, 10.0f, 10.0f, 1.0f));
+		}
+	}
+
+	Destroy();
 }
 
 void AFPSFermiDecoyActor::EndPlay(const EEndPlayReason::Type EndPlayReason)

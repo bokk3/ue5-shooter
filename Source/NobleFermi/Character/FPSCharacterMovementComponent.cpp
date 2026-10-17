@@ -63,12 +63,40 @@ void UFPSCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float De
 			{
 				bIsDiveLandingSlide = true;
 				DiveLandingSlideTimer = DiveLandingSlideDuration;
-				Velocity = BallisticDiveDirection * (DiveHorizontalLaunchSpeed * 0.65f);
+				bMaintainHorizontalGroundVelocity = true;
+
+				// Project directional momentum smoothly along floor slope/ramp normal (e.g. Rust Oil Derrick 25° ramps)
+				FVector SlideDir = BallisticDiveDirection;
+				if (CurrentFloor.IsWalkableFloor() && CurrentFloor.HitResult.ImpactNormal.Z < 0.999f && CurrentFloor.HitResult.ImpactNormal.Z > 0.1f)
+				{
+					SlideDir = FVector::VectorPlaneProject(BallisticDiveDirection, CurrentFloor.HitResult.ImpactNormal).GetSafeNormal();
+				}
+				Velocity = SlideDir * (DiveHorizontalLaunchSpeed * 0.72f);
 			}
 			else
 			{
 				DiveLandingSlideTimer -= DeltaSeconds;
-				Velocity = FMath::VInterpTo(Velocity, FVector::ZeroVector, DeltaSeconds, 4.5f);
+
+				// Smooth non-snagging deceleration preserving momentum on slopes
+				if (CurrentFloor.IsWalkableFloor() && CurrentFloor.HitResult.ImpactNormal.Z < 0.999f && CurrentFloor.HitResult.ImpactNormal.Z > 0.1f)
+				{
+					const FVector SlopeDir = FVector::VectorPlaneProject(BallisticDiveDirection, CurrentFloor.HitResult.ImpactNormal).GetSafeNormal();
+					const float DownhillDot = FVector::DotProduct(SlopeDir, FVector::DownVector);
+					if (DownhillDot > 0.1f)
+					{
+						// Retain momentum when sliding down ramps
+						Velocity = FMath::VInterpTo(Velocity, SlopeDir * (DiveHorizontalLaunchSpeed * 0.60f), DeltaSeconds, 1.8f);
+					}
+					else
+					{
+						Velocity = FMath::VInterpTo(Velocity, FVector::ZeroVector, DeltaSeconds, 3.2f);
+					}
+				}
+				else
+				{
+					Velocity = FMath::VInterpTo(Velocity, FVector::ZeroVector, DeltaSeconds, 3.8f);
+				}
+
 				if (DiveLandingSlideTimer <= 0.0f)
 				{
 					StopBallisticDive();
@@ -222,6 +250,7 @@ void UFPSCharacterMovementComponent::StopBallisticDive()
 	bIsBallisticDiving = false;
 	bHasLeftGroundDuringDive = false;
 	bIsDiveLandingSlide = false;
+	bMaintainHorizontalGroundVelocity = false;
 	DiveAirborneTime = 0.0f;
 	DiveLandingSlideTimer = 0.0f;
 	CurrentFPSMode = bWantsToSprint ? EFPSMovementMode::Sprinting : EFPSMovementMode::Walking;

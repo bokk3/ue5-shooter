@@ -1,9 +1,12 @@
 #include "Weapons/FPSDilatedBulletActor.h"
 #include "Combat/FPSFermiTimeBubble.h"
+#include "Combat/FPSFermiDecoyActor.h"
 #include "Combat/FPSBallisticTracer.h"
 #include "Combat/FPSHealthComponent.h"
+#include "BodyMechanics/FPSHumanBones.h"
 #include "Character/FPSCharacter.h"
 #include "UI/FPSHUDWidget.h"
+#include "EngineUtils.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -144,22 +147,67 @@ void AFPSDilatedBulletActor::Tick(float DeltaTime)
 		AActor* HitActor = HitResult.GetActor();
 		if (HitActor)
 		{
+			// Decoy Hit Triangulation
+			if (AFPSFermiDecoyActor* Decoy = Cast<AFPSFermiDecoyActor>(HitActor))
+			{
+				Decoy->OnDecoyHit(ShooterActor.Get(), HitResult.ImpactPoint);
+				Destroy();
+				return;
+			}
+
 			UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
 			if (HealthComp)
 			{
+				const bool bIsHead = (HitResult.BoneName == FName(TEXT("head")));
+				const bool bIsArmorProtected = FFPSHumanSkeleton::IsBoneArmorProtected(HitResult.BoneName);
+				const float PreHealth = HealthComp->GetCurrentHealth();
+				const float PreShield = HealthComp->GetCurrentShield();
+
 				HealthComp->ApplyDamage(BulletDamage, ShooterActor.Get(), HitResult);
 
+				const bool bKilled = HealthComp->IsDead() || (PreHealth > 0.0f && HealthComp->GetCurrentHealth() <= 0.0f);
+				const bool bShieldBroken = (PreShield > 0.0f && HealthComp->GetCurrentShield() <= 0.0f) || (bIsArmorProtected && PreShield > 0.0f);
+
 				AFPSCharacter* ShooterChar = Cast<AFPSCharacter>(ShooterActor.Get());
-				if (ShooterChar && ShooterChar->GetActiveHUDWidget())
+				if (ShooterChar)
 				{
-					const bool bIsHead = (HitResult.BoneName == FName(TEXT("head")));
-					ShooterChar->GetActiveHUDWidget()->TriggerHitmarker(bIsHead ? EFPSHitmarkerType::Headshot : EFPSHitmarkerType::Standard);
+					ShooterChar->NotifyEnemyHit(HitActor, HitResult, bIsHead, bShieldBroken, bKilled);
 				}
 			}
 		}
 
 		Destroy();
 		return;
+	}
+
+	// Bullet-Graze Reflex Boost: Check if passing within 85cm of player head/torso inside a Fermi Bubble
+	for (TActorIterator<AFPSCharacter> CharIt(World); CharIt; ++CharIt)
+	{
+		AFPSCharacter* Char = *CharIt;
+		if (!Char || Char == ShooterActor.Get() || Char->IsDead() || GrazedCharacters.Contains(Char))
+		{
+			continue;
+		}
+
+		const bool bCharInBubble = Char->IsFermiTimeBubbleActive() || AFPSFermiTimeBubble::IsLocationInsideAnyBubble(World, Char->GetActorLocation());
+		if (!bCharInBubble)
+		{
+			continue;
+		}
+
+		const FVector HeadLoc = Char->GetActorLocation() + FVector(0.0f, 0.0f, 65.0f);
+		const FVector TorsoLoc = Char->GetActorLocation() + FVector(0.0f, 0.0f, 15.0f);
+		const FVector ClosestHeadPt = FMath::ClosestPointOnSegment(HeadLoc, CurrentLocation, NextLocation);
+		const FVector ClosestTorsoPt = FMath::ClosestPointOnSegment(TorsoLoc, CurrentLocation, NextLocation);
+		const float DistHead = FVector::Dist(ClosestHeadPt, HeadLoc);
+		const float DistTorso = FVector::Dist(ClosestTorsoPt, TorsoLoc);
+		const float MinDist = FMath::Min(DistHead, DistTorso);
+
+		if (MinDist <= 85.0f)
+		{
+			GrazedCharacters.Add(Char);
+			Char->HandleBulletGraze(MinDist);
+		}
 	}
 
 	SetActorLocation(NextLocation);

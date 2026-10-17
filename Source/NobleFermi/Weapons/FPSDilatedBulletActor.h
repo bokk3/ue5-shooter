@@ -67,5 +67,7 @@ private:
 	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> WakeMID;
 
+	TSet<TWeakObjectPtr<class AFPSCharacter>> GrazedCharacters;
+
 	void ExecuteRemainderHitscan(const FVector& StartPoint);
 };

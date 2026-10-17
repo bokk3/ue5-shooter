@@ -2,6 +2,8 @@
 #include "Combat/FPSHealthComponent.h"
 #include "Combat/FPSBallisticTracer.h"
 #include "Combat/FPSFermiTimeBubble.h"
+#include "Combat/FPSFermiDecoyActor.h"
+#include "BodyMechanics/FPSHumanBones.h"
 #include "Weapons/FPSDilatedBulletActor.h"
 #include "Audio/FPSAudioSubsystem.h"
 #include "Kismet/GameplayStatics.h"
@@ -456,6 +458,33 @@ void AFPSWeaponBase::FireShot()
 		);
 	}
 
+	APawn* PawnOwner = Cast<APawn>(GetOwner());
+
+	// Deaf Accessibility / Visual Audio: Notify local player's HUD if gunfire originated from another pawn
+	if (UWorld* ShotWorld = GetWorld())
+	{
+		if (APlayerController* FirstPC = ShotWorld->GetFirstPlayerController())
+		{
+			APawn* LocalPawn = FirstPC->GetPawn();
+			if (LocalPawn && LocalPawn != PawnOwner)
+			{
+				if (AFPSCharacter* LocalChar = Cast<AFPSCharacter>(LocalPawn))
+				{
+					if (UFPSHUDWidget* LocalHUD = LocalChar->GetActiveHUDWidget())
+					{
+						const float ShotDist = FVector::Dist(MuzzleWorldLoc, LocalChar->GetActorLocation());
+						if (ShotDist <= GunshotMaxAudibleDistance)
+						{
+							const float Attenuation = FMath::Clamp(1.0f - (ShotDist / GunshotMaxAudibleDistance), 0.25f, 1.0f);
+							const float GunfireIntensity = (bIsSuppressed ? 0.75f : 1.5f) * Attenuation;
+							LocalHUD->AddDirectionalIndicator(MuzzleWorldLoc, GunfireIntensity, EThreatIndicatorType::Gunfire);
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Dynamic Shell Casing Drop Audio (Attenuated brass bounce after mechanical ejection)
 	if (ShellDropSound)
 	{
@@ -465,23 +494,37 @@ void AFPSWeaponBase::FireShot()
 		GetWorldTimerManager().SetTimer(ShellDropTimer, ShellDropDelegate, FMath::RandRange(0.24f, 0.32f), false);
 	}
 
-	// Trace line calculation from Owner Camera
-	APawn* PawnOwner = Cast<APawn>(GetOwner());
+	// Trace line calculation from Owner Camera or Tactical Bot Aim
 	if (PawnOwner)
 	{
+		AFPSCharacter* ShooterFPSChar = Cast<AFPSCharacter>(PawnOwner);
 		APlayerController* PC = Cast<APlayerController>(PawnOwner->GetController());
+
+		FVector CameraLoc = FVector::ZeroVector;
+		FRotator CameraRot = FRotator::ZeroRotator;
+		bool bHasValidAimOrigin = false;
+
 		if (PC && PC->PlayerCameraManager)
 		{
-			FVector CameraLoc = PC->PlayerCameraManager->GetCameraLocation();
-			FRotator CameraRot = PC->PlayerCameraManager->GetCameraRotation();
+			CameraLoc = PC->PlayerCameraManager->GetCameraLocation();
+			CameraRot = PC->PlayerCameraManager->GetCameraRotation();
+			bHasValidAimOrigin = true;
+		}
+		else if (ShooterFPSChar && ShooterFPSChar->IsTacticalBot())
+		{
+			CameraLoc = ShooterFPSChar->GetBotEyeLocation();
+			CameraRot = ShooterFPSChar->GetBotAimRotation();
+			bHasValidAimOrigin = true;
+		}
 
+		if (bHasValidAimOrigin)
+		{
 			// Dynamic spread bloom (reduced by 55% during Max Payne Ballistic Dive for crisp mid-air marksmanship)
-			AFPSCharacter* ShooterFPSChar = Cast<AFPSCharacter>(PawnOwner);
 			const bool bIsDiving = (ShooterFPSChar && ShooterFPSChar->IsBallisticDiving());
 			const float DiveSpreadScale = bIsDiving ? 0.45f : 1.0f;
 
 			CurrentSpread = FMath::Min(MaxSpread * DiveSpreadScale, CurrentSpread + SpreadPerShot * DiveSpreadScale);
-			float SpreadHalfAngleRad = FMath::DegreesToRadians(CurrentSpread * 0.5f);
+			float SpreadHalfAngleRad = FMath::DegreesToRadians((ShooterFPSChar && ShooterFPSChar->IsTacticalBot()) ? 2.4f : (CurrentSpread * 0.5f));
 			FVector ShotDirection = FMath::VRandCone(CameraRot.Vector(), SpreadHalfAngleRad);
 
 			FVector TraceEnd = CameraLoc + (ShotDirection * MaxRange);
@@ -503,6 +546,10 @@ void AFPSWeaponBase::FireShot()
 					if (PS)
 					{
 						ShooterTeam = PS->GetPlayerTeam();
+					}
+					else if (ShooterFPSChar)
+					{
+						ShooterTeam = ShooterFPSChar->GetBotTeam();
 					}
 					RadarSubsystem->ReportGunfire(PawnOwner, PawnOwner->GetActorLocation(), ShooterTeam, bIsSuppressed);
 				}
@@ -560,16 +607,29 @@ void AFPSWeaponBase::FireShot()
 							AActor* HitActor = HitResult.GetActor();
 							if (HitActor)
 							{
-								UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
-								if (HealthComp)
+								if (AFPSFermiDecoyActor* Decoy = Cast<AFPSFermiDecoyActor>(HitActor))
 								{
-									HealthComp->ApplyDamage(BaseDamage, PawnOwner, HitResult);
-
-									// Trigger tactical hitmarker feedback on shooter's HUD
-									if (ShooterFPSChar && ShooterFPSChar->GetActiveHUDWidget())
+									Decoy->OnDecoyHit(PawnOwner, HitResult.ImpactPoint);
+								}
+								else
+								{
+									UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
+									if (HealthComp)
 									{
 										const bool bIsHead = (HitResult.BoneName == FName(TEXT("head")));
-										ShooterFPSChar->GetActiveHUDWidget()->TriggerHitmarker(bIsHead ? EFPSHitmarkerType::Headshot : EFPSHitmarkerType::Standard);
+										const bool bIsArmorProtected = FFPSHumanSkeleton::IsBoneArmorProtected(HitResult.BoneName);
+										const float PreHealth = HealthComp->GetCurrentHealth();
+										const float PreShield = HealthComp->GetCurrentShield();
+
+										HealthComp->ApplyDamage(BaseDamage, PawnOwner, HitResult);
+
+										const bool bKilled = HealthComp->IsDead() || (PreHealth > 0.0f && HealthComp->GetCurrentHealth() <= 0.0f);
+										const bool bShieldBroken = (PreShield > 0.0f && HealthComp->GetCurrentShield() <= 0.0f) || (bIsArmorProtected && PreShield > 0.0f);
+
+										if (ShooterFPSChar)
+										{
+											ShooterFPSChar->NotifyEnemyHit(HitActor, HitResult, bIsHead, bShieldBroken, bKilled);
+										}
 									}
 								}
 							}
@@ -581,6 +641,30 @@ void AFPSWeaponBase::FireShot()
 						{
 							Tracer->InitializeTracer(MuzzleWorldLoc, TracerImpactPoint, false, false);
 						}
+
+						// Deaf Accessibility / Bullet Flyby: Detect supersonic crack passing near local player
+						if (APlayerController* FirstPC = World->GetFirstPlayerController())
+						{
+							APawn* LocalPawn = FirstPC->GetPawn();
+							if (LocalPawn && LocalPawn != PawnOwner)
+							{
+								if (AFPSCharacter* LocalChar = Cast<AFPSCharacter>(LocalPawn))
+								{
+									if (UFPSHUDWidget* LocalHUD = LocalChar->GetActiveHUDWidget())
+									{
+										const FVector LocalPlayerHead = LocalChar->GetActorLocation() + FVector(0.0f, 0.0f, 60.0f);
+										const FVector ClosestPt = FMath::ClosestPointOnSegment(LocalPlayerHead, MuzzleWorldLoc, TracerImpactPoint);
+										const float FlybyDist = FVector::Dist(ClosestPt, LocalPlayerHead);
+
+										if (FlybyDist <= 450.0f) // Within 4.5 meters
+										{
+											const float FlybyIntensity = FMath::Clamp(1.8f - (FlybyDist / 450.0f) * 0.8f, 1.0f, 2.0f);
+											LocalHUD->AddDirectionalIndicator(MuzzleWorldLoc, FlybyIntensity, EThreatIndicatorType::Gunfire);
+										}
+									}
+								}
+							}
+						}
 					}
 				}
 			}
@@ -589,8 +673,11 @@ void AFPSWeaponBase::FireShot()
 			float RecoilMod = GunsmithComponent ? GunsmithComponent->GetTotalRecoilMultiplier() : 1.0f;
 			float PitchKick = -RecoilPitchKick * (bIsAimingDownSights ? 0.6f : 1.0f) * RecoilMod;
 			float YawKick = FMath::RandRange(-RecoilYawSpread, RecoilYawSpread) * RecoilMod;
-			PC->AddPitchInput(PitchKick);
-			PC->AddYawInput(YawKick);
+			if (PC)
+			{
+				PC->AddPitchInput(PitchKick);
+				PC->AddYawInput(YawKick);
+			}
 
 			// Procedural physical weapon recoil kick
 			const float ADSRecoilDamp = bIsAimingDownSights ? 0.6f : 1.0f;
@@ -650,6 +737,76 @@ void AFPSWeaponBase::SetADS(bool bInADS)
 		return;
 	}
 	bIsAimingDownSights = bInADS;
+}
+
+void AFPSWeaponBase::ApplyLoadoutCosmetics(int32 CamoIndex, int32 HeadgearIndex, int32 ArmorIndex, int32 WeaponFinishIndex)
+{
+	FLinearColor SteelColor(0.18f, 0.20f, 0.22f, 1.0f);
+	FLinearColor WoodOrGuardColor(0.32f, 0.14f, 0.06f, 1.0f);
+	FLinearColor MagColor(0.42f, 0.18f, 0.05f, 1.0f);
+	float MetallicVal = 0.85f;
+	float RoughnessVal = 0.35f;
+
+	switch (WeaponFinishIndex)
+	{
+	case 1: // Tactical Blackout Polymer
+		SteelColor = FLinearColor(0.04f, 0.04f, 0.05f, 1.0f);
+		WoodOrGuardColor = FLinearColor(0.06f, 0.07f, 0.08f, 1.0f);
+		MagColor = FLinearColor(0.05f, 0.05f, 0.06f, 1.0f);
+		MetallicVal = 0.75f;
+		RoughnessVal = 0.42f;
+		break;
+	case 2: // Desert Sand Cerakote
+		SteelColor = FLinearColor(0.42f, 0.36f, 0.26f, 1.0f);
+		WoodOrGuardColor = FLinearColor(0.54f, 0.47f, 0.34f, 1.0f);
+		MagColor = FLinearColor(0.34f, 0.29f, 0.20f, 1.0f);
+		MetallicVal = 0.45f;
+		RoughnessVal = 0.55f;
+		break;
+	case 3: // 24K Gold & Opal Prestige
+		SteelColor = FLinearColor(0.95f, 0.72f, 0.18f, 1.0f);
+		WoodOrGuardColor = FLinearColor(0.08f, 0.10f, 0.14f, 1.0f);
+		MagColor = FLinearColor(0.0f, 0.85f, 0.95f, 1.0f);
+		MetallicVal = 0.98f;
+		RoughnessVal = 0.18f;
+		break;
+	default: // 0: Classic Blued Steel & Russian Redwood
+		break;
+	}
+
+	auto ApplyTintToMesh = [MetallicVal, RoughnessVal](UStaticMeshComponent* Comp, int32 MatIdx, const FLinearColor& Tint)
+	{
+		if (!Comp) return;
+		if (UMaterialInstanceDynamic* MID = Comp->CreateDynamicMaterialInstance(MatIdx))
+		{
+			MID->SetVectorParameterValue(TEXT("Color"), Tint);
+			MID->SetVectorParameterValue(TEXT("BaseColor"), Tint);
+			MID->SetScalarParameterValue(TEXT("Metallic"), MetallicVal);
+			MID->SetScalarParameterValue(TEXT("Roughness"), RoughnessVal);
+		}
+	};
+
+	if (AK47StaticMesh)
+	{
+		ApplyTintToMesh(AK47StaticMesh, 0, SteelColor);
+		ApplyTintToMesh(AK47StaticMesh, 1, WoodOrGuardColor);
+		ApplyTintToMesh(AK47StaticMesh, 2, MagColor);
+	}
+
+	ApplyTintToMesh(ReceiverMesh, 0, SteelColor);
+	ApplyTintToMesh(BarrelMesh, 0, SteelColor);
+	ApplyTintToMesh(HandguardMesh, 0, WoodOrGuardColor);
+	ApplyTintToMesh(StockMesh, 0, WoodOrGuardColor);
+	ApplyTintToMesh(MagazineMesh, 0, MagColor);
+}
+
+void AFPSWeaponBase::RefillBotAmmo()
+{
+	ReserveAmmo = FMath::Max(ReserveAmmo, MagazineCapacity * 4);
+	if (CurrentAmmo <= 0)
+	{
+		CurrentAmmo = MagazineCapacity;
+	}
 }
 
 void AFPSWeaponBase::PlayDelayedShellDrop(FVector DropLocation)

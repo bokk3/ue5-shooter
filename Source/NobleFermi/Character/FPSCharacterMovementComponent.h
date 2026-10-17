@@ -146,6 +146,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "FPS Movement|Stamina")
 	bool IsStaminaExhausted() const { return bIsStaminaExhausted; }
 
+	UFUNCTION(BlueprintCallable, Category = "FPS Movement|Stamina")
+	void AddStamina(float Amount)
+	{
+		CurrentStamina = FMath::Clamp(CurrentStamina + Amount, 0.0f, MaxStamina);
+		bIsStaminaExhausted = false;
+	}
+
 private:
 	UPROPERTY()
 	EFPSMovementMode CurrentFPSMode = EFPSMovementMode::Walking;

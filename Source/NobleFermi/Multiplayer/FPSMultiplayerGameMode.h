@@ -36,6 +36,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FPS Multiplayer")
 	void NotifyPlayerKilled(AController* Killer, AController* Victim, const FString& WeaponName, bool bIsHeadshot);
 
+	UFUNCTION(BlueprintCallable, Category = "FPS Multiplayer|Bots")
+	void HandleBotKilled(class AFPSCharacter* DeadBot, AActor* KillerActor);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Multiplayer|Bots")
+	void SpawnInitialTacticalBots();
+
 	UFUNCTION(BlueprintCallable, Category = "FPS Multiplayer")
 	void TriggerTacticalNuke(AController* InstigatingPlayer);
 
@@ -45,9 +51,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "FPS Rules")
 	float RespawnDelaySeconds = 2.5f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Rules|Bots")
+	int32 TargetTacticalBotCount = 4;
+
 protected:
 	virtual void BeginPlay() override;
 	void RespawnPlayer(AController* ControllerToRespawn);
+	void SpawnSingleTacticalBot(int32 BotIndex);
 
 private:
 	UPROPERTY()
@@ -55,4 +65,8 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<AFPSCombatArenaMapActor> ActiveArena;
+
+	UPROPERTY()
+	TArray<TObjectPtr<class AFPSCharacter>> ActiveTacticalBots;
 };
+

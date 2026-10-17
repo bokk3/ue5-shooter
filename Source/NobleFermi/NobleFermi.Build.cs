@@ -23,7 +23,9 @@ public class NobleFermi : ModuleRules
 			"CommonInput",
 			"PhysicsCore",
 			"AnimationCore",
-			"AnimGraphRuntime"
+			"AnimGraphRuntime",
+			"Json",
+			"JsonUtilities"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {

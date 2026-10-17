@@ -39,6 +39,12 @@ public:
 	AFPSWeaponBase* GetActiveWeapon() const { return ActiveWeapon; }
 
 	UFUNCTION(BlueprintPure, Category = "FPS Inventory")
+	AFPSWeaponBase* GetPrimaryWeapon() const { return WeaponSlots.IsValidIndex(0) ? WeaponSlots[0].Get() : nullptr; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Inventory")
+	AFPSWeaponBase* GetSecondaryWeapon() const { return WeaponSlots.IsValidIndex(1) ? WeaponSlots[1].Get() : nullptr; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Inventory")
 	int32 GetActiveSlotIndex() const { return CurrentSlotIndex; }
 
 protected:

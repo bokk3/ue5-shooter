@@ -10,6 +10,8 @@
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Animation/AnimSequence.h"
 #include "Engine/SkeletalMeshSocket.h"
+#include "Engine/GameInstance.h"
+#include "Economy/FPSEconomySubsystem.h"
 
 AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 {
@@ -432,6 +434,14 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		EnsureAKMat(0, TEXT("M_AK47_Steel"), TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
 		EnsureAKMat(1, TEXT("M_AK47_Wood"), TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"));
 		EnsureAKMat(2, TEXT("M_AK47_Bakelite"), TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"));
+
+		for (int32 SlotIdx = 0; SlotIdx < 3; ++SlotIdx)
+		{
+			if (UMaterialInstanceDynamic* AKMID = AK47Mesh->CreateDynamicMaterialInstance(SlotIdx))
+			{
+				WeaponMaterials.Add(AKMID);
+			}
+		}
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: BodyMesh Valid=%d, SkeletalMeshAsset=%s, Visible=%d, AK47Mesh=%s"),
@@ -536,9 +546,22 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		}
 	}
 
+	// Sync persistent equipped loadout from UFPSEconomySubsystem if available
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
+		{
+			CurrentCamo = static_cast<EOperatorCamo>(FMath::Clamp(Economy->GetEquippedCamoIndex(), 0, 3));
+			CurrentHeadgear = static_cast<EOperatorHeadgear>(FMath::Clamp(Economy->GetEquippedHeadgearIndex(), 0, 3));
+			CurrentVest = static_cast<EOperatorArmorVest>(FMath::Clamp(Economy->GetEquippedArmorIndex(), 0, 2));
+			CurrentWeaponFinish = static_cast<EOperatorWeaponFinish>(FMath::Clamp(Economy->GetEquippedWeaponFinishIndex(), 0, 3));
+		}
+	}
+
 	ApplyCamoColors();
 	ApplyHeadgearVisibility();
 	ApplyVestConfiguration();
+	ApplyWeaponFinish();
 }
 
 void AFPSCharacterPreviewActor::Tick(float DeltaTime)
@@ -602,6 +625,12 @@ void AFPSCharacterPreviewActor::SetArmorVest(EOperatorArmorVest NewVest)
 {
 	CurrentVest = NewVest;
 	ApplyVestConfiguration();
+}
+
+void AFPSCharacterPreviewActor::SetWeaponFinish(EOperatorWeaponFinish NewFinish)
+{
+	CurrentWeaponFinish = NewFinish;
+	ApplyWeaponFinish();
 }
 
 void AFPSCharacterPreviewActor::SetPreviewStance(int32 StanceIndex)
@@ -783,6 +812,8 @@ void AFPSCharacterPreviewActor::ApplyCamoColors()
 			OpticMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.0f, 0.2f, 0.05f)); // Amber/Red Holo Reticle
 		}
 	}
+
+	ApplyWeaponFinish();
 }
 
 void AFPSCharacterPreviewActor::ApplyHeadgearVisibility()
@@ -847,6 +878,88 @@ void AFPSCharacterPreviewActor::ApplyVestConfiguration()
 		VestMesh->SetRelativeScale3D(FVector(0.26f, 0.32f, 0.18f));
 		VestMesh->SetVisibility(true);
 		break;
+	}
+}
+
+void AFPSCharacterPreviewActor::ApplyWeaponFinish()
+{
+	FLinearColor SteelColor = FLinearColor(0.08f, 0.09f, 0.11f, 1.0f);     // Blued gunmetal steel
+	FLinearColor FurnitureColor = FLinearColor(0.32f, 0.16f, 0.06f, 1.0f); // Classic Russian laminate wood
+	FLinearColor MagColor = FLinearColor(0.45f, 0.18f, 0.05f, 1.0f);       // Orange-amber Bakelite
+	float MetallicVal = 0.85f;
+	float RoughnessVal = 0.35f;
+
+	switch (CurrentWeaponFinish)
+	{
+	case EOperatorWeaponFinish::FactoryBluedSteel:
+		SteelColor = FLinearColor(0.08f, 0.09f, 0.11f, 1.0f);
+		FurnitureColor = FLinearColor(0.32f, 0.16f, 0.06f, 1.0f);
+		MagColor = FLinearColor(0.45f, 0.18f, 0.05f, 1.0f);
+		MetallicVal = 0.85f;
+		RoughnessVal = 0.35f;
+		break;
+
+	case EOperatorWeaponFinish::DesertTanCerakote:
+		SteelColor = FLinearColor(0.56f, 0.48f, 0.35f, 1.0f);     // FDE Cerakote receiver
+		FurnitureColor = FLinearColor(0.42f, 0.36f, 0.26f, 1.0f); // Coyote polymer furniture
+		MagColor = FLinearColor(0.30f, 0.26f, 0.19f, 1.0f);       // Matte tan PMAG
+		MetallicVal = 0.25f;
+		RoughnessVal = 0.65f;
+		break;
+
+	case EOperatorWeaponFinish::CarbonFiberSpecOps:
+		SteelColor = FLinearColor(0.03f, 0.04f, 0.05f, 1.0f);     // Stealth matte carbon
+		FurnitureColor = FLinearColor(0.05f, 0.07f, 0.09f, 1.0f); // Carbon weave handguard
+		MagColor = FLinearColor(0.0f, 0.55f, 0.68f, 1.0f);        // Tactical cyan spec-ops mag accent
+		MetallicVal = 0.60f;
+		RoughnessVal = 0.28f;
+		break;
+
+	case EOperatorWeaponFinish::GoldOpalDamascene:
+		SteelColor = FLinearColor(1.0f, 0.76f, 0.18f, 1.0f);      // 24K mirror gold receiver & barrel
+		FurnitureColor = FLinearColor(0.04f, 0.12f, 0.18f, 1.0f); // Obsidian & crystalline opal inlay
+		MagColor = FLinearColor(0.0f, 0.898f, 1.0f, 1.0f);        // Glowing Crystalline Opal magazine
+		MetallicVal = 0.98f;
+		RoughnessVal = 0.14f;
+		break;
+	}
+
+	if (AK47Mesh)
+	{
+		if (UMaterialInstanceDynamic* SteelMID = Cast<UMaterialInstanceDynamic>(AK47Mesh->GetMaterial(0)))
+		{
+			SteelMID->SetVectorParameterValue(TEXT("Color"), SteelColor);
+			SteelMID->SetVectorParameterValue(TEXT("BaseColor"), SteelColor);
+			SteelMID->SetVectorParameterValue(TEXT("Tint"), SteelColor);
+			SteelMID->SetScalarParameterValue(TEXT("Metallic"), MetallicVal);
+			SteelMID->SetScalarParameterValue(TEXT("Roughness"), RoughnessVal);
+		}
+		if (UMaterialInstanceDynamic* WoodMID = Cast<UMaterialInstanceDynamic>(AK47Mesh->GetMaterial(1)))
+		{
+			WoodMID->SetVectorParameterValue(TEXT("Color"), FurnitureColor);
+			WoodMID->SetVectorParameterValue(TEXT("BaseColor"), FurnitureColor);
+			WoodMID->SetVectorParameterValue(TEXT("Tint"), FurnitureColor);
+			WoodMID->SetScalarParameterValue(TEXT("Roughness"), RoughnessVal + 0.1f);
+		}
+		if (UMaterialInstanceDynamic* MagMID = Cast<UMaterialInstanceDynamic>(AK47Mesh->GetMaterial(2)))
+		{
+			MagMID->SetVectorParameterValue(TEXT("Color"), MagColor);
+			MagMID->SetVectorParameterValue(TEXT("BaseColor"), MagColor);
+			MagMID->SetVectorParameterValue(TEXT("Tint"), MagColor);
+			MagMID->SetScalarParameterValue(TEXT("Metallic"), MetallicVal * 0.7f);
+			MagMID->SetScalarParameterValue(TEXT("Roughness"), RoughnessVal);
+		}
+	}
+
+	for (UMaterialInstanceDynamic* MID : WeaponMaterials)
+	{
+		if (MID)
+		{
+			MID->SetVectorParameterValue(TEXT("Color"), SteelColor);
+			MID->SetVectorParameterValue(TEXT("BaseColor"), SteelColor);
+			MID->SetScalarParameterValue(TEXT("Metallic"), MetallicVal);
+			MID->SetScalarParameterValue(TEXT("Roughness"), RoughnessVal);
+		}
 	}
 }
 
