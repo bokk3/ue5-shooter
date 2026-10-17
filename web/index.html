@@ -142,6 +142,7 @@
     .hud-card {
       border: 1px solid rgba(0, 229, 255, 0.32);
       background: linear-gradient(145deg, rgba(6, 16, 29, 0.58) 0%, rgba(3, 8, 16, 0.70) 100%);
+      box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.55), 0 0 1px 1px rgba(0, 229, 255, 0.12);
       backdrop-filter: blur(12px) saturate(1.35);
       -webkit-backdrop-filter: blur(12px) saturate(1.35);
       transition:
@@ -154,7 +155,7 @@
     .hud-card:hover {
       border-color: rgba(0, 229, 255, 0.68);
       transform: translateY(-3px);
-      box-shadow: 0 18px 42px -12px rgba(0, 229, 255, 0.25), 0 0 1px 1px rgba(0, 229, 255, 0.30);
+      box-shadow: 0 20px 45px -8px rgba(0, 229, 255, 0.28), 0 0 12px 1px rgba(0, 229, 255, 0.30);
     }
 
     /* Signature 4-Corner Tactical Brackets with Micro-Interaction Expansion */
@@ -258,7 +259,12 @@
       width: 100%;
       max-width: 80rem;
       border-radius: 0.75rem;
-      box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.85), 0 0 1px 1px rgba(0, 229, 255, 0.22);
+      box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.85), 0 10px 30px -8px rgba(0, 0, 0, 0.55), 0 0 1px 1px rgba(0, 229, 255, 0.22);
+    }
+    .sticky-card-inner:hover {
+      border-color: rgba(0, 229, 255, 0.68);
+      transform: translateY(-2px);
+      box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.85), 0 20px 48px -8px rgba(0, 229, 255, 0.30), 0 0 14px 1px rgba(0, 229, 255, 0.40);
     }
 
     /* Top Edge Specular Horizon Line */
@@ -270,17 +276,19 @@
 
     /* Interactive Telemetry Pill Tabs */
     .telemetry-tab {
+      box-shadow: 0 0 0 0 rgba(0, 229, 255, 0);
       transition:
         background-color 0.4s var(--ease-luxury),
         border-color 0.4s var(--ease-luxury),
         color 0.4s var(--ease-luxury),
+        box-shadow 0.4s var(--ease-luxury),
         transform 0.4s var(--ease-luxury);
     }
     .telemetry-tab.active {
       background: rgba(0, 229, 255, 0.14);
       border-color: #00E5FF;
       color: #00E5FF;
-      box-shadow: 0 0 18px rgba(0, 229, 255, 0.2);
+      box-shadow: 0 0 18px rgba(0, 229, 255, 0.32);
     }
 
     /* Accessibility: Full prefers-reduced-motion Support */
@@ -1086,10 +1094,9 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
         const nextCard = cards[index + 1];
 
         gsap.to(inner, {
-          scale: 0.91 - index * 0.015,
-          opacity: 0.34,
-          filter: 'blur(3.5px)',
-          y: -24,
+          scale: 0.92 - index * 0.015,
+          opacity: 0.38,
+          y: -22,
           force3D: true,
           ease: 'none',
           scrollTrigger: {

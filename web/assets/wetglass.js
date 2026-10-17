@@ -213,17 +213,26 @@ void main() {
 
   // Water on the glass (rg = surface normal, a = coverage)
   vec4 w = texture2D(u_water, v_uv);
-  float cov = smoothstep(0.12, 0.8, w.a);
-  vec2 n = (w.rg - 0.5) * 2.0;
+  float cov = smoothstep(0.04, 0.88, w.a);
+
+  // Un-premultiply normals to eliminate edge alpha distortion
+  vec2 raw_n = w.a > 0.01 ? (w.rg / max(w.a, 0.01) - 0.5) * 2.0 : vec2(0.0);
+  float n_len = length(raw_n);
+  vec2 n = n_len > 1.0 ? raw_n / n_len : raw_n;
   n.y = -n.y;
   float nz = sqrt(max(0.0, 1.0 - dot(n, n)));
+
   vec2 ruv = v_uv - n * u_lens;           // inverted lens image, like real drops
-  vec3 drop = texture2D(u_sea, ruv).rgb * 1.45 + texture2D(u_fog, ruv).rgb * 1.2;
-  drop += vec3(0.0, 0.030, 0.050);
-  drop *= 1.0 - smoothstep(0.30, 0.92, 1.0 - nz) * 0.78;   // dark refractive rim
-  vec3 N = normalize(vec3(n, nz + 0.2));
-  float spec = pow(max(dot(N, normalize(vec3(-0.38, 0.52, 0.76))), 0.0), 60.0);
-  float glint = pow(max(dot(N, normalize(vec3(0.30, -0.55, 0.78))), 0.0), 24.0);
+  vec3 drop = texture2D(u_sea, ruv).rgb * 1.35 + texture2D(u_fog, ruv).rgb * 1.05;
+  drop += vec3(0.0, 0.025, 0.045);
+
+  // Soft optical refractive meniscus shadow (smooth falloff, no harsh snapping)
+  float rim = smoothstep(0.35, 0.98, 1.0 - nz);
+  drop *= (1.0 - rim * 0.52);
+
+  vec3 N = normalize(vec3(n, nz + 0.25));
+  float spec = pow(max(dot(N, normalize(vec3(-0.38, 0.52, 0.76))), 0.0), 50.0);
+  float glint = pow(max(dot(N, normalize(vec3(0.30, -0.55, 0.78))), 0.0), 22.0);
   drop += vec3(0.90, 0.97, 1.00) * spec * 0.85 + vec3(0.0, 0.85, 1.0) * glint * 0.12;
 
   vec3 col = mix(glass, drop, cov);
@@ -367,8 +376,8 @@ void main() {
         if (r >= 1) { d[o + 3] = 0; continue; }
         d[o] = Math.round(128 + dx * 127);
         d[o + 1] = Math.round(128 + dy * 127);
-        d[o + 2] = Math.round(Math.sqrt(1 - r * r) * 255);
-        d[o + 3] = Math.round(Math.min(1, ((1 - r) * R) / 1.6) * 255);
+        const edge = Math.max(0, Math.min(1, (1 - r) * 3.2));
+        d[o + 3] = Math.round((edge * edge * (3.0 - 2.0 * edge)) * 255);
       }
     }
     x.putImageData(img, 0, 0);
@@ -435,15 +444,15 @@ void main() {
     if (live >= CFG.maxDrops) {
       let s = null;
       for (const o of S.drops) {
-        if (!o.trail && !o.dead && !o.sliding && (!s || o.r < s.r)) s = o;
+        if (!o.trail && !o.dead && !o.fading && !o.sliding && (!s || o.r < s.r)) s = o;
       }
-      if (!s) return null;
-      s.dead = true;
+      if (s) s.fading = true;
     }
     const d = {
       x, y, r, vx: 0, vy: 0,
-      sliding: false, trail: false, dead: false, parent: null,
-      wob: impact ? 1 : 0, trailDist: 0, nextTrail: rand(6, 16),
+      sliding: false, trail: false, dead: false, fading: false,
+      alpha: impact ? 0.35 : 0.85,
+      parent: null, wob: impact ? 1 : 0, trailDist: 0, nextTrail: rand(6, 16),
     };
     S.drops.push(d);
     if (impact) {
@@ -458,8 +467,8 @@ void main() {
       x: parent.x + rand(-0.2, 0.2) * parent.r,
       y: parent.y - parent.r * 1.25,
       r: parent.r * rand(0.18, 0.34),
-      vx: 0, vy: 0, sliding: false, trail: true, dead: false, parent,
-      wob: 0, trailDist: 0, nextTrail: 0,
+      vx: 0, vy: 0, sliding: false, trail: true, dead: false, fading: false,
+      alpha: 0.9, parent, wob: 0, trailDist: 0, nextTrail: 0,
     });
   }
 
@@ -649,9 +658,15 @@ void main() {
       if (d.wob > 0) d.wob = Math.max(0, d.wob - dt * 3.5);
 
       if (d.trail) {
-        d.r -= dt * 0.1;
-        if (d.r < 0.9) d.dead = true;
-        continue;
+        d.r -= dt * 0.12;
+        if (d.r < 1.2) d.fading = true;
+      }
+
+      if (d.fading) {
+        d.alpha -= dt * 2.2;
+        if (d.alpha <= 0) { d.dead = true; continue; }
+      } else if (d.alpha < 1) {
+        d.alpha = Math.min(1, d.alpha + dt * 4.5);
       }
 
       // Heavy drops eventually break loose
@@ -708,6 +723,7 @@ void main() {
     w.clearRect(0, 0, S.water.width, S.water.height);
     w.drawImage(S.mist, 0, 0);
     for (const d of S.drops) {
+      if (d.dead) continue;
       let sx = 1;
       let sy = 1;
       if (d.sliding) {
@@ -722,7 +738,14 @@ void main() {
       }
       const rx = d.r * sx * s;
       const ry = d.r * sy * s;
-      w.drawImage(S.dropSprite, d.x * s - rx, d.y * s - ry, rx * 2, ry * 2);
+      const a = d.alpha !== undefined ? Math.max(0, Math.min(1, d.alpha)) : 1;
+      if (a < 0.99) {
+        w.globalAlpha = a;
+        w.drawImage(S.dropSprite, d.x * s - rx, d.y * s - ry, rx * 2, ry * 2);
+        w.globalAlpha = 1;
+      } else {
+        w.drawImage(S.dropSprite, d.x * s - rx, d.y * s - ry, rx * 2, ry * 2);
+      }
     }
   }
 
