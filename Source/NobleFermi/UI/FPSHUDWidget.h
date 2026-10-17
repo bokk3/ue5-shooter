@@ -16,6 +16,38 @@ enum class EFPSHitmarkerType : uint8
 	Kill
 };
 
+UENUM(BlueprintType)
+enum class EThreatIndicatorType : uint8
+{
+	Damage,
+	Gunfire,
+	Footstep
+};
+
+USTRUCT(BlueprintType)
+struct FFPSThreatIndicator
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Threat")
+	FVector WorldSourceLocation = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Threat")
+	float Intensity = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Threat")
+	EThreatIndicatorType Type = EThreatIndicatorType::Damage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Threat")
+	float LifetimeRemaining = 1.2f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Threat")
+	float InitialLifetime = 1.2f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Threat")
+	float RelativeAngleDeg = 0.0f;
+};
+
 /**
  * AAA First-Person Shooter In-Game Tactical HUD
  * Slate-powered military overlay featuring:
@@ -25,6 +57,7 @@ enum class EFPSHitmarkerType : uint8
  * - Stamina System (tactical sprint meter, recovery)
  * - Ammo Counter (digital count, reserve, fire mode, reload progress)
  * - Dynamic Crosshair & Hitmarkers
+ * - Center-Screen Directional Hit & Visual Audio Semicircle + Chevron Radar (Deaf Accessibility)
  */
 UCLASS(BlueprintType, Blueprintable)
 class NOBLEFERMI_API UFPSHUDWidget : public UUserWidget
@@ -48,6 +81,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "FPS HUD|Feedback")
 	void TriggerDamageIndicator(FVector DamageSourceLocation, FVector InPlayerLocation, FRotator PlayerCameraRotation);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS HUD|Feedback")
+	void AddDirectionalIndicator(FVector WorldSourceLocation, float Intensity, EThreatIndicatorType Type);
 
 	UFUNCTION(BlueprintCallable, Category = "FPS HUD|State")
 	void UpdateAmmoDisplay(int32 CurrentAmmo, int32 ReserveAmmo, const FText& WeaponName);
@@ -127,6 +163,10 @@ public:
 	float FermiDecoyCooldownRemaining = 0.0f;
 	float QuantumSwapFlashAlpha = 0.0f;
 	bool bUseFirstPersonOpticADS = false;
+
+	// Center-Screen Directional Hit & Visual Audio Semicircle Radar (Deaf Accessibility)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS HUD|Threats")
+	TArray<FFPSThreatIndicator> ActiveThreatIndicators;
 
 private:
 	UPROPERTY()

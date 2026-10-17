@@ -56,28 +56,31 @@ public:
 		const FSlateResourceHandle ResourceHandle = WhiteBrush->GetRenderingResource();
 		const FSlateRenderTransform& RenderTransform = AllottedGeometry.ToPaintGeometry().GetAccumulatedRenderTransform();
 
-		// Visor Inertial Lag Offset (applied to peripheral HUD elements for 3D helmet-visor feel)
+		// Master HUD Scale Factor (+20% Scale Increase)
+		const float HUDScale = 1.20f;
+
+		// Visor Inertial Lag Offset (applied to peripheral HUD elements for 3D helmet-visor feel, 25% shake reduction)
 		const float VX = OwningHUD->VisorLagOffset.X;
 		const float VY = OwningHUD->VisorLagOffset.Y;
 		const float TimeSec = OwningHUD->HUDTimeSeconds;
 
-		// Future-Warfare Color Palette (Battlefield 6 Electric Teal + MW4 Tactical Cyan)
+		// Future-Warfare Color Palette (Preserving Cyan #00E5FF & Amber #FFB300 visor theme)
 		const FLinearColor TealPrimary(0.0f, 0.94f, 0.86f, 1.0f);       // #00F0DC Electric BF6 Teal
-		const FLinearColor CyanTactical(0.18f, 0.80f, 1.0f, 1.0f);      // #2ECCFF MW4 Ice Cyan
+		const FLinearColor CyanTactical(0.0f, 0.90f, 1.0f, 1.0f);       // #00E5FF Tactical Cyan
 		const FLinearColor CobaltArmor(0.20f, 0.58f, 1.0f, 1.0f);       // #3394FF Level IV Plate Blue
 		const FLinearColor EmeraldStamina(0.05f, 0.95f, 0.62f, 1.0f);   // #0DF29E Kinetic Sprint Green
-		const FLinearColor AmberWarn(1.0f, 0.70f, 0.08f, 1.0f);         // #FFB314 Tactical Warning
-		const FLinearColor CrimsonAlert(1.0f, 0.14f, 0.22f, 1.0f);      // #FF2438 Critical / Hostile
+		const FLinearColor AmberWarn(1.0f, 0.70f, 0.0f, 1.0f);          // #FFB300 Tactical Amber
+		const FLinearColor CrimsonAlert(1.0f, 0.165f, 0.33f, 1.0f);     // #FF2A54 Crimson Threat / Hostile
 		const FLinearColor HudWhite(0.95f, 0.99f, 1.0f, 0.96f);         // Crisp HUD White
 
-		// Typography
-		const FSlateFontInfo FontMicro    = FCoreStyle::GetDefaultFontStyle("Bold", 7);
-		const FSlateFontInfo FontSmall    = FCoreStyle::GetDefaultFontStyle("Bold", 9);
-		const FSlateFontInfo FontMedium   = FCoreStyle::GetDefaultFontStyle("Bold", 11);
-		const FSlateFontInfo FontBold     = FCoreStyle::GetDefaultFontStyle("Bold", 13);
-		const FSlateFontInfo FontCardinal = FCoreStyle::GetDefaultFontStyle("Bold", 11);
-		const FSlateFontInfo FontHealth   = FCoreStyle::GetDefaultFontStyle("Bold", 24);
-		const FSlateFontInfo FontBigAmmo  = FCoreStyle::GetDefaultFontStyle("Bold", 34);
+		// Typography (+20% Font Size Increase)
+		const FSlateFontInfo FontMicro    = FCoreStyle::GetDefaultFontStyle("Bold", 8);
+		const FSlateFontInfo FontSmall    = FCoreStyle::GetDefaultFontStyle("Bold", 11);
+		const FSlateFontInfo FontMedium   = FCoreStyle::GetDefaultFontStyle("Bold", 13);
+		const FSlateFontInfo FontBold     = FCoreStyle::GetDefaultFontStyle("Bold", 16);
+		const FSlateFontInfo FontCardinal = FCoreStyle::GetDefaultFontStyle("Bold", 13);
+		const FSlateFontInfo FontHealth   = FCoreStyle::GetDefaultFontStyle("Bold", 29);
+		const FSlateFontInfo FontBigAmmo  = FCoreStyle::GetDefaultFontStyle("Bold", 41);
 
 		// =========================================================================
 		// LOW-LEVEL GPU VERTEX & VECTOR DRAWING PRIMITIVES
@@ -203,35 +206,38 @@ public:
 		// 0. AR HELMET VISOR PERIPHERAL BRACKETS & TOP-RIGHT TELEMETRY
 		// =========================================================================
 		{
-			const float Margin = 18.0f;
-			const float CornerLen = 22.0f;
+			const float Margin = 18.0f * HUDScale;
+			const float CornerLen = 22.0f * HUDScale;
+			const float LineThick = 1.2f * HUDScale;
 			const FLinearColor VisorFrameTint(0.0f, 0.90f, 0.85f, 0.18f);
 
 			// Top-Left & Top-Right peripheral visor ticks
-			DrawLine(Margin + VX * 0.4f, Margin + VY * 0.4f, Margin + CornerLen + VX * 0.4f, Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
-			DrawLine(Margin + VX * 0.4f, Margin + VY * 0.4f, Margin + VX * 0.4f, Margin + CornerLen + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+			DrawLine(Margin + VX * 0.3f, Margin + VY * 0.3f, Margin + CornerLen + VX * 0.3f, Margin + VY * 0.3f, LineThick, VisorFrameTint, 1);
+			DrawLine(Margin + VX * 0.3f, Margin + VY * 0.3f, Margin + VX * 0.3f, Margin + CornerLen + VY * 0.3f, LineThick, VisorFrameTint, 1);
 
-			DrawLine(ScreenW - Margin - CornerLen + VX * 0.4f, Margin + VY * 0.4f, ScreenW - Margin + VX * 0.4f, Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
-			DrawLine(ScreenW - Margin + VX * 0.4f, Margin + VY * 0.4f, ScreenW - Margin + VX * 0.4f, Margin + CornerLen + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+			DrawLine(ScreenW - Margin - CornerLen + VX * 0.3f, Margin + VY * 0.3f, ScreenW - Margin + VX * 0.3f, Margin + VY * 0.3f, LineThick, VisorFrameTint, 1);
+			DrawLine(ScreenW - Margin + VX * 0.3f, Margin + VY * 0.3f, ScreenW - Margin + VX * 0.3f, Margin + CornerLen + VY * 0.3f, LineThick, VisorFrameTint, 1);
 
 			// Bottom-Left & Bottom-Right peripheral visor ticks
-			DrawLine(Margin + VX * 0.4f, ScreenH - Margin + VY * 0.4f, Margin + CornerLen + VX * 0.4f, ScreenH - Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
-			DrawLine(Margin + VX * 0.4f, ScreenH - Margin - CornerLen + VY * 0.4f, Margin + VX * 0.4f, ScreenH - Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+			DrawLine(Margin + VX * 0.3f, ScreenH - Margin + VY * 0.3f, Margin + CornerLen + VX * 0.3f, ScreenH - Margin + VY * 0.3f, LineThick, VisorFrameTint, 1);
+			DrawLine(Margin + VX * 0.3f, ScreenH - Margin - CornerLen + VY * 0.3f, Margin + VX * 0.3f, ScreenH - Margin + VY * 0.3f, LineThick, VisorFrameTint, 1);
 
-			DrawLine(ScreenW - Margin - CornerLen + VX * 0.4f, ScreenH - Margin + VY * 0.4f, ScreenW - Margin + VX * 0.4f, ScreenH - Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
-			DrawLine(ScreenW - Margin + VX * 0.4f, ScreenH - Margin - CornerLen + VY * 0.4f, ScreenW - Margin + VX * 0.4f, ScreenH - Margin + VY * 0.4f, 1.2f, VisorFrameTint, 1);
+			DrawLine(ScreenW - Margin - CornerLen + VX * 0.3f, ScreenH - Margin + VY * 0.3f, ScreenW - Margin + VX * 0.3f, ScreenH - Margin + VY * 0.3f, LineThick, VisorFrameTint, 1);
+			DrawLine(ScreenW - Margin + VX * 0.3f, ScreenH - Margin - CornerLen + VY * 0.3f, ScreenW - Margin + VX * 0.3f, ScreenH - Margin + VY * 0.3f, LineThick, VisorFrameTint, 1);
 
-			// Top-Right Floating AR Telemetry Link (Frameless)
-			const float TeleX = ScreenW - 195.0f + VX * 0.6f;
-			const float TeleY = 24.0f + VY * 0.6f;
-			DrawSkewedRect(TeleX - 10.0f, TeleY - 3.0f, 175.0f, 34.0f, -8.0f,
+			// Top-Right Floating AR Telemetry Link (Frameless, Scaled 1.20x)
+			const float TeleW = 185.0f * HUDScale;
+			const float TeleH = 34.0f * HUDScale;
+			const float TeleX = ScreenW - TeleW - Margin + VX * 0.45f;
+			const float TeleY = Margin + 4.0f + VY * 0.45f;
+			DrawSkewedRect(TeleX - 10.0f * HUDScale, TeleY - 3.0f * HUDScale, TeleW, TeleH, -8.0f * HUDScale,
 				FLinearColor(0.0f, 0.08f, 0.12f, 0.0f),
 				FLinearColor(0.0f, 0.16f, 0.22f, 0.22f), 0);
-			DrawLine(TeleX + 162.0f, TeleY - 3.0f, TeleX + 154.0f, TeleY + 31.0f, 2.0f, TealPrimary * FLinearColor(1, 1, 1, 0.65f), 2);
+			DrawLine(TeleX + TeleW - 13.0f * HUDScale, TeleY - 3.0f * HUDScale, TeleX + TeleW - 21.0f * HUDScale, TeleY + TeleH - 3.0f * HUDScale, 2.0f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.65f), 2);
 
 			DrawGlowText(TeleX, TeleY, TEXT("AR-VISOR // TAC-LINK 128HZ"), FontMicro, TealPrimary * FLinearColor(1, 1, 1, 0.80f), 0.5f);
 			const float SpeedMetersPerSec = OwningHUD->PlayerSpeed / 100.0f;
-			DrawGlowText(TeleX + 18.0f, TeleY + 13.0f,
+			DrawGlowText(TeleX + 18.0f * HUDScale, TeleY + 14.0f * HUDScale,
 				FString::Printf(TEXT("VEL: %04.1f M/S  //  SYNC: OK"), SpeedMetersPerSec),
 				FontMicro, FLinearColor(0.75f, 0.88f, 0.95f, 0.60f), 0.5f);
 		}
@@ -239,17 +245,18 @@ public:
 		// =========================================================================
 		// 1. TOP-CENTER FRAMELESS HOLOGRAPHIC COMPASS TAPE (MW4 / BF6 Style)
 		// =========================================================================
-		const float CenterCompassX = ScreenW * 0.5f + VX * 0.5f;
-		const float TopY = 20.0f + VY * 0.5f;
-		const float HalfW = 240.0f;
+		const float CenterCompassX = ScreenW * 0.5f + VX * 0.38f;
+		const float TopY = 20.0f * HUDScale + VY * 0.38f;
+		const float HalfW = 240.0f * HUDScale;
+		const float TapeH = 30.0f * HUDScale;
 		const float PixelsPerDeg = HalfW / 50.0f; // 100-degree field of view along tape
 
 		// Soft frameless horizontal vignette backing (0.0 alpha at edges -> 0.20 at center -> 0.0 at right)
 		DrawQuad(
 			FVector2f(CenterCompassX - HalfW, TopY),
 			FVector2f(CenterCompassX, TopY),
-			FVector2f(CenterCompassX, TopY + 30.0f),
-			FVector2f(CenterCompassX - HalfW, TopY + 30.0f),
+			FVector2f(CenterCompassX, TopY + TapeH),
+			FVector2f(CenterCompassX - HalfW, TopY + TapeH),
 			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f),
 			FLinearColor(0.0f, 0.08f, 0.14f, 0.22f),
 			FLinearColor(0.0f, 0.04f, 0.08f, 0.04f),
@@ -258,17 +265,17 @@ public:
 		DrawQuad(
 			FVector2f(CenterCompassX, TopY),
 			FVector2f(CenterCompassX + HalfW, TopY),
-			FVector2f(CenterCompassX + HalfW, TopY + 30.0f),
-			FVector2f(CenterCompassX, TopY + 30.0f),
+			FVector2f(CenterCompassX + HalfW, TopY + TapeH),
+			FVector2f(CenterCompassX, TopY + TapeH),
 			FLinearColor(0.0f, 0.08f, 0.14f, 0.22f),
 			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f),
 			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f),
 			FLinearColor(0.0f, 0.04f, 0.08f, 0.04f), 0);
 
 		// Razor-thin top horizon line with edge fade
-		DrawGradientLine(CenterCompassX - HalfW, TopY, CenterCompassX, TopY, 1.2f,
+		DrawGradientLine(CenterCompassX - HalfW, TopY, CenterCompassX, TopY, 1.2f * HUDScale,
 			FLinearColor(0.0f, 0.94f, 0.86f, 0.0f), FLinearColor(0.0f, 0.94f, 0.86f, 0.55f), 1);
-		DrawGradientLine(CenterCompassX, TopY, CenterCompassX + HalfW, TopY, 1.2f,
+		DrawGradientLine(CenterCompassX, TopY, CenterCompassX + HalfW, TopY, 1.2f * HUDScale,
 			FLinearColor(0.0f, 0.94f, 0.86f, 0.55f), FLinearColor(0.0f, 0.94f, 0.86f, 0.0f), 1);
 
 		// Normalize Camera Yaw [0, 360)
@@ -299,30 +306,30 @@ public:
 					else if (deg == 315) { Cardinal = TEXT("NW"); }
 
 					const FLinearColor CardColor = (deg == 0)
-						? FLinearColor(1.0f, 0.78f, 0.15f, 0.98f * EdgeFade)
-						: (bPrimaryCardinal ? FLinearColor(0.0f, 0.96f, 0.88f, 0.95f * EdgeFade) : FLinearColor(0.85f, 0.95f, 1.0f, 0.82f * EdgeFade));
+						? FLinearColor(1.0f, 0.70f, 0.0f, 0.98f * EdgeFade) // Amber N
+						: (bPrimaryCardinal ? FLinearColor(0.0f, 0.90f, 1.0f, 0.95f * EdgeFade) : FLinearColor(0.85f, 0.95f, 1.0f, 0.82f * EdgeFade));
 
-					DrawLine(TickX, TopY, TickX, TopY + 11.0f, bPrimaryCardinal ? 2.0f : 1.5f, CardColor, 2);
-					const float TextOffset = (Cardinal.Len() == 1) ? 4.0f : 7.5f;
-					DrawGlowText(TickX - TextOffset, TopY + 13.0f, Cardinal, FontCardinal, CardColor, 0.7f);
+					DrawLine(TickX, TopY, TickX, TopY + 12.0f * HUDScale, (bPrimaryCardinal ? 2.0f : 1.5f) * HUDScale, CardColor, 2);
+					const float TextOffset = (Cardinal.Len() == 1) ? 5.0f * HUDScale : 9.0f * HUDScale;
+					DrawGlowText(TickX - TextOffset, TopY + 14.0f * HUDScale, Cardinal, FontCardinal, CardColor, 0.7f);
 				}
 				else if (deg % 15 == 0)
 				{
 					const FLinearColor MajColor(0.75f, 0.88f, 0.96f, 0.62f * EdgeFade);
-					DrawLine(TickX, TopY, TickX, TopY + 8.0f, 1.2f, MajColor, 2);
-					DrawGlowText(TickX - 8.0f, TopY + 11.0f, FString::Printf(TEXT("%03d"), deg), FontMicro, MajColor * FLinearColor(1, 1, 1, 0.85f), 0.5f);
+					DrawLine(TickX, TopY, TickX, TopY + 8.5f * HUDScale, 1.2f * HUDScale, MajColor, 2);
+					DrawGlowText(TickX - 9.0f * HUDScale, TopY + 11.5f * HUDScale, FString::Printf(TEXT("%03d"), deg), FontMicro, MajColor * FLinearColor(1, 1, 1, 0.85f), 0.5f);
 				}
 				else
 				{
-					DrawLine(TickX, TopY, TickX, TopY + 5.0f, 1.0f, FLinearColor(0.5f, 0.72f, 0.85f, 0.35f * EdgeFade), 2);
+					DrawLine(TickX, TopY, TickX, TopY + 5.5f * HUDScale, 1.0f * HUDScale, FLinearColor(0.5f, 0.72f, 0.85f, 0.35f * EdgeFade), 2);
 				}
 			}
 		}
 
 		// Center Inverted Lubber Chevron (V) & Chamfered Digital Bearing Pill
-		DrawLine(CenterCompassX - 5.0f, TopY - 6.0f, CenterCompassX, TopY - 1.0f, 2.0f, TealPrimary, 3);
-		DrawLine(CenterCompassX + 5.0f, TopY - 6.0f, CenterCompassX, TopY - 1.0f, 2.0f, TealPrimary, 3);
-		DrawLine(CenterCompassX, TopY, CenterCompassX, TopY + 10.0f, 1.8f, TealPrimary, 3);
+		DrawLine(CenterCompassX - 5.5f * HUDScale, TopY - 6.5f * HUDScale, CenterCompassX, TopY - 1.0f * HUDScale, 2.0f * HUDScale, TealPrimary, 3);
+		DrawLine(CenterCompassX + 5.5f * HUDScale, TopY - 6.5f * HUDScale, CenterCompassX, TopY - 1.0f * HUDScale, 2.0f * HUDScale, TealPrimary, 3);
+		DrawLine(CenterCompassX, TopY, CenterCompassX, TopY + 11.0f * HUDScale, 1.8f * HUDScale, TealPrimary, 3);
 
 		// Determine current cardinal string for readout
 		const TCHAR* DirNames[] = { TEXT("N"), TEXT("NE"), TEXT("E"), TEXT("SE"), TEXT("S"), TEXT("SW"), TEXT("W"), TEXT("NW") };
@@ -330,15 +337,15 @@ public:
 		const FString BearingPillText = FString::Printf(TEXT("%03.0f° %s"), NormYaw, DirNames[DirIdx]);
 
 		// Subtle chamfered pill under center of compass
-		DrawSkewedRect(CenterCompassX - 28.0f, TopY + 29.0f, 56.0f, 15.0f, -4.0f,
+		DrawSkewedRect(CenterCompassX - 32.0f * HUDScale, TopY + TapeH - 1.0f * HUDScale, 64.0f * HUDScale, 16.0f * HUDScale, -4.0f * HUDScale,
 			FLinearColor(0.0f, 0.14f, 0.20f, 0.45f), FLinearColor(0.0f, 0.22f, 0.30f, 0.45f), 1);
-		DrawLine(CenterCompassX - 28.0f, TopY + 29.0f, CenterCompassX + 24.0f, TopY + 29.0f, 1.2f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
-		DrawGlowText(CenterCompassX - 21.0f, TopY + 30.5f, BearingPillText, FontSmall, HudWhite, 0.8f);
+		DrawLine(CenterCompassX - 32.0f * HUDScale, TopY + TapeH - 1.0f * HUDScale, CenterCompassX + 28.0f * HUDScale, TopY + TapeH - 1.0f * HUDScale, 1.2f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
+		DrawGlowText(CenterCompassX - 24.0f * HUDScale, TopY + TapeH + 0.5f * HUDScale, BearingPillText, FontSmall, HudWhite, 0.8f);
 
 		// Objectives Definition (Flags A, B, C)
 		const struct { FVector Loc; const TCHAR* Name; FLinearColor Color; } Objectives[] = {
-			{ FVector(-1200.0f, -800.0f, 0.0f), TEXT("A"), FLinearColor(0.15f, 0.78f, 1.0f, 0.95f) },
-			{ FVector(0.0f, 0.0f, 0.0f),        TEXT("B"), FLinearColor(1.0f, 0.75f, 0.15f, 0.95f) },
+			{ FVector(-1200.0f, -800.0f, 0.0f), TEXT("A"), FLinearColor(0.0f, 0.90f, 1.0f, 0.95f) },
+			{ FVector(0.0f, 0.0f, 0.0f),        TEXT("B"), FLinearColor(1.0f, 0.70f, 0.0f, 0.95f) },
 			{ FVector(1200.0f, 800.0f, 0.0f),   TEXT("C"), FLinearColor(0.0f, 0.95f, 0.78f, 0.95f) }
 		};
 
@@ -354,8 +361,8 @@ public:
 				const float EdgeFade = FMath::Cos((DeltaObj / 50.0f) * (PI * 0.5f));
 				FLinearColor C = Obj.Color;
 				C.A *= EdgeFade;
-				DrawDiamond(ObjX, TopY - 7.0f, 5.5f, 1.5f, C, true, 3);
-				DrawGlowText(ObjX - 3.0f, TopY - 12.0f, Obj.Name, FontMicro, FLinearColor(0.02f, 0.04f, 0.06f, EdgeFade), 0.0f, 4);
+				DrawDiamond(ObjX, TopY - 8.0f * HUDScale, 6.5f * HUDScale, 1.5f * HUDScale, C, true, 3);
+				DrawGlowText(ObjX - 4.0f * HUDScale, TopY - 14.0f * HUDScale, Obj.Name, FontMicro, FLinearColor(0.02f, 0.04f, 0.06f, EdgeFade), 0.0f, 4);
 			}
 		}
 
@@ -374,7 +381,7 @@ public:
 					const float ClampedDelta = FMath::Clamp(DeltaPing, -48.0f, 48.0f);
 					const float PingX = CenterCompassX + ClampedDelta * PixelsPerDeg;
 					const float Pulse = 1.0f + 0.35f * FMath::Sin(TimeSec * 14.0f);
-					DrawDiamond(PingX, TopY + 6.0f, 5.5f * Pulse, 1.8f, CrimsonAlert, true, 4);
+					DrawDiamond(PingX, TopY + 7.0f * HUDScale, 6.5f * Pulse * HUDScale, 1.8f * HUDScale, CrimsonAlert, true, 4);
 				}
 			}
 		}
@@ -382,12 +389,12 @@ public:
 		// =========================================================================
 		// 2. TOP-LEFT TRUE CIRCULAR HOLOGRAPHIC MINIMAP (No Square Box!)
 		// =========================================================================
-		const float MapRadius = 82.0f;
-		const float RCX = 32.0f + MapRadius + VX * 0.75f;
-		const float RCY = 32.0f + MapRadius + VY * 0.75f;
+		const float MapRadius = 82.0f * HUDScale;
+		const float RCX = 26.0f * HUDScale + MapRadius + VX * 0.56f;
+		const float RCY = 26.0f * HUDScale + MapRadius + VY * 0.56f;
 
 		// 2.1 Radial Translucent Holographic Disc (Dark center -> Glowing Teal Rim, ZERO square box!)
-		DrawSectorFan(RCX, RCY, MapRadius + 4.0f, 0.0f, 2.0f * PI,
+		DrawSectorFan(RCX, RCY, MapRadius + 4.0f * HUDScale, 0.0f, 2.0f * PI,
 			FLinearColor(0.0f, 0.05f, 0.09f, 0.42f),
 			FLinearColor(0.0f, 0.18f, 0.26f, 0.12f), 40, 0);
 
@@ -396,62 +403,62 @@ public:
 			FLinearColor(0.0f, 0.32f, 0.42f, 0.26f), 40, 0);
 
 		// 2.2 Camera FOV View Cone Wedge (Pointing Upward from Center Player Chevron: -125 deg to -55 deg)
-		DrawSectorFan(RCX, RCY, MapRadius - 2.0f,
+		DrawSectorFan(RCX, RCY, MapRadius - 2.0f * HUDScale,
 			FMath::DegreesToRadians(-125.0f), FMath::DegreesToRadians(-55.0f),
 			FLinearColor(0.0f, 0.94f, 0.86f, 0.18f),
 			FLinearColor(0.0f, 0.94f, 0.86f, 0.01f), 16, 1);
 
 		// Crisp FOV Wedge Boundary Lines
 		DrawGradientLine(RCX, RCY,
-			RCX + FMath::Cos(FMath::DegreesToRadians(-125.0f)) * (MapRadius - 2.0f),
-			RCY + FMath::Sin(FMath::DegreesToRadians(-125.0f)) * (MapRadius - 2.0f),
-			1.2f, FLinearColor(0.0f, 0.94f, 0.86f, 0.45f), FLinearColor(0.0f, 0.94f, 0.86f, 0.05f), 2);
+			RCX + FMath::Cos(FMath::DegreesToRadians(-125.0f)) * (MapRadius - 2.0f * HUDScale),
+			RCY + FMath::Sin(FMath::DegreesToRadians(-125.0f)) * (MapRadius - 2.0f * HUDScale),
+			1.2f * HUDScale, FLinearColor(0.0f, 0.94f, 0.86f, 0.45f), FLinearColor(0.0f, 0.94f, 0.86f, 0.05f), 2);
 		DrawGradientLine(RCX, RCY,
-			RCX + FMath::Cos(FMath::DegreesToRadians(-55.0f)) * (MapRadius - 2.0f),
-			RCY + FMath::Sin(FMath::DegreesToRadians(-55.0f)) * (MapRadius - 2.0f),
-			1.2f, FLinearColor(0.0f, 0.94f, 0.86f, 0.45f), FLinearColor(0.0f, 0.94f, 0.86f, 0.05f), 2);
+			RCX + FMath::Cos(FMath::DegreesToRadians(-55.0f)) * (MapRadius - 2.0f * HUDScale),
+			RCY + FMath::Sin(FMath::DegreesToRadians(-55.0f)) * (MapRadius - 2.0f * HUDScale),
+			1.2f * HUDScale, FLinearColor(0.0f, 0.94f, 0.86f, 0.45f), FLinearColor(0.0f, 0.94f, 0.86f, 0.05f), 2);
 
 		// 2.3 Rotating Phosphor Radar Sweep Sector Fan
 		{
 			const float SweepDeg = FMath::Fmod(TimeSec * 110.0f, 360.0f);
 			const float SweepRad = FMath::DegreesToRadians(SweepDeg);
 			const float TrailRad = FMath::DegreesToRadians(SweepDeg - 32.0f);
-			DrawSectorFan(RCX, RCY, MapRadius - 2.0f, TrailRad, SweepRad,
+			DrawSectorFan(RCX, RCY, MapRadius - 2.0f * HUDScale, TrailRad, SweepRad,
 				FLinearColor(0.0f, 0.94f, 0.86f, 0.12f),
 				FLinearColor(0.0f, 0.94f, 0.86f, 0.02f), 10, 1);
-			DrawLine(RCX, RCY, RCX + FMath::Cos(SweepRad) * (MapRadius - 2.0f), RCY + FMath::Sin(SweepRad) * (MapRadius - 2.0f),
-				1.3f, FLinearColor(0.0f, 0.96f, 0.88f, 0.42f), 2);
+			DrawLine(RCX, RCY, RCX + FMath::Cos(SweepRad) * (MapRadius - 2.0f * HUDScale), RCY + FMath::Sin(SweepRad) * (MapRadius - 2.0f * HUDScale),
+				1.4f * HUDScale, FLinearColor(0.0f, 0.96f, 0.88f, 0.42f), 2);
 		}
 
 		// 2.4 Concentric Range Rings & Subtle Axis Hairlines
-		DrawArc(RCX, RCY, MapRadius, 0.0f, 360.0f, 1.6f, FLinearColor(0.0f, 0.94f, 0.86f, 0.55f), 40, 2);
-		DrawArc(RCX, RCY, MapRadius + 4.0f, -60.0f, 60.0f, 1.2f, FLinearColor(0.18f, 0.80f, 1.0f, 0.30f), 16, 2);
-		DrawArc(RCX, RCY, MapRadius + 4.0f, 120.0f, 240.0f, 1.2f, FLinearColor(0.18f, 0.80f, 1.0f, 0.30f), 16, 2);
-		DrawArc(RCX, RCY, MapRadius * 0.62f, 0.0f, 360.0f, 1.0f, FLinearColor(0.0f, 0.85f, 0.85f, 0.18f), 32, 1);
-		DrawArc(RCX, RCY, MapRadius * 0.31f, 0.0f, 360.0f, 1.0f, FLinearColor(0.0f, 0.85f, 0.85f, 0.12f), 24, 1);
+		DrawArc(RCX, RCY, MapRadius, 0.0f, 360.0f, 1.8f * HUDScale, FLinearColor(0.0f, 0.94f, 0.86f, 0.55f), 40, 2);
+		DrawArc(RCX, RCY, MapRadius + 4.0f * HUDScale, -60.0f, 60.0f, 1.3f * HUDScale, FLinearColor(0.0f, 0.90f, 1.0f, 0.30f), 16, 2);
+		DrawArc(RCX, RCY, MapRadius + 4.0f * HUDScale, 120.0f, 240.0f, 1.3f * HUDScale, FLinearColor(0.0f, 0.90f, 1.0f, 0.30f), 16, 2);
+		DrawArc(RCX, RCY, MapRadius * 0.62f, 0.0f, 360.0f, 1.1f * HUDScale, FLinearColor(0.0f, 0.85f, 0.85f, 0.18f), 32, 1);
+		DrawArc(RCX, RCY, MapRadius * 0.31f, 0.0f, 360.0f, 1.1f * HUDScale, FLinearColor(0.0f, 0.85f, 0.85f, 0.12f), 24, 1);
 
 		// Outer Bezel Degree Micro-Ticks (every 15 degrees)
 		for (int32 deg = 0; deg < 360; deg += 15)
 		{
 			const float Rad = FMath::DegreesToRadians((float)deg - NormYaw - 90.0f);
-			const float InnerR = (deg % 90 == 0) ? (MapRadius - 5.0f) : (MapRadius - 2.5f);
+			const float InnerR = (deg % 90 == 0) ? (MapRadius - 5.5f * HUDScale) : (MapRadius - 3.0f * HUDScale);
 			const float OuterR = MapRadius;
 			const FLinearColor TickCol = (deg == 0)
-				? FLinearColor(1.0f, 0.78f, 0.15f, 0.9f)
+				? FLinearColor(1.0f, 0.70f, 0.0f, 0.9f)
 				: FLinearColor(0.0f, 0.94f, 0.86f, (deg % 90 == 0) ? 0.65f : 0.28f);
 			DrawLine(RCX + FMath::Cos(Rad) * InnerR, RCY + FMath::Sin(Rad) * InnerR,
 			         RCX + FMath::Cos(Rad) * OuterR, RCY + FMath::Sin(Rad) * OuterR,
-			         (deg % 90 == 0) ? 1.6f : 1.0f, TickCol, 2);
+			         (deg % 90 == 0) ? 1.8f * HUDScale : 1.1f * HUDScale, TickCol, 2);
 		}
 
 		// Orbiting North ('N') Indicator on Outer Rim of Minimap
 		{
 			const float NorthRad = FMath::DegreesToRadians(-NormYaw - 90.0f);
-			const float NX = RCX + FMath::Cos(NorthRad) * (MapRadius + 10.0f);
-			const float NY = RCY + FMath::Sin(NorthRad) * (MapRadius + 10.0f);
-			DrawDiamond(NX, NY, 6.5f, 1.2f, FLinearColor(0.02f, 0.08f, 0.12f, 0.85f), true, 3);
-			DrawDiamond(NX, NY, 6.5f, 1.2f, FLinearColor(1.0f, 0.78f, 0.15f, 0.90f), false, 3);
-			DrawGlowText(NX - 3.5f, NY - 5.5f, TEXT("N"), FontMicro, FLinearColor(1.0f, 0.82f, 0.2f, 1.0f), 0.6f, 4);
+			const float NX = RCX + FMath::Cos(NorthRad) * (MapRadius + 11.0f * HUDScale);
+			const float NY = RCY + FMath::Sin(NorthRad) * (MapRadius + 11.0f * HUDScale);
+			DrawDiamond(NX, NY, 7.5f * HUDScale, 1.3f * HUDScale, FLinearColor(0.02f, 0.08f, 0.12f, 0.85f), true, 3);
+			DrawDiamond(NX, NY, 7.5f * HUDScale, 1.3f * HUDScale, FLinearColor(1.0f, 0.70f, 0.0f, 0.90f), false, 3);
+			DrawGlowText(NX - 4.0f * HUDScale, NY - 6.0f * HUDScale, TEXT("N"), FontMicro, FLinearColor(1.0f, 0.75f, 0.15f, 1.0f), 0.6f, 4);
 		}
 
 		// 2.5 Objectives on Minimap (Flags A, B, C)
@@ -466,7 +473,7 @@ public:
 			float ScreenDY = -(Fwd / 4500.0f) * MapRadius;
 
 			const float Dist = FMath::Sqrt(ScreenDX * ScreenDX + ScreenDY * ScreenDY);
-			const float MaxObjR = MapRadius - 9.0f;
+			const float MaxObjR = MapRadius - 10.0f * HUDScale;
 			if (Dist > MaxObjR)
 			{
 				ScreenDX = (ScreenDX / Dist) * MaxObjR;
@@ -475,9 +482,9 @@ public:
 
 			const float OX = RCX + ScreenDX;
 			const float OY = RCY + ScreenDY;
-			DrawDiamond(OX, OY, 6.5f, 1.5f, FLinearColor(0.01f, 0.05f, 0.09f, 0.85f), true, 3);
-			DrawDiamond(OX, OY, 6.5f, 1.5f, Obj.Color, false, 3);
-			DrawGlowText(OX - 3.0f, OY - 5.0f, Obj.Name, FontMicro, HudWhite, 0.7f, 4);
+			DrawDiamond(OX, OY, 7.5f * HUDScale, 1.6f * HUDScale, FLinearColor(0.01f, 0.05f, 0.09f, 0.85f), true, 3);
+			DrawDiamond(OX, OY, 7.5f * HUDScale, 1.6f * HUDScale, Obj.Color, false, 3);
+			DrawGlowText(OX - 3.5f * HUDScale, OY - 5.5f * HUDScale, Obj.Name, FontMicro, HudWhite, 0.7f, 4);
 		}
 
 		// 2.6 Acoustic Gunfire Radar Pings on Minimap (with expanding soundwave ring!)
@@ -496,10 +503,10 @@ public:
 					float ScreenDY = -(Fwd / 4500.0f) * MapRadius;
 
 					const float Dist = FMath::Sqrt(ScreenDX * ScreenDX + ScreenDY * ScreenDY);
-					if (Dist > MapRadius - 6.0f)
+					if (Dist > MapRadius - 7.0f * HUDScale)
 					{
-						ScreenDX = (ScreenDX / Dist) * (MapRadius - 6.0f);
-						ScreenDY = (ScreenDY / Dist) * (MapRadius - 6.0f);
+						ScreenDX = (ScreenDX / Dist) * (MapRadius - 7.0f * HUDScale);
+						ScreenDY = (ScreenDY / Dist) * (MapRadius - 7.0f * HUDScale);
 					}
 
 					const float LifeRatio = FMath::Clamp(Ping.LifetimeRemaining / FMath::Max(0.1f, Ping.InitialLifetime), 0.0f, 1.0f);
@@ -507,27 +514,27 @@ public:
 					const float PY = RCY + ScreenDY;
 
 					// Expanding ripple ring + glowing hostile diamond
-					const float RippleR = 3.0f + (1.0f - LifeRatio) * 14.0f;
-					DrawArc(PX, PY, RippleR, 0.0f, 360.0f, 1.2f, FLinearColor(1.0f, 0.15f, 0.22f, LifeRatio * 0.85f), 16, 3);
-					DrawDiamond(PX, PY, 3.8f, 1.5f, FLinearColor(1.0f, 0.2f, 0.25f, LifeRatio), true, 4);
+					const float RippleR = (3.0f + (1.0f - LifeRatio) * 14.0f) * HUDScale;
+					DrawArc(PX, PY, RippleR, 0.0f, 360.0f, 1.3f * HUDScale, FLinearColor(1.0f, 0.165f, 0.33f, LifeRatio * 0.85f), 16, 3);
+					DrawDiamond(PX, PY, 4.5f * HUDScale, 1.6f * HUDScale, FLinearColor(1.0f, 0.2f, 0.25f, LifeRatio), true, 4);
 				}
 			}
 		}
 
 		// 2.7 Center Player Tactical Arrowhead Chevron
 		DrawQuad(
-			FVector2f(RCX, RCY - 7.0f),
-			FVector2f(RCX + 5.5f, RCY + 5.5f),
-			FVector2f(RCX, RCY + 2.0f),
-			FVector2f(RCX - 5.5f, RCY + 5.5f),
+			FVector2f(RCX, RCY - 8.0f * HUDScale),
+			FVector2f(RCX + 6.5f * HUDScale, RCY + 6.5f * HUDScale),
+			FVector2f(RCX, RCY + 2.5f * HUDScale),
+			FVector2f(RCX - 6.5f * HUDScale, RCY + 6.5f * HUDScale),
 			HudWhite, TealPrimary, TealPrimary, TealPrimary, 4);
 
 		// 2.8 Frameless Floating Sector & Grid Callout Below Circular Radar
-		const float CalloutX = RCX - MapRadius + 4.0f;
-		const float CalloutY = RCY + MapRadius + 12.0f;
-		DrawSkewedRect(CalloutX - 4.0f, CalloutY - 2.0f, 165.0f, 18.0f, -5.0f,
+		const float CalloutX = RCX - MapRadius + 4.0f * HUDScale;
+		const float CalloutY = RCY + MapRadius + 14.0f * HUDScale;
+		DrawSkewedRect(CalloutX - 4.0f * HUDScale, CalloutY - 2.0f * HUDScale, 185.0f * HUDScale, 20.0f * HUDScale, -5.0f * HUDScale,
 			FLinearColor(0.0f, 0.16f, 0.22f, 0.30f), FLinearColor(0.0f, 0.08f, 0.12f, 0.0f), 0);
-		DrawLine(CalloutX - 6.0f, CalloutY - 2.0f, CalloutX - 11.0f, CalloutY + 16.0f, 2.0f, TealPrimary, 2);
+		DrawLine(CalloutX - 6.0f * HUDScale, CalloutY - 2.0f * HUDScale, CalloutX - 11.0f * HUDScale, CalloutY + 18.0f * HUDScale, 2.2f * HUDScale, TealPrimary, 2);
 		DrawGlowText(CalloutX, CalloutY,
 			FString::Printf(TEXT("RUST TACTICAL // [%+03.0fm, %+03.0fm]"), OwningHUD->PlayerLocation.X / 100.0f, OwningHUD->PlayerLocation.Y / 100.0f),
 			FontMicro, FLinearColor(0.78f, 0.92f, 0.98f, 0.82f), 0.7f);
@@ -535,31 +542,32 @@ public:
 		// =========================================================================
 		// 3. BOTTOM-LEFT FLOATING VITALS, 4-PLATE ARMOR & LIVE ECG (BF6 / MW4)
 		// =========================================================================
-		const float VitX = 36.0f + VX * 0.85f;
-		const float VitY = ScreenH - 122.0f + VY * 0.85f;
-		const float BarSkew = 7.0f; // Forward tactical shear
+		const float VitW = 310.0f * HUDScale;
+		const float VitX = 32.0f * HUDScale + VX * 0.64f;
+		const float VitY = ScreenH - 138.0f * HUDScale + VY * 0.64f;
+		const float BarSkew = 7.0f * HUDScale; // Forward tactical shear
 
 		// Translucent frameless glass gradient strip (fades completely to 0.0 alpha on the right!)
-		DrawSkewedRect(VitX - 12.0f, VitY - 8.0f, 310.0f, 92.0f, BarSkew,
+		DrawSkewedRect(VitX - 12.0f * HUDScale, VitY - 8.0f * HUDScale, VitW, 95.0f * HUDScale, BarSkew,
 			FLinearColor(0.0f, 0.09f, 0.14f, 0.28f),
 			FLinearColor(0.0f, 0.04f, 0.07f, 0.0f), 0);
 
 		// Glowing Left Spine Accent Bracket
-		DrawLine(VitX - 12.0f + BarSkew, VitY - 8.0f, VitX - 12.0f, VitY + 84.0f, 2.5f, TealPrimary, 2);
-		DrawLine(VitX - 12.0f + BarSkew, VitY - 8.0f, VitX + 26.0f + BarSkew, VitY - 8.0f, 1.5f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
-		DrawLine(VitX - 12.0f, VitY + 84.0f, VitX + 18.0f, VitY + 84.0f, 1.5f, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
+		DrawLine(VitX - 12.0f * HUDScale + BarSkew, VitY - 8.0f * HUDScale, VitX - 12.0f * HUDScale, VitY + 86.0f * HUDScale, 2.8f * HUDScale, TealPrimary, 2);
+		DrawLine(VitX - 12.0f * HUDScale + BarSkew, VitY - 8.0f * HUDScale, VitX + 28.0f * HUDScale + BarSkew, VitY - 8.0f * HUDScale, 1.8f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
+		DrawLine(VitX - 12.0f * HUDScale, VitY + 86.0f * HUDScale, VitX + 20.0f * HUDScale, VitY + 86.0f * HUDScale, 1.8f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
 
 		// 3.1 Segmented 4-Plate Level IV Ceramic Armor Row
 		const float ShieldPct = OwningHUD->MaxShield > 0.0f ? FMath::Clamp(OwningHUD->CurrentShield / OwningHUD->MaxShield, 0.0f, 1.0f) : 0.0f;
 		const float ShieldGhostPct = OwningHUD->MaxShield > 0.0f ? FMath::Clamp(OwningHUD->DisplayedShieldGhost / OwningHUD->MaxShield, 0.0f, 1.0f) : 0.0f;
 		const int32 NumPlates = 4;
-		const float PlateW = 49.0f;
-		const float PlateGap = 5.0f;
-		const float PlateY = VitY + 14.0f;
-		const float PlateH = 9.0f;
+		const float PlateW = 49.0f * HUDScale;
+		const float PlateGap = 5.0f * HUDScale;
+		const float PlateY = VitY + 14.0f * HUDScale;
+		const float PlateH = 9.0f * HUDScale;
 
-		DrawGlowText(VitX + 4.0f, VitY - 3.0f, TEXT("LVL-IV CERAMIC PLATES"), FontMicro, CobaltArmor * FLinearColor(1, 1, 1, 0.90f), 0.7f);
-		DrawGlowText(VitX + 165.0f, VitY - 3.0f, FString::Printf(TEXT("%03.0f"), OwningHUD->CurrentShield), FontSmall,
+		DrawGlowText(VitX + 4.0f * HUDScale, VitY - 3.0f * HUDScale, TEXT("LVL-IV CERAMIC PLATES"), FontMicro, CobaltArmor * FLinearColor(1, 1, 1, 0.90f), 0.7f);
+		DrawGlowText(VitX + 165.0f * HUDScale, VitY - 3.0f * HUDScale, FString::Printf(TEXT("%03.0f"), OwningHUD->CurrentShield), FontSmall,
 			ShieldPct > 0.01f ? CobaltArmor : FLinearColor(0.5f, 0.6f, 0.7f, 0.5f), 0.7f);
 
 		for (int32 p = 0; p < NumPlates; ++p)
@@ -571,37 +579,37 @@ public:
 			const float LocalGhost = FMath::Clamp((ShieldGhostPct - PlateStartPct) / (PlateEndPct - PlateStartPct), 0.0f, 1.0f);
 
 			// Empty Plate Track
-			DrawSkewedRect(PX, PlateY, PlateW, PlateH, 4.0f,
+			DrawSkewedRect(PX, PlateY, PlateW, PlateH, 4.0f * HUDScale,
 				FLinearColor(0.02f, 0.08f, 0.16f, 0.35f), FLinearColor(0.02f, 0.08f, 0.16f, 0.22f), 1);
 
 			// Trailing Shield Damage Ghost
 			if (LocalGhost > LocalFill + 0.01f)
 			{
-				DrawSkewedRect(PX, PlateY, PlateW * LocalGhost, PlateH, 4.0f,
+				DrawSkewedRect(PX, PlateY, PlateW * LocalGhost, PlateH, 4.0f * HUDScale,
 					FLinearColor(0.8f, 0.95f, 1.0f, 0.55f), FLinearColor(0.4f, 0.8f, 1.0f, 0.55f), 1);
 			}
 
 			// Active Ceramic Plate Fill
 			if (LocalFill > 0.005f)
 			{
-				DrawSkewedRect(PX, PlateY, PlateW * LocalFill, PlateH, 4.0f,
+				DrawSkewedRect(PX, PlateY, PlateW * LocalFill, PlateH, 4.0f * HUDScale,
 					FLinearColor(0.12f, 0.48f, 0.98f, 0.92f), FLinearColor(0.28f, 0.78f, 1.0f, 0.96f), 2);
 				// Bright top specular edge
-				DrawLine(PX + 4.0f, PlateY, PX + 4.0f + PlateW * LocalFill, PlateY, 1.4f, FLinearColor(0.65f, 0.92f, 1.0f, 0.9f), 3);
+				DrawLine(PX + 4.0f * HUDScale, PlateY, PX + 4.0f * HUDScale + PlateW * LocalFill, PlateY, 1.5f * HUDScale, FLinearColor(0.65f, 0.92f, 1.0f, 0.9f), 3);
 			}
 
 			// Crisp subtle plate outline
-			DrawLine(PX + 4.0f, PlateY, PX + 4.0f + PlateW, PlateY, 1.0f, FLinearColor(0.2f, 0.6f, 1.0f, 0.35f), 2);
-			DrawLine(PX, PlateY + PlateH, PX + PlateW, PlateY + PlateH, 1.0f, FLinearColor(0.2f, 0.6f, 1.0f, 0.25f), 2);
+			DrawLine(PX + 4.0f * HUDScale, PlateY, PX + 4.0f * HUDScale + PlateW, PlateY, 1.1f * HUDScale, FLinearColor(0.2f, 0.6f, 1.0f, 0.35f), 2);
+			DrawLine(PX, PlateY + PlateH, PX + PlateW, PlateY + PlateH, 1.1f * HUDScale, FLinearColor(0.2f, 0.6f, 1.0f, 0.25f), 2);
 		}
 
 		// 3.2 Sleek Skewed Health Bar with Trailing Damage Ghost & Live ECG Waveform
 		const float HealthPct = OwningHUD->MaxHealth > 0.0f ? FMath::Clamp(OwningHUD->CurrentHealth / OwningHUD->MaxHealth, 0.0f, 1.0f) : 0.0f;
 		const float HealthGhostPct = OwningHUD->MaxHealth > 0.0f ? FMath::Clamp(OwningHUD->DisplayedHealthGhost / OwningHUD->MaxHealth, 0.0f, 1.0f) : 0.0f;
 		const float HBarX = VitX;
-		const float HBarY = VitY + 34.0f;
-		const float HBarW = 211.0f;
-		const float HBarH = 12.0f;
+		const float HBarY = VitY + 34.0f * HUDScale;
+		const float HBarW = 211.0f * HUDScale;
+		const float HBarH = 12.0f * HUDScale;
 
 		const FLinearColor HealthMainColor = (HealthPct < 0.30f)
 			? CrimsonAlert
@@ -611,68 +619,68 @@ public:
 			: ((HealthPct < 0.60f) ? FLinearColor(1.0f, 0.90f, 0.4f, 1.0f) : FLinearColor(0.65f, 1.0f, 0.98f, 1.0f));
 
 		// Translucent Health Track
-		DrawSkewedRect(HBarX, HBarY, HBarW, HBarH, 5.0f,
+		DrawSkewedRect(HBarX, HBarY, HBarW, HBarH, 5.0f * HUDScale,
 			FLinearColor(0.02f, 0.06f, 0.09f, 0.38f), FLinearColor(0.02f, 0.06f, 0.09f, 0.22f), 1);
 
 		// Trailing Damage Ghost Bar
 		if (HealthGhostPct > HealthPct + 0.005f)
 		{
-			DrawSkewedRect(HBarX, HBarY, HBarW * HealthGhostPct, HBarH, 5.0f,
+			DrawSkewedRect(HBarX, HBarY, HBarW * HealthGhostPct, HBarH, 5.0f * HUDScale,
 				FLinearColor(1.0f, 0.25f, 0.25f, 0.65f), FLinearColor(1.0f, 0.85f, 0.85f, 0.80f), 1);
 		}
 
 		// Primary Health Fill
 		if (HealthPct > 0.005f)
 		{
-			DrawSkewedRect(HBarX, HBarY, HBarW * HealthPct, HBarH, 5.0f,
+			DrawSkewedRect(HBarX, HBarY, HBarW * HealthPct, HBarH, 5.0f * HUDScale,
 				HealthMainColor * FLinearColor(0.85f, 0.85f, 0.85f, 0.92f), HealthBrightColor, 2);
-			DrawLine(HBarX + 5.0f, HBarY, HBarX + 5.0f + HBarW * HealthPct, HBarY, 1.5f, HudWhite, 3);
+			DrawLine(HBarX + 5.0f * HUDScale, HBarY, HBarX + 5.0f * HUDScale + HBarW * HealthPct, HBarY, 1.6f * HUDScale, HudWhite, 3);
 		}
 
 		// 20-HP Micro-Subdivision Notches
 		for (int32 n = 1; n < 5; ++n)
 		{
 			const float NX = HBarX + (HBarW * 0.2f * n);
-			DrawLine(NX + 5.0f, HBarY, NX, HBarY + HBarH, 1.2f, FLinearColor(0.0f, 0.04f, 0.07f, 0.55f), 3);
+			DrawLine(NX + 5.0f * HUDScale, HBarY, NX, HBarY + HBarH, 1.3f * HUDScale, FLinearColor(0.0f, 0.04f, 0.07f, 0.55f), 3);
 		}
 
 		// Oversized Floating Numeric Health Readout + Medical Cross on Right of Bars
-		const float NumHPX = VitX + 222.0f;
-		const float NumHPY = VitY + 18.0f;
+		const float NumHPX = VitX + 222.0f * HUDScale;
+		const float NumHPY = VitY + 18.0f * HUDScale;
 		// Mini glowing medical cross icon '+'
-		DrawLine(NumHPX, NumHPY + 5.0f, NumHPX + 8.0f, NumHPY + 5.0f, 2.0f, HealthMainColor, 3);
-		DrawLine(NumHPX + 4.0f, NumHPY + 1.0f, NumHPX + 4.0f, NumHPY + 9.0f, 2.0f, HealthMainColor, 3);
-		DrawGlowText(NumHPX + 12.0f, NumHPY - 3.0f, TEXT("BPM // BIO"), FontMicro, FLinearColor(0.7f, 0.88f, 0.95f, 0.65f), 0.6f);
-		DrawGlowText(NumHPX, NumHPY + 9.0f, FString::Printf(TEXT("%03.0f"), OwningHUD->CurrentHealth), FontHealth, HealthBrightColor, 0.85f);
+		DrawLine(NumHPX, NumHPY + 5.0f * HUDScale, NumHPX + 9.0f * HUDScale, NumHPY + 5.0f * HUDScale, 2.2f * HUDScale, HealthMainColor, 3);
+		DrawLine(NumHPX + 4.5f * HUDScale, NumHPY + 1.0f * HUDScale, NumHPX + 4.5f * HUDScale, NumHPY + 9.5f * HUDScale, 2.2f * HUDScale, HealthMainColor, 3);
+		DrawGlowText(NumHPX + 13.0f * HUDScale, NumHPY - 3.0f * HUDScale, TEXT("BPM // BIO"), FontMicro, FLinearColor(0.7f, 0.88f, 0.95f, 0.65f), 0.6f);
+		DrawGlowText(NumHPX, NumHPY + 9.0f * HUDScale, FString::Printf(TEXT("%03.0f"), OwningHUD->CurrentHealth), FontHealth, HealthBrightColor, 0.85f);
 
 		// Live Animated ECG Heartbeat Waveform under HP Number
 		{
 			TArray<FVector2f> EcgPts;
 			const int32 NumEcg = 18;
 			EcgPts.Reserve(NumEcg);
-			const float EcgStartX = NumHPX + 2.0f;
-			const float EcgBaseY = VitY + 62.0f;
+			const float EcgStartX = NumHPX + 2.0f * HUDScale;
+			const float EcgBaseY = VitY + 62.0f * HUDScale;
 			const float EcgSpeed = (HealthPct < 0.4f || OwningHUD->bIsStaminaExhausted) ? 9.0f : 4.5f;
 			for (int32 i = 0; i < NumEcg; ++i)
 			{
 				const float NormI = (float)i / (float)(NumEcg - 1);
 				const float Phase = FMath::Fmod(NormI * 2.0f - TimeSec * EcgSpeed + 100.0f, 1.0f);
 				float Deflection = 0.0f;
-				if (Phase > 0.42f && Phase < 0.48f) Deflection = -8.0f;
-				else if (Phase >= 0.48f && Phase < 0.54f) Deflection = 6.0f;
-				else if (Phase >= 0.54f && Phase < 0.60f) Deflection = -2.5f;
-				EcgPts.Add(FVector2f(EcgStartX + NormI * 56.0f, EcgBaseY + Deflection));
+				if (Phase > 0.42f && Phase < 0.48f) Deflection = -8.0f * HUDScale;
+				else if (Phase >= 0.48f && Phase < 0.54f) Deflection = 6.0f * HUDScale;
+				else if (Phase >= 0.54f && Phase < 0.60f) Deflection = -2.5f * HUDScale;
+				EcgPts.Add(FVector2f(EcgStartX + NormI * 58.0f * HUDScale, EcgBaseY + Deflection));
 			}
-			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + 3, AllottedGeometry.ToPaintGeometry(), MoveTemp(EcgPts), ESlateDrawEffect::None, HealthMainColor * FLinearColor(1, 1, 1, 0.75f), true, 1.3f);
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + 3, AllottedGeometry.ToPaintGeometry(), MoveTemp(EcgPts), ESlateDrawEffect::None, HealthMainColor * FLinearColor(1, 1, 1, 0.75f), true, 1.4f * HUDScale);
 		}
 
 		// 3.3 12-Cell Skewed Stamina Kinetic Meter
 		const float StaminaPct = OwningHUD->MaxStamina > 0.0f ? FMath::Clamp(OwningHUD->CurrentStamina / OwningHUD->MaxStamina, 0.0f, 1.0f) : 0.0f;
 		const int32 StaminaCells = 12;
-		const float SCellW = 14.5f;
-		const float SCellGap = 3.2f;
-		const float SCellY = VitY + 56.0f;
-		const float SCellH = 6.0f;
+		const float SCellW = 14.5f * HUDScale;
+		const float SCellGap = 3.2f * HUDScale;
+		const float SCellY = VitY + 56.0f * HUDScale;
+		const float SCellH = 6.5f * HUDScale;
 
 		const FLinearColor StaminaCol = OwningHUD->bIsStaminaExhausted
 			? CrimsonAlert
@@ -684,7 +692,7 @@ public:
 			const float CellThreshold = (float)(c + 1) / (float)StaminaCells;
 			const bool bCellActive = StaminaPct >= (CellThreshold - 0.04f);
 
-			DrawSkewedRect(CXPos, SCellY, SCellW, SCellH, 3.0f,
+			DrawSkewedRect(CXPos, SCellY, SCellW, SCellH, 3.0f * HUDScale,
 				bCellActive ? StaminaCol : FLinearColor(0.02f, 0.07f, 0.10f, 0.28f),
 				bCellActive ? (StaminaCol * 1.2f) : FLinearColor(0.02f, 0.07f, 0.10f, 0.20f), 2);
 		}
@@ -692,51 +700,51 @@ public:
 		const FString StaminaStatus = OwningHUD->bIsStaminaExhausted
 			? TEXT("SPRINT LOCKED // EXHAUSTED")
 			: FString::Printf(TEXT("KINETIC STAMINA // %03.0f%%"), StaminaPct * 100.0f);
-		DrawGlowText(VitX, VitY + 67.0f, StaminaStatus, FontMicro,
+		DrawGlowText(VitX, VitY + 68.0f * HUDScale, StaminaStatus, FontMicro,
 			OwningHUD->bIsStaminaExhausted ? CrimsonAlert : FLinearColor(0.65f, 0.92f, 0.85f, 0.72f), 0.6f);
 
 		// 3.4 "FERMI DIVE // CHRONO FIELD" Telemetry Bar (Below Stamina in Vitals Panel)
 		{
-			const float DiveBarY = VitY + 86.0f;
-			const float DiveBarW = 248.0f;
-			const float DiveBarH = 14.0f;
+			const float DiveBarY = VitY + 86.0f * HUDScale;
+			const float DiveBarW = 248.0f * HUDScale;
+			const float DiveBarH = 14.0f * HUDScale;
 
-			DrawSkewedRect(VitX - 6.0f, DiveBarY - 2.0f, DiveBarW + 12.0f, DiveBarH + 4.0f, 4.0f,
+			DrawSkewedRect(VitX - 6.0f * HUDScale, DiveBarY - 2.0f * HUDScale, DiveBarW + 12.0f * HUDScale, DiveBarH + 4.0f * HUDScale, 4.0f * HUDScale,
 				FLinearColor(0.0f, 0.10f, 0.16f, 0.36f), FLinearColor(0.0f, 0.04f, 0.08f, 0.05f), 0);
 
 			if (OwningHUD->bIsFermiTimeBubbleActive || OwningHUD->bIsBallisticDiving)
 			{
 				const float BubbleRatio = FMath::Clamp(OwningHUD->FermiBubbleTimeRemaining / 2.4f, 0.05f, 1.0f);
 				const float Pulse = 0.78f + 0.22f * FMath::Sin(TimeSec * 16.0f);
-				DrawSkewedRect(VitX, DiveBarY, DiveBarW * BubbleRatio, DiveBarH, 4.0f,
+				DrawSkewedRect(VitX, DiveBarY, DiveBarW * BubbleRatio, DiveBarH, 4.0f * HUDScale,
 					TealPrimary * FLinearColor(1, 1, 1, 0.55f * Pulse), CyanTactical * FLinearColor(1, 1, 1, 0.85f * Pulse), 1);
-				DrawLine(VitX + 4.0f, DiveBarY, VitX + 4.0f + DiveBarW * BubbleRatio, DiveBarY, 1.6f, HudWhite, 2);
+				DrawLine(VitX + 4.0f * HUDScale, DiveBarY, VitX + 4.0f * HUDScale + DiveBarW * BubbleRatio, DiveBarY, 1.8f * HUDScale, HudWhite, 2);
 
-				DrawGlowText(VitX + 6.0f, DiveBarY + 1.0f,
+				DrawGlowText(VitX + 6.0f * HUDScale, DiveBarY + 1.0f * HUDScale,
 					FString::Printf(TEXT("FERMI DIVE // [ACTIVE // 0.25x TIME DILATION %.1fs]"), OwningHUD->FermiBubbleTimeRemaining),
 					FontMicro, HudWhite, 0.85f, 4);
 			}
 			else if (OwningHUD->FermiDiveCooldownRemaining > 0.01f)
 			{
 				const float CooldownRatio = 1.0f - FMath::Clamp(OwningHUD->FermiDiveCooldownRemaining / 1.2f, 0.0f, 1.0f);
-				DrawSkewedRect(VitX, DiveBarY, DiveBarW * CooldownRatio, DiveBarH, 4.0f,
+				DrawSkewedRect(VitX, DiveBarY, DiveBarW * CooldownRatio, DiveBarH, 4.0f * HUDScale,
 					AmberWarn * FLinearColor(1, 1, 1, 0.30f), AmberWarn * FLinearColor(1, 1, 1, 0.50f), 1);
-				DrawGlowText(VitX + 6.0f, DiveBarY + 1.0f,
+				DrawGlowText(VitX + 6.0f * HUDScale, DiveBarY + 1.0f * HUDScale,
 					FString::Printf(TEXT("FERMI DIVE // [RECHARGING %.1fs]"), OwningHUD->FermiDiveCooldownRemaining),
 					FontMicro, AmberWarn, 0.75f, 4);
 			}
 			else if (OwningHUD->bCanBallisticDive)
 			{
-				DrawSkewedRect(VitX, DiveBarY, DiveBarW, DiveBarH, 4.0f,
+				DrawSkewedRect(VitX, DiveBarY, DiveBarW, DiveBarH, 4.0f * HUDScale,
 					FLinearColor(0.0f, 0.45f, 0.48f, 0.35f), FLinearColor(0.0f, 0.75f, 0.72f, 0.22f), 1);
-				DrawLine(VitX + 4.0f, DiveBarY, VitX + 4.0f + DiveBarW, DiveBarY, 1.2f, TealPrimary * FLinearColor(1, 1, 1, 0.8f), 2);
-				DrawGlowText(VitX + 6.0f, DiveBarY + 1.0f,
+				DrawLine(VitX + 4.0f * HUDScale, DiveBarY, VitX + 4.0f * HUDScale + DiveBarW, DiveBarY, 1.4f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.8f), 2);
+				DrawGlowText(VitX + 6.0f * HUDScale, DiveBarY + 1.0f * HUDScale,
 					TEXT("FERMI DIVE // [READY - ALT / DIVE]"),
 					FontMicro, TealPrimary, 0.80f, 4);
 			}
 			else
 			{
-				DrawGlowText(VitX + 6.0f, DiveBarY + 1.0f,
+				DrawGlowText(VitX + 6.0f * HUDScale, DiveBarY + 1.0f * HUDScale,
 					TEXT("FERMI DIVE // [LOW STAMINA < 25%]"),
 					FontMicro, CrimsonAlert, 0.75f, 4);
 			}

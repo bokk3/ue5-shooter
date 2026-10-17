@@ -9,6 +9,7 @@ class USoundBase;
 class SWidgetSwitcher;
 class SEditableTextBox;
 class STextBlock;
+class SBorder;
 class AFPSCharacterPreviewActor;
 
 UENUM(BlueprintType)
@@ -26,8 +27,10 @@ enum class EFPSMenuSection : uint8
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMenuSectionChangedSignature, EFPSMenuSection, NewSection);
 
 /**
- * AAA FPS Primary Main Menu Widget
- * Slate-implemented, full-screen interactive military HUD start menu with real-time 3D character customization.
+ * AAA Modern Warfare-Inspired Tactical Command Lobby Widget
+ * Slate-implemented semi-transparent acrylic interface with SBackgroundBlur (14.0f),
+ * 3-zone layout (Left Deployment Blade, Center 3D Operator Showcase, Right Live Loadout & Camo Inspector),
+ * and high-contrast tactical HUD accents (#00E5FF Tactical Cyan, #FFB300 Afterburner Amber, #00E676 Emerald Ready).
  */
 UCLASS(BlueprintType, Blueprintable)
 class NOBLEFERMI_API UMainMenuWidget : public UCommonActivatableWidget
@@ -81,7 +84,8 @@ protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 private:
-	EFPSMenuSection CurrentSection = EFPSMenuSection::Home;
+	EFPSMenuSection CurrentSection = EFPSMenuSection::Play;
+	int32 SelectedModeIndex = 0; // 0 = Rust Tactical CQB, 1 = Fermi Time Lab, 2 = Bot Skirmish
 
 	UPROPERTY()
 	TObjectPtr<AFPSCharacterPreviewActor> PreviewActor;
@@ -97,17 +101,35 @@ private:
 	TSharedPtr<STextBlock> VestStatusText;
 	TSharedPtr<STextBlock> StanceStatusText;
 	TSharedPtr<STextBlock> RotationSpeedText;
+	TSharedPtr<STextBlock> CenterPillText;
 
+	// Mode Card Border Pointers for interactive glowing borders
+	TSharedPtr<SBorder> ModeCardBorder0;
+	TSharedPtr<SBorder> ModeCardBorder1;
+	TSharedPtr<SBorder> ModeCardBorder2;
+
+	// Top Tab Indicator Borders
+	TSharedPtr<SBorder> TabIndicatorPlay;
+	TSharedPtr<SBorder> TabIndicatorOperator;
+	TSharedPtr<SBorder> TabIndicatorGunsmith;
+	TSharedPtr<SBorder> TabIndicatorSettings;
+
+	// 3-Zone Modern Warfare Layout Builders
 	TSharedRef<SWidget> BuildHeader();
-	TSharedRef<SWidget> BuildLeftNavBar();
-	TSharedRef<SWidget> BuildHomeView();
-	TSharedRef<SWidget> BuildCustomizationView();
+	TSharedRef<SWidget> BuildTacticalLobbyView();
+	TSharedRef<SWidget> BuildLeftBlade();
+	TSharedRef<SWidget> BuildCenterViewportHUD();
+	TSharedRef<SWidget> BuildRightBlade();
+
+	// Full-screen Subviews
 	TSharedRef<SWidget> BuildGunsmithView();
 	TSharedRef<SWidget> BuildServerBrowserView();
 	TSharedRef<SWidget> BuildSettingsView();
 	TSharedRef<SWidget> BuildFooter();
 
+	// Interaction handlers
 	FReply HandleTabClicked(EFPSMenuSection Section);
+	FReply HandleModeCardClicked(int32 ModeIndex);
 	FReply HandleQuickplayClicked();
 	FReply HandleHostListenClicked();
 	FReply HandleDirectConnectClicked();
@@ -122,4 +144,7 @@ private:
 	FReply HandleToggleTurntableRotation();
 	FReply HandleSetRotationSpeed(float Speed);
 	FReply HandleResetTurntableFacing();
+
+	void UpdateModeCardVisuals();
+	void UpdateTabVisuals();
 };

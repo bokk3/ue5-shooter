@@ -11,6 +11,7 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
+#include "Widgets/Layout/SBackgroundBlur.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SEditableTextBox.h"
@@ -18,9 +19,30 @@
 #include "Styling/CoreStyle.h"
 #include "Misc/CommandLine.h"
 
+namespace MWTheme
+{
+	// High-Contrast AAA Modern Warfare Colors
+	static const FLinearColor CyanAccent      = FLinearColor(0.0f, 0.898f, 1.0f, 1.0f);     // #00E5FF Tactical Cyan
+	static const FLinearColor AmberAccent     = FLinearColor(1.0f, 0.702f, 0.0f, 1.0f);     // #FFB300 Afterburner Amber
+	static const FLinearColor CrimsonAlert    = FLinearColor(1.0f, 0.165f, 0.329f, 1.0f);    // #FF2A54 Crimson Alert
+	static const FLinearColor EmeraldReady    = FLinearColor(0.0f, 0.902f, 0.463f, 1.0f);    // #00E676 Emerald Ready
+
+	// Semi-Transparent Dark Glass Panels
+	static const FLinearColor DarkGlass       = FLinearColor(0.03f, 0.06f, 0.10f, 0.68f);    // Glass Panel Base (0.68 alpha)
+	static const FLinearColor DarkGlassCard   = FLinearColor(0.04f, 0.08f, 0.14f, 0.72f);    // Inner Card Glass
+	static const FLinearColor DarkGlassHover  = FLinearColor(0.07f, 0.14f, 0.22f, 0.80f);    // Card Hover/Active Glass
+	static const FLinearColor GlassBorder     = FLinearColor(0.14f, 0.22f, 0.32f, 0.60f);    // Crisp 1px glass border
+	static const FLinearColor ActiveBorder    = FLinearColor(0.0f, 0.898f, 1.0f, 0.90f);     // 1-2px glowing Cyan border
+
+	// Typography Colors
+	static const FLinearColor TextPrimary     = FLinearColor(0.94f, 0.96f, 0.98f, 1.0f);    // High-contrast clean white
+	static const FLinearColor TextSecondary   = FLinearColor(0.72f, 0.78f, 0.86f, 1.0f);    // Subtle white
+	static const FLinearColor TextMuted       = FLinearColor(0.48f, 0.55f, 0.65f, 1.0f);    // Tactical muted grey
+}
+
 UMainMenuWidget::UMainMenuWidget()
 {
-	bIsBackHandler = true;
+	bIsBackHandler = false;
 }
 
 void UMainMenuWidget::NativeConstruct()
@@ -41,108 +63,83 @@ void UMainMenuWidget::SetPreviewActor(AFPSCharacterPreviewActor* InPreviewActor)
 TSharedRef<SWidget> UMainMenuWidget::RebuildWidget()
 {
 	return SNew(SOverlay)
-		// Background base dark tint - subtle alpha so 3D viewport behind is visible!
+		// Layer 0: Root Vignette / Scanline overlay (no center fill - 100% transparent center for 3D world!)
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
 		[
 			SNew(SBorder)
-			.BorderBackgroundColor(FLinearColor(0.012f, 0.016f, 0.022f, 0.20f))
+			.BorderBackgroundColor(FLinearColor(0.01f, 0.02f, 0.03f, 0.12f))
 			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
 			.Padding(0.0f)
 		]
-		// Top gold accent line
+		// Layer 1: Top Glowing Accent Stripe (Tactical Cyan #00E5FF)
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Top)
 		[
 			SNew(SBox)
-			.HeightOverride(3.0f)
+			.HeightOverride(2.0f)
 			[
 				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.95f, 0.65f, 0.15f, 1.0f))
+				.BorderBackgroundColor(MWTheme::CyanAccent)
 				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
 			]
 		]
-		// Main Content Container
+		// Layer 2: Main Tactical HUD Container
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
-		.Padding(32.0f, 24.0f, 32.0f, 20.0f)
+		.Padding(24.0f, 16.0f, 24.0f, 12.0f)
 		[
 			SNew(SVerticalBox)
-			// Header
+			// Zone 1: Top Navigation Bar
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(0.0f, 0.0f, 0.0f, 20.0f)
+			.Padding(0.0f, 0.0f, 0.0f, 14.0f)
 			[
-				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.02f, 0.03f, 0.05f, 0.88f))
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(16.0f, 10.0f)
+				SNew(SBackgroundBlur)
+				.BlurStrength(14.0f)
+				.bApplyAlphaToBlur(true)
+				.Padding(0.0f)
 				[
-					BuildHeader()
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::DarkGlass)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(18.0f, 10.0f)
+					[
+						BuildHeader()
+					]
 				]
 			]
-			// Horizontal split: Left Navigation / Right Content
+			// Content Switcher for Tab switching
 			+ SVerticalBox::Slot()
 			.FillHeight(1.0f)
 			[
-				SNew(SHorizontalBox)
-				// Left Navigation Column
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(0.0f, 0.0f, 24.0f, 0.0f)
-				[
-					SNew(SBox)
-					.WidthOverride(340.0f)
-					[
-						SNew(SBorder)
-						.BorderBackgroundColor(FLinearColor(0.02f, 0.03f, 0.05f, 0.88f))
-						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-						.Padding(16.0f, 16.0f)
-						[
-							BuildLeftNavBar()
-						]
-					]
-				]
-				// Vertical subtle divider
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(0.0f, 0.0f, 24.0f, 0.0f)
-				[
-					SNew(SBox)
-					.WidthOverride(1.0f)
-					[
-						SNew(SBorder)
-						.BorderBackgroundColor(FLinearColor(0.15f, 0.20f, 0.28f, 0.8f))
-						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-					]
-				]
-				// Right Content Switcher
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				[
-					SAssignNew(ContentSwitcher, SWidgetSwitcher)
-					.WidgetIndex(FParse::Param(FCommandLine::Get(), TEXT("Customization")) ? 1 : 0)
-					+ SWidgetSwitcher::Slot() [ BuildHomeView() ]           // 0: Home & Matchmaking
-					+ SWidgetSwitcher::Slot() [ BuildCustomizationView() ]  // 1: Operator Customization
-					+ SWidgetSwitcher::Slot() [ BuildGunsmithView() ]       // 2: Gunsmith & Loadouts
-					+ SWidgetSwitcher::Slot() [ BuildServerBrowserView() ]  // 3: Server Browser & VPS
-					+ SWidgetSwitcher::Slot() [ BuildSettingsView() ]       // 4: Operator Settings
-				]
+				SAssignNew(ContentSwitcher, SWidgetSwitcher)
+				.WidgetIndex(0)
+				+ SWidgetSwitcher::Slot() [ BuildTacticalLobbyView() ]    // 0: Modern Warfare 3-Zone Command Lobby
+				+ SWidgetSwitcher::Slot() [ BuildGunsmithView() ]         // 1: Gunsmith Loadouts
+				+ SWidgetSwitcher::Slot() [ BuildServerBrowserView() ]     // 2: VPS Server Browser
+				+ SWidgetSwitcher::Slot() [ BuildSettingsView() ]          // 3: Settings Menu
 			]
-			// Footer status bar
+			// Zone 4: Translucent Footer Status Bar
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(0.0f, 16.0f, 0.0f, 0.0f)
+			.Padding(0.0f, 12.0f, 0.0f, 0.0f)
 			[
-				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.02f, 0.03f, 0.05f, 0.88f))
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(16.0f, 8.0f)
+				SNew(SBackgroundBlur)
+				.BlurStrength(14.0f)
+				.bApplyAlphaToBlur(true)
+				.Padding(0.0f)
 				[
-					BuildFooter()
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::DarkGlass)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(16.0f, 6.0f)
+					[
+						BuildFooter()
+					]
 				]
 			]
 		];
@@ -150,41 +147,121 @@ TSharedRef<SWidget> UMainMenuWidget::RebuildWidget()
 
 TSharedRef<SWidget> UMainMenuWidget::BuildHeader()
 {
+	auto MakeTabBtn = [this](const FString& TabText, EFPSMenuSection Section, TSharedPtr<SBorder>& OutIndicator) -> TSharedRef<SWidget>
+	{
+		return SNew(SBox)
+			.HeightOverride(42.0f)
+			.Padding(6.0f, 0.0f)
+			[
+				SNew(SButton)
+				.ButtonColorAndOpacity(FLinearColor::Transparent)
+				.ContentPadding(0.0f)
+				.OnClicked_Lambda([this, Section]() { return HandleTabClicked(Section); })
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.FillHeight(1.0f)
+					.VAlign(VAlign_Center)
+					.HAlign(HAlign_Center)
+					.Padding(16.0f, 0.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TabText))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+						.ColorAndOpacity(MWTheme::TextPrimary)
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SAssignNew(OutIndicator, SBorder)
+						.BorderBackgroundColor(Section == EFPSMenuSection::Play ? MWTheme::CyanAccent : FLinearColor::Transparent)
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(0.0f)
+						[
+							SNew(SBox).HeightOverride(2.0f)
+						]
+					]
+				]
+			];
+	};
+
 	return SNew(SHorizontalBox)
+		// Left: Title & Subtitle with glowing tactical bracket
 		+ SHorizontalBox::Slot()
 		.AutoWidth()
 		.VAlign(VAlign_Center)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(0.0f, 0.0f, 10.0f, 0.0f)
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("NOBLE FERMI")))
-				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 26))
-				.ColorAndOpacity(FLinearColor(0.95f, 0.65f, 0.15f, 1.0f))
+				.Text(FText::FromString(TEXT("// ")))
+				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 18))
+				.ColorAndOpacity(MWTheme::CyanAccent)
 			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(0.0f, 2.0f, 0.0f, 0.0f)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("TACTICAL MILITARY WARFARE // STANDALONE MENU")))
-				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-				.ColorAndOpacity(FLinearColor(0.6f, 0.65f, 0.75f, 1.0f))
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("NOBLE FERMI")))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 20))
+						.ColorAndOpacity(MWTheme::AmberAccent)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().Padding(8.0f, 0.0f, 0.0f, 0.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("// TACTICAL OPS")))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 20))
+						.ColorAndOpacity(MWTheme::CyanAccent)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0.0f, 1.0f, 0.0f, 0.0f)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("TACTICAL MILITARY WARFARE // TASK FORCE ECHO")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+					.ColorAndOpacity(MWTheme::TextMuted)
+				]
 			]
 		]
+		// Center: Modern Warfare Tabs (PLAY, OPERATOR, GUNSMITH, SETTINGS)
 		+ SHorizontalBox::Slot()
 		.FillWidth(1.0f)
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth() [ MakeTabBtn(TEXT("PLAY"), EFPSMenuSection::Play, TabIndicatorPlay) ]
+			+ SHorizontalBox::Slot().AutoWidth() [ MakeTabBtn(TEXT("OPERATOR"), EFPSMenuSection::Customization, TabIndicatorOperator) ]
+			+ SHorizontalBox::Slot().AutoWidth() [ MakeTabBtn(TEXT("GUNSMITH"), EFPSMenuSection::Loadout, TabIndicatorGunsmith) ]
+			+ SHorizontalBox::Slot().AutoWidth() [ MakeTabBtn(TEXT("SETTINGS"), EFPSMenuSection::Settings, TabIndicatorSettings) ]
+		]
+		// Right: Live Telemetry Badge (128 HZ TICK // IOSTORE VERIFIED // REGION: EU-WEST)
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
 		.HAlign(HAlign_Right)
 		.VAlign(VAlign_Center)
 		[
 			SNew(SBorder)
-			.BorderBackgroundColor(FLinearColor(0.06f, 0.09f, 0.14f, 0.9f))
+			.BorderBackgroundColor(MWTheme::DarkGlassCard)
 			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-			.Padding(14.0f, 8.0f)
+			.Padding(12.0f, 7.0f)
 			[
 				SNew(SHorizontalBox)
+				// Emerald live pip
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				.VAlign(VAlign_Center)
@@ -195,7 +272,7 @@ TSharedRef<SWidget> UMainMenuWidget::BuildHeader()
 					.HeightOverride(8.0f)
 					[
 						SNew(SBorder)
-						.BorderBackgroundColor(FLinearColor(0.2f, 0.9f, 0.4f, 1.0f))
+						.BorderBackgroundColor(MWTheme::EmeraldReady)
 						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
 					]
 				]
@@ -204,611 +281,933 @@ TSharedRef<SWidget> UMainMenuWidget::BuildHeader()
 				.VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("ONLINE — 128 TICK MULTIPLAYER READY")))
-					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-					.ColorAndOpacity(FLinearColor(0.85f, 0.90f, 0.95f, 1.0f))
+					.Text(FText::FromString(TEXT("128 HZ TICK // IOSTORE VERIFIED // REGION: EU-WEST")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+					.ColorAndOpacity(MWTheme::TextPrimary)
 				]
 			]
 		];
 }
 
-TSharedRef<SWidget> UMainMenuWidget::BuildLeftNavBar()
+TSharedRef<SWidget> UMainMenuWidget::BuildTacticalLobbyView()
 {
-	auto MakeNavButton = [this](const FString& Title, const FString& Subtitle, EFPSMenuSection Section) -> TSharedRef<SWidget>
+	return SNew(SHorizontalBox)
+		// Zone 2: Left Blade (Deployment & Mode Cards) ~380px
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(0.0f, 0.0f, 16.0f, 0.0f)
+		[
+			SNew(SBox)
+			.WidthOverride(380.0f)
+			[
+				SNew(SBackgroundBlur)
+				.BlurStrength(14.0f)
+				.bApplyAlphaToBlur(true)
+				.Padding(0.0f)
+				[
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::DarkGlass)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(16.0f)
+					[
+						BuildLeftBlade()
+					]
+				]
+			]
+		]
+		// Zone 3: Center Viewport (Live 3D Operator Showcase) - Completely unobstructed 50%+ width!
+		+ SHorizontalBox::Slot()
+		.FillWidth(1.0f)
+		[
+			BuildCenterViewportHUD()
+		]
+		// Zone 4: Right Blade (Live Operator & Camo Inspector) ~380px
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(16.0f, 0.0f, 0.0f, 0.0f)
+		[
+			SNew(SBox)
+			.WidthOverride(380.0f)
+			[
+				SNew(SBackgroundBlur)
+				.BlurStrength(14.0f)
+				.bApplyAlphaToBlur(true)
+				.Padding(0.0f)
+				[
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::DarkGlass)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(16.0f)
+					[
+						BuildRightBlade()
+					]
+				]
+			]
+		];
+}
+
+TSharedRef<SWidget> UMainMenuWidget::BuildLeftBlade()
+{
+	auto MakeTacticalModeCard = [this](int32 ModeIdx, const FString& Tag, const FLinearColor& TagColor, const FString& Title, const FString& Meta, const FString& Desc, TSharedPtr<SBorder>& OutBorder) -> TSharedRef<SWidget>
 	{
 		return SNew(SBox)
-			.HeightOverride(56.0f)
 			.Padding(0.0f, 0.0f, 0.0f, 8.0f)
 			[
 				SNew(SButton)
-				.ButtonColorAndOpacity(FLinearColor(0.08f, 0.10f, 0.15f, 1.0f))
-				.OnClicked_Lambda([this, Section]() { return HandleTabClicked(Section); })
+				.ButtonColorAndOpacity(FLinearColor::Transparent)
+				.ContentPadding(0.0f)
+				.OnClicked_Lambda([this, ModeIdx]() { return HandleModeCardClicked(ModeIdx); })
 				[
-					SNew(SBorder)
-					.BorderBackgroundColor(FLinearColor::Transparent)
+					SAssignNew(OutBorder, SBorder)
+					.BorderBackgroundColor(SelectedModeIndex == ModeIdx ? MWTheme::ActiveBorder : MWTheme::GlassBorder)
 					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-					.Padding(12.0f, 6.0f)
+					.Padding(1.5f)
 					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::DarkGlassCard)
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(12.0f, 10.0f)
 						[
-							SNew(STextBlock)
-							.Text(FText::FromString(Title))
-							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
-							.ColorAndOpacity(FLinearColor(0.92f, 0.94f, 0.98f, 1.0f))
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(0.0f, 2.0f, 0.0f, 0.0f)
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(Subtitle))
-							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-							.ColorAndOpacity(FLinearColor(0.50f, 0.55f, 0.65f, 1.0f))
+							SNew(SVerticalBox)
+							// Header row: Status tag + Index
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(0.0f, 0.0f, 0.0f, 4.0f)
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.VAlign(VAlign_Center)
+								[
+									SNew(SBorder)
+									.BorderBackgroundColor(TagColor.CopyWithNewOpacity(0.20f))
+									.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+									.Padding(6.0f, 2.0f)
+									[
+										SNew(STextBlock)
+										.Text(FText::FromString(Tag))
+										.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+										.ColorAndOpacity(TagColor)
+									]
+								]
+								+ SHorizontalBox::Slot()
+								.FillWidth(1.0f)
+								.HAlign(HAlign_Right)
+								.VAlign(VAlign_Center)
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(FString::Printf(TEXT("// 0%d"), ModeIdx + 1)))
+									.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+									.ColorAndOpacity(MWTheme::TextMuted)
+								]
+							]
+							// Title
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(Title))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
+								.ColorAndOpacity(MWTheme::TextPrimary)
+							]
+							// Metadata
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(0.0f, 3.0f, 0.0f, 2.0f)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(Meta))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+								.ColorAndOpacity(MWTheme::CyanAccent)
+							]
+							// Description
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(Desc))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+								.ColorAndOpacity(MWTheme::TextSecondary)
+								.AutoWrapText(true)
+							]
 						]
 					]
 				]
 			];
 	};
 
+	return SNew(SScrollBox)
+		+ SScrollBox::Slot()
+		[
+			SNew(SVerticalBox)
+			// Header
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 0.0f, 0.0f, 10.0f)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("/// DEPLOYMENT SECTOR")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
+					.ColorAndOpacity(MWTheme::CyanAccent)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0.0f, 2.0f, 0.0f, 4.0f)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("SELECT COMBAT THEATER & OBJECTIVE")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+					.ColorAndOpacity(MWTheme::TextMuted)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SBox)
+					.HeightOverride(1.0f)
+					[
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::CyanAccent.CopyWithNewOpacity(0.5f))
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					]
+				]
+			]
+			// Mode Cards
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				MakeTacticalModeCard(
+					0,
+					TEXT("[ ACTIVE ROTATION ]"),
+					MWTheme::EmeraldReady,
+					TEXT("RUST TACTICAL 60M ARENA"),
+					TEXT("MAP: RUST // 6v6 CQB // 128 HZ TICK // TDM 75"),
+					TEXT("High-tempo industrial CQB arena. Fast engagements, container cover, vertical crane sightlines."),
+					ModeCardBorder0
+				)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				MakeTacticalModeCard(
+					1,
+					TEXT("[ ANOMALY TESTBED ]"),
+					MWTheme::CyanAccent,
+					TEXT("FERMI TIME-DILATION LAB"),
+					TEXT("MAP: RESEARCH COMPLEX // 4v4 TACTICAL // CHRONO FIELD"),
+					TEXT("Localized time-dilation bubbles altering projectile flight ballistics, weapon cycles, and movement."),
+					ModeCardBorder1
+				)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				MakeTacticalModeCard(
+					2,
+					TEXT("[ COMBAT TRAINING ]"),
+					MWTheme::AmberAccent,
+					TEXT("BOT SKIRMISH"),
+					TEXT("PVE OFFLINE // AUTHORITATIVE BOT RIG // DIFFICULTY: HARD"),
+					TEXT("Offline tactical drills against authoritative AI operators for zeroing weapon handling and recoil."),
+					ModeCardBorder2
+				)
+			]
+			// Prominent Glowing Amber Hero Button (DEPLOY TO ARENA)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 8.0f, 0.0f, 10.0f)
+			[
+				SNew(SBox)
+				.HeightOverride(52.0f)
+				[
+					SNew(SButton)
+					.ButtonColorAndOpacity(FLinearColor::Transparent)
+					.ContentPadding(0.0f)
+					.OnClicked_Lambda([this]() { return HandleQuickplayClicked(); })
+					[
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::AmberAccent)
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(2.0f)
+						[
+							SNew(SBorder)
+							.BorderBackgroundColor(MWTheme::AmberAccent)
+							.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+							.HAlign(HAlign_Center)
+							.VAlign(VAlign_Center)
+							.Padding(12.0f, 4.0f)
+							[
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.HAlign(HAlign_Center)
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									.AutoWidth()
+									.VAlign(VAlign_Center)
+									[
+										SNew(STextBlock)
+										.Text(FText::FromString(TEXT("DEPLOY TO ARENA")))
+										.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+										.ColorAndOpacity(FLinearColor(0.04f, 0.05f, 0.07f, 1.0f))
+									]
+									+ SHorizontalBox::Slot()
+									.AutoWidth()
+									.VAlign(VAlign_Center)
+									.Padding(8.0f, 0.0f, 0.0f, 0.0f)
+									[
+										SNew(STextBlock)
+										.Text(FText::FromString(TEXT("►")))
+										.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+										.ColorAndOpacity(FLinearColor(0.04f, 0.05f, 0.07f, 1.0f))
+									]
+								]
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.HAlign(HAlign_Center)
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(TEXT("128 HZ TICK // AUTHORITATIVE SERVER")))
+									.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+									.ColorAndOpacity(FLinearColor(0.20f, 0.16f, 0.05f, 1.0f))
+								]
+							]
+						]
+					]
+				]
+			]
+			// Secondary Action: Host Listen Server
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 0.0f, 0.0f, 6.0f)
+			[
+				SNew(SBox)
+				.HeightOverride(36.0f)
+				[
+					SNew(SButton)
+					.ButtonColorAndOpacity(FLinearColor::Transparent)
+					.ContentPadding(0.0f)
+					.OnClicked_Lambda([this]() { return HandleHostListenClicked(); })
+					[
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::GlassBorder)
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(1.0f)
+						[
+							SNew(SBorder)
+							.BorderBackgroundColor(MWTheme::DarkGlassCard)
+							.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+							.HAlign(HAlign_Center)
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("HOST 128-HZ LISTEN ROOM")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+								.ColorAndOpacity(MWTheme::CyanAccent)
+							]
+						]
+					]
+				]
+			]
+			// Direct Connect Section
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 4.0f, 0.0f, 8.0f)
+			[
+				SNew(SBorder)
+				.BorderBackgroundColor(MWTheme::GlassBorder)
+				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+				.Padding(1.0f)
+				[
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::DarkGlassCard)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(10.0f, 8.0f)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(0.0f, 0.0f, 0.0f, 4.0f)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("DIRECT VPS DEDICATED IP:")))
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+							.ColorAndOpacity(MWTheme::TextMuted)
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.FillWidth(1.0f)
+							.Padding(0.0f, 0.0f, 6.0f, 0.0f)
+							[
+								SAssignNew(DirectConnectInput, SEditableTextBox)
+								.Text(FText::FromString(TEXT("127.0.0.1:7777")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+								.HintText(FText::FromString(TEXT("IP:PORT")))
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SNew(SBox)
+								.WidthOverride(70.0f)
+								.HeightOverride(30.0f)
+								[
+									SNew(SButton)
+									.ButtonColorAndOpacity(MWTheme::CyanAccent)
+									.OnClicked_Lambda([this]() { return HandleDirectConnectClicked(); })
+									.HAlign(HAlign_Center)
+									.VAlign(VAlign_Center)
+									[
+										SNew(STextBlock)
+										.Text(FText::FromString(TEXT("JOIN")))
+										.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+										.ColorAndOpacity(FLinearColor(0.02f, 0.04f, 0.06f, 1.0f))
+									]
+								]
+							]
+						]
+					]
+				]
+			]
+			// Quit to Desktop Button in Crimson Alert (#FF2A54)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 4.0f, 0.0f, 0.0f)
+			[
+				SNew(SBox)
+				.HeightOverride(36.0f)
+				[
+					SNew(SButton)
+					.ButtonColorAndOpacity(FLinearColor::Transparent)
+					.ContentPadding(0.0f)
+					.OnClicked_Lambda([this]() { return HandleQuitClicked(); })
+					[
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::CrimsonAlert.CopyWithNewOpacity(0.6f))
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(1.0f)
+						[
+							SNew(SBorder)
+							.BorderBackgroundColor(FLinearColor(0.35f, 0.06f, 0.12f, 0.85f))
+							.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+							.HAlign(HAlign_Center)
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("QUIT TO DESKTOP")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+								.ColorAndOpacity(FLinearColor(1.0f, 0.8f, 0.8f, 1.0f))
+							]
+						]
+					]
+				]
+			]
+		];
+}
+
+TSharedRef<SWidget> UMainMenuWidget::BuildCenterViewportHUD()
+{
 	return SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(0.0f, 0.0f, 0.0f, 12.0f)
-		[
-			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("/// OPERATIONAL DIRECTIVES")))
-			.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-			.ColorAndOpacity(FLinearColor(0.40f, 0.48f, 0.60f, 1.0f))
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			MakeNavButton(TEXT("01. DEPLOYMENT // PLAY"), TEXT("Quick Match, Listen Room, Matchmaking"), EFPSMenuSection::Play)
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			MakeNavButton(TEXT("02. OPERATOR // CUSTOMISATION"), TEXT("Human Male 180cm, Camo & Turntable"), EFPSMenuSection::Customization)
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			MakeNavButton(TEXT("03. GUNSMITH // LOADOUTS"), TEXT("5 MW2 Archetypes & Attachments"), EFPSMenuSection::Loadout)
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			MakeNavButton(TEXT("04. SERVER BROWSER & VPS"), TEXT("Dedicated Server Direct IP Connection"), EFPSMenuSection::ServerBrowser)
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			MakeNavButton(TEXT("05. OPERATOR SETTINGS"), TEXT("FOV, Sensitivity, Graphics & Audio"), EFPSMenuSection::Settings)
-		]
+		// Empty fill slot: Leaves the center 50%+ completely unobstructed for AFPSCharacterPreviewActor!
 		+ SVerticalBox::Slot()
 		.FillHeight(1.0f)
 		[
 			SNew(SBox)
 		]
+		// Minimal floating acrylic telemetry pill at bottom of center viewport
 		+ SVerticalBox::Slot()
 		.AutoHeight()
-		.Padding(0.0f, 12.0f, 0.0f, 0.0f)
+		.HAlign(HAlign_Center)
+		.Padding(0.0f, 0.0f, 0.0f, 10.0f)
 		[
-			SNew(SBox)
-			.HeightOverride(46.0f)
+			SNew(SBackgroundBlur)
+			.BlurStrength(14.0f)
+			.bApplyAlphaToBlur(true)
+			.Padding(0.0f)
 			[
-				SNew(SButton)
-				.ButtonColorAndOpacity(FLinearColor(0.35f, 0.08f, 0.08f, 1.0f))
-				.OnClicked_Lambda([this]() { return HandleQuitClicked(); })
+				SNew(SBorder)
+				.BorderBackgroundColor(MWTheme::DarkGlass)
+				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+				.Padding(1.0f)
 				[
 					SNew(SBorder)
-					.BorderBackgroundColor(FLinearColor::Transparent)
+					.BorderBackgroundColor(MWTheme::DarkGlassCard)
 					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
+					.Padding(16.0f, 8.0f)
 					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("QUIT TO DESKTOP")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-						.ColorAndOpacity(FLinearColor(1.0f, 0.7f, 0.7f, 1.0f))
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(0.0f, 0.0f, 8.0f, 0.0f)
+						[
+							SNew(SBox)
+							.WidthOverride(8.0f)
+							.HeightOverride(8.0f)
+							[
+								SNew(SBorder)
+								.BorderBackgroundColor(MWTheme::CyanAccent)
+								.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+							]
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						[
+							SAssignNew(CenterPillText, STextBlock)
+							.Text(FText::FromString(TEXT("OPERATOR: TASK FORCE ECHO // LOADOUT: NF-98 CARBINE // 360° TURNTABLE")))
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+							.ColorAndOpacity(MWTheme::TextPrimary)
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(14.0f, 0.0f, 0.0f, 0.0f)
+						[
+							SNew(SButton)
+							.ButtonColorAndOpacity(MWTheme::DarkGlass)
+							.OnClicked_Lambda([this]() { return HandleToggleTurntableRotation(); })
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("⟳ TURNTABLE")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+								.ColorAndOpacity(MWTheme::CyanAccent)
+							]
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(6.0f, 0.0f, 0.0f, 0.0f)
+						[
+							SNew(SButton)
+							.ButtonColorAndOpacity(MWTheme::DarkGlass)
+							.OnClicked_Lambda([this]() { return HandleResetTurntableFacing(); })
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("0° RESET")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+								.ColorAndOpacity(MWTheme::TextSecondary)
+							]
+						]
 					]
 				]
 			]
 		];
 }
 
-TSharedRef<SWidget> UMainMenuWidget::BuildCustomizationView()
+TSharedRef<SWidget> UMainMenuWidget::BuildRightBlade()
 {
-	auto MakeSectionHeader = [](const FString& Title) -> TSharedRef<SWidget>
+	auto MakeCamoSwatchButton = [this](uint8 CamoIdx, const FString& Name, const FString& Subtitle, const FLinearColor& SwatchColor) -> TSharedRef<SWidget>
 	{
-		return SNew(SVerticalBox)
+		return SNew(SBox)
+			.HeightOverride(40.0f)
+			.Padding(0.0f, 0.0f, 0.0f, 5.0f)
+			[
+				SNew(SButton)
+				.ButtonColorAndOpacity(FLinearColor::Transparent)
+				.ContentPadding(0.0f)
+				.OnClicked_Lambda([this, CamoIdx]() { return HandleCamoSelected(CamoIdx); })
+				[
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::GlassBorder)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(1.0f)
+					[
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::DarkGlassCard)
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(10.0f, 4.0f)
+						[
+							SNew(SHorizontalBox)
+							// Color Swatch Chip
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(0.0f, 0.0f, 10.0f, 0.0f)
+							[
+								SNew(SBox)
+								.WidthOverride(16.0f)
+								.HeightOverride(16.0f)
+								[
+									SNew(SBorder)
+									.BorderBackgroundColor(SwatchColor)
+									.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+								]
+							]
+							// Title & Subtitle
+							+ SHorizontalBox::Slot()
+							.FillWidth(1.0f)
+							.VAlign(VAlign_Center)
+							[
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(Name))
+									.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
+									.ColorAndOpacity(MWTheme::TextPrimary)
+								]
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(Subtitle))
+									.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+									.ColorAndOpacity(MWTheme::TextMuted)
+								]
+							]
+							// Action Chevron
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("APPLY >")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+								.ColorAndOpacity(MWTheme::CyanAccent)
+							]
+						]
+					]
+				]
+			];
+	};
+
+	auto MakeQuickItemBtn = [](TFunction<FReply()> Callback, const FString& Name) -> TSharedRef<SWidget>
+	{
+		return SNew(SBox)
+			.HeightOverride(32.0f)
+			.Padding(0.0f, 0.0f, 0.0f, 4.0f)
+			[
+				SNew(SButton)
+				.ButtonColorAndOpacity(FLinearColor::Transparent)
+				.ContentPadding(0.0f)
+				.OnClicked_Lambda(Callback)
+				[
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::GlassBorder)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(1.0f)
+					[
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::DarkGlassCard)
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(8.0f, 0.0f)
+						.VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(Name))
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+							.ColorAndOpacity(MWTheme::TextSecondary)
+						]
+					]
+				]
+			];
+	};
+
+	return SNew(SScrollBox)
+		+ SScrollBox::Slot()
+		[
+			SNew(SVerticalBox)
+			// Header
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 0.0f, 0.0f, 10.0f)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("/// OPERATOR & LOADOUT")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
+					.ColorAndOpacity(MWTheme::CyanAccent)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0.0f, 2.0f, 0.0f, 4.0f)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("LIVE 3D MODEL TELEMETRY & CAMOUFLAGE")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+					.ColorAndOpacity(MWTheme::TextMuted)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SBox)
+					.HeightOverride(1.0f)
+					[
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::CyanAccent.CopyWithNewOpacity(0.5f))
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					]
+				]
+			]
+			// 1. Semi-Transparent Loadout Card (NF-98 Carbine, Lvl IV Plates, Fermi Echo Rig)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 0.0f, 0.0f, 12.0f)
+			[
+				SNew(SBorder)
+				.BorderBackgroundColor(MWTheme::GlassBorder)
+				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+				.Padding(1.0f)
+				[
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::DarkGlassCard)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(12.0f, 10.0f)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(0.0f, 0.0f, 0.0f, 6.0f)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("// ACTIVE LOADOUT CONFIGURATION")))
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+							.ColorAndOpacity(MWTheme::AmberAccent)
+						]
+						// Primary: NF-98 Carbine
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(0.0f, 2.0f)
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("PRIMARY: NF-98 CARBINE")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+								.ColorAndOpacity(MWTheme::TextPrimary)
+							]
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("7.62x39MM // SUPPRESSED // 40-RND // HOLO SIGHT")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+								.ColorAndOpacity(MWTheme::CyanAccent)
+							]
+						]
+						// Armor: LVL IV Ceramic Plates
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(0.0f, 4.0f)
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("ARMOR: LVL IV CERAMIC PLATES")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+								.ColorAndOpacity(MWTheme::TextPrimary)
+							]
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("FULL THORACIC PROTECTION // 250 EHP // TRAUMA ABSORPTION")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+								.ColorAndOpacity(MWTheme::EmeraldReady)
+							]
+						]
+						// Rig: Fermi Echo Rig
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(0.0f, 2.0f)
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("RIG: FERMI ECHO RIG")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+								.ColorAndOpacity(MWTheme::TextPrimary)
+							]
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("MODULAR KEVLAR HARNESS // 6x MAGS // HYDRATION BLADDER")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+								.ColorAndOpacity(MWTheme::TextSecondary)
+							]
+						]
+					]
+				]
+			]
+			// 2. Live Camo Swatch Inspector (DIGITAL, WOODLAND, DESERT, BLACKOUT)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 0.0f, 0.0f, 4.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("// LIVE CAMOUFLAGE SWATCHES")))
+				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+				.ColorAndOpacity(MWTheme::AmberAccent)
+			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(0.0f, 0.0f, 0.0f, 6.0f)
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(Title))
-				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-				.ColorAndOpacity(FLinearColor(0.95f, 0.65f, 0.15f, 1.0f))
-			];
-	};
-
-	auto MakeCamoButton = [this](uint8 Idx, const FString& Name, const FLinearColor& ChipColor) -> TSharedRef<SWidget>
-	{
-		return SNew(SBox)
-			.HeightOverride(38.0f)
-			.Padding(0.0f, 0.0f, 0.0f, 5.0f)
-			[
-				SNew(SButton)
-				.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
-				.OnClicked_Lambda([this, Idx]() { return HandleCamoSelected(Idx); })
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.Padding(10.0f, 0.0f, 8.0f, 0.0f)
-					[
-						SNew(SBox)
-						.WidthOverride(12.0f)
-						.HeightOverride(12.0f)
-						[
-							SNew(SBorder)
-							.BorderBackgroundColor(ChipColor)
-							.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1.0f)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(Name))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-						.ColorAndOpacity(FLinearColor(0.90f, 0.92f, 0.96f, 1.0f))
-					]
-				]
-			];
-	};
-
-	auto MakeItemButton = [](TFunction<FReply()> Callback, const FString& Name) -> TSharedRef<SWidget>
-	{
-		return SNew(SBox)
-			.HeightOverride(36.0f)
-			.Padding(0.0f, 0.0f, 0.0f, 5.0f)
-			[
-				SNew(SButton)
-				.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
-				.OnClicked_Lambda(Callback)
-				[
-					SNew(SBorder)
-					.BorderBackgroundColor(FLinearColor::Transparent)
-					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-					.Padding(10.0f, 0.0f)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(Name))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-						.ColorAndOpacity(FLinearColor(0.90f, 0.92f, 0.96f, 1.0f))
-					]
-				]
-			];
-	};
-
-	return SNew(SHorizontalBox)
-		// Left Panel: Camo, Headgear & Armor Vest
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.Padding(0.0f, 0.0f, 20.0f, 0.0f)
-		[
-			SNew(SBox)
-			.WidthOverride(330.0f)
-			[
-				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.025f, 0.035f, 0.055f, 0.92f))
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(14.0f)
-				[
-					SNew(SScrollBox)
-					+ SScrollBox::Slot()
-					[
-						SNew(SVerticalBox)
-						// 1. Camouflage
-						+ SVerticalBox::Slot().AutoHeight() [ MakeSectionHeader(TEXT("/// OPERATOR CAMOUFLAGE")) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeCamoButton(0, TEXT("URBAN DIGITAL (METRO GREY)"), FLinearColor(0.35f, 0.38f, 0.45f)) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeCamoButton(1, TEXT("WOODLAND TACTICAL (FOREST CAMO)"), FLinearColor(0.22f, 0.35f, 0.18f)) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeCamoButton(2, TEXT("DESERT SPEC OPS (COYOTE TAN)"), FLinearColor(0.60f, 0.52f, 0.38f)) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeCamoButton(3, TEXT("STEALTH BLACKOUT (MIDNIGHT)"), FLinearColor(0.08f, 0.08f, 0.10f)) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 12.0f)
-						[
-							SAssignNew(CamoStatusText, STextBlock)
-							.Text(FText::FromString(TEXT("PATTERN: URBAN DIGITAL // CHARCOAL")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-							.ColorAndOpacity(FLinearColor(0.40f, 0.75f, 1.0f, 1.0f))
-						]
-
-						// 2. Headgear
-						+ SVerticalBox::Slot().AutoHeight() [ MakeSectionHeader(TEXT("/// TACTICAL HEADGEAR")) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeItemButton([this]() { return HandleHeadgearSelected(0); }, TEXT("FAST BALLISTIC HELMET (HIGH CUT)")) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeItemButton([this]() { return HandleHeadgearSelected(1); }, TEXT("GPNVG-18 QUAD-NODS (PHOSPHOR GLOW)")) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeItemButton([this]() { return HandleHeadgearSelected(2); }, TEXT("SPEC OPS BALACLAVA (FIRE RETARDANT)")) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeItemButton([this]() { return HandleHeadgearSelected(3); }, TEXT("TACTICAL CAP & PELTOR HEADSET")) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 12.0f)
-						[
-							SAssignNew(HeadgearStatusText, STextBlock)
-							.Text(FText::FromString(TEXT("HEADGEAR: FAST BALLISTIC HELMET")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-							.ColorAndOpacity(FLinearColor(0.40f, 0.75f, 1.0f, 1.0f))
-						]
-
-						// 3. Armor Protection Vest
-						+ SVerticalBox::Slot().AutoHeight() [ MakeSectionHeader(TEXT("/// BALLISTIC ARMOR VEST")) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeItemButton([this]() { return HandleVestSelected(0); }, TEXT("LEVEL IV HEAVY CARRIER (CERAMIC PLATES)")) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeItemButton([this]() { return HandleVestSelected(1); }, TEXT("LIGHTWEIGHT JPC VEST (AGILE MOBILITY)")) ]
-						+ SVerticalBox::Slot().AutoHeight() [ MakeItemButton([this]() { return HandleVestSelected(2); }, TEXT("RECON TACTICAL RIG (MINIMALIST)")) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 6.0f)
-						[
-							SAssignNew(VestStatusText, STextBlock)
-							.Text(FText::FromString(TEXT("ARMOR: LEVEL IV HEAVY CARRIER")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-							.ColorAndOpacity(FLinearColor(0.40f, 0.75f, 1.0f, 1.0f))
-						]
-					]
-				]
+				.Text(FText::FromString(TEXT("CYCLE SWATCH TO UPDATE 3D MODEL IN REAL TIME:")))
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+				.ColorAndOpacity(MWTheme::TextMuted)
 			]
-		]
-
-		// Center: Transparent view opening framing the 3D rotating operator in aiming stance
-		+ SHorizontalBox::Slot()
-		.FillWidth(1.0f)
-		.VAlign(VAlign_Bottom)
-		.Padding(12.0f, 0.0f, 12.0f, 10.0f)
-		[
-			SNew(SBorder)
-			.BorderBackgroundColor(FLinearColor(0.02f, 0.03f, 0.05f, 0.80f))
-			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-			.Padding(16.0f, 8.0f)
-			.HAlign(HAlign_Center)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.VAlign(VAlign_Center)
-				.Padding(0.0f, 0.0f, 8.0f, 0.0f)
-				[
-					SNew(SBox)
-					.WidthOverride(8.0f)
-					.HeightOverride(8.0f)
-					[
-						SNew(SBorder)
-						.BorderBackgroundColor(FLinearColor(0.2f, 0.9f, 0.4f, 1.0f))
-						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-					]
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("LIVE 3D VIEWPORT // 360° TURNTABLE ROTATION // ADS AIM WEAPON ALIGNMENT")))
-					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-					.ColorAndOpacity(FLinearColor(0.90f, 0.92f, 0.96f, 1.0f))
-				]
-			]
-		]
-
-		// Right Panel: Stance, Turntable & Human Male Biometrics
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.Padding(20.0f, 0.0f, 0.0f, 0.0f)
-		[
-			SNew(SBox)
-			.WidthOverride(330.0f)
-			[
-				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.025f, 0.035f, 0.055f, 0.92f))
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(14.0f)
-				[
-					SNew(SScrollBox)
-					+ SScrollBox::Slot()
-					[
-						SNew(SVerticalBox)
-						// 1. Aiming Stance & Locomotion Preview
-						+ SVerticalBox::Slot().AutoHeight() [ MakeSectionHeader(TEXT("/// STANCE & LOCOMOTION CONTROLS")) ]
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							MakeItemButton([this]() { return HandleToggleAimingStance(); }, TEXT("CYCLE STANCE (AIMED ADS / LOW READY / WALK)"))
-						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(0.0f, 0.0f, 4.0f, 0.0f)
-							[
-								SNew(SButton)
-								.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
-								.OnClicked_Lambda([this]()
-								{
-									if (PreviewActor) PreviewActor->SetPreviewStance(0);
-									if (StanceStatusText.IsValid()) StanceStatusText->SetText(FText::FromString(TEXT("STANCE: AIMED WEAPON (AK-47 ADS // IK HAND LOCK)")));
-									return FReply::Handled();
-								})
-								.HAlign(HAlign_Center)
-								[
-									SNew(STextBlock).Text(FText::FromString(TEXT("AIMED ADS"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
-								]
-							]
-							+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(2.0f, 0.0f)
-							[
-								SNew(SButton)
-								.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
-								.OnClicked_Lambda([this]()
-								{
-									if (PreviewActor) PreviewActor->SetPreviewStance(1);
-									if (StanceStatusText.IsValid()) StanceStatusText->SetText(FText::FromString(TEXT("STANCE: LOW-READY PATROL (AK-47 LOWERED)")));
-									return FReply::Handled();
-								})
-								.HAlign(HAlign_Center)
-								[
-									SNew(STextBlock).Text(FText::FromString(TEXT("LOW READY"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
-								]
-							]
-							+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4.0f, 0.0f, 0.0f, 0.0f)
-							[
-								SNew(SButton)
-								.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
-								.OnClicked_Lambda([this]()
-								{
-									if (PreviewActor) PreviewActor->SetPreviewStance(2);
-									if (StanceStatusText.IsValid()) StanceStatusText->SetText(FText::FromString(TEXT("STANCE: TACTICAL WALK CYCLE (AIMED GAIT)")));
-									return FReply::Handled();
-								})
-								.HAlign(HAlign_Center)
-								[
-									SNew(STextBlock).Text(FText::FromString(TEXT("WALK ANIM"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
-								]
-							]
-						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 12.0f)
-						[
-							SAssignNew(StanceStatusText, STextBlock)
-							.Text(FText::FromString(TEXT("STANCE: AIMED WEAPON (AK-47 ADS // IK HAND LOCK)")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-							.ColorAndOpacity(FLinearColor(0.95f, 0.75f, 0.2f, 1.0f))
-						]
-
-						// 2. Turntable Rotation
-						+ SVerticalBox::Slot().AutoHeight() [ MakeSectionHeader(TEXT("/// TURNTABLE ROTATION")) ]
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							MakeItemButton([this]() { return HandleToggleTurntableRotation(); }, TEXT("PAUSE / RESUME ROTATION"))
-						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(0.0f, 0.0f, 4.0f, 0.0f)
-							[
-								SNew(SButton)
-								.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
-								.OnClicked_Lambda([this]() { return HandleSetRotationSpeed(12.0f); })
-								.HAlign(HAlign_Center)
-								[
-									SNew(STextBlock).Text(FText::FromString(TEXT("12°/s"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
-								]
-							]
-							+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(2.0f, 0.0f)
-							[
-								SNew(SButton)
-								.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
-								.OnClicked_Lambda([this]() { return HandleSetRotationSpeed(24.0f); })
-								.HAlign(HAlign_Center)
-								[
-									SNew(STextBlock).Text(FText::FromString(TEXT("24°/s"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
-								]
-							]
-							+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4.0f, 0.0f, 0.0f, 0.0f)
-							[
-								SNew(SButton)
-								.ButtonColorAndOpacity(FLinearColor(0.08f, 0.11f, 0.16f, 1.0f))
-								.OnClicked_Lambda([this]() { return HandleSetRotationSpeed(45.0f); })
-								.HAlign(HAlign_Center)
-								[
-									SNew(STextBlock).Text(FText::FromString(TEXT("45°/s"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
-								]
-							]
-						]
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							MakeItemButton([this]() { return HandleResetTurntableFacing(); }, TEXT("RESET FRONT FACING (0° YAW)"))
-						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 12.0f)
-						[
-							SAssignNew(RotationSpeedText, STextBlock)
-							.Text(FText::FromString(TEXT("ROTATION: ACTIVE (18.0 DEG/SEC)")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-							.ColorAndOpacity(FLinearColor(0.40f, 0.75f, 1.0f, 1.0f))
-						]
-
-						// 3. Male Skeletal Anatomy Telemetry
-						+ SVerticalBox::Slot().AutoHeight() [ MakeSectionHeader(TEXT("/// SKELETAL ANATOMY & BIOMETRICS")) ]
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							SNew(SBorder)
-							.BorderBackgroundColor(FLinearColor(0.015f, 0.02f, 0.03f, 0.95f))
-							.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-							.Padding(10.0f)
-							[
-								SNew(SVerticalBox)
-								+ SVerticalBox::Slot().AutoHeight()
-								[
-									SNew(STextBlock)
-									.Text(FText::FromString(TEXT("• MODEL: ADULT HUMAN MALE\n"
-										"• HEIGHT: 180.0 CM STANDING\n"
-										"• TOTAL MASS: 82.0 KG (ANTHROPOMETRIC)\n"
-										"• SKELETAL BONES: 21 HIERARCHICAL NODES\n"
-										"• ARMOR: LEVEL IV CERAMIC (CHEST/THORACIC)\n"
-										"• FLINCH: 2ND-ORDER SPRING-MASS-DAMPER\n"
-										"• SWAY: FIRST-PERSON ADS STABILIZED\n"
-										"• IK: 2-BONE PROCEDURAL FOOT ADJUSTMENT")))
-									.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
-									.ColorAndOpacity(FLinearColor(0.70f, 0.75f, 0.85f, 1.0f))
-								]
-							]
-						]
-					]
-				]
-			]
-		];
-}
-
-TSharedRef<SWidget> UMainMenuWidget::BuildHomeView()
-{
-	return SNew(SScrollBox)
-		+ SScrollBox::Slot()
-		.Padding(0.0f, 0.0f, 16.0f, 0.0f)
-		[
-			SNew(SVerticalBox)
-			// Hero Tactical Banner
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(0.0f, 0.0f, 0.0f, 16.0f)
 			[
-				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.05f, 0.07f, 0.11f, 0.95f))
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(20.0f)
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("MODERN COMBAT OPERATIONS")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 18))
-						.ColorAndOpacity(FLinearColor(0.95f, 0.65f, 0.15f, 1.0f))
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(0.0f, 6.0f, 0.0f, 0.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("Tactical 128-tick multiplayer shooter with authoritative physics, procedural weapon sway, human male ballistics, and dedicated server hosting.")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-						.ColorAndOpacity(FLinearColor(0.70f, 0.75f, 0.85f, 1.0f))
-					]
-				]
+				MakeCamoSwatchButton(0, TEXT("DIGITAL"), TEXT("Urban Digital Metro // Gray & Charcoal"), FLinearColor(0.28f, 0.32f, 0.38f))
 			]
-			// Quick Play CTA Action Card
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(0.0f, 0.0f, 0.0f, 16.0f)
 			[
-				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.09f, 0.14f, 0.22f, 0.95f))
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(20.0f)
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.FillWidth(1.0f)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("QUICKPLAY — INSTANT COMBAT")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
-							.ColorAndOpacity(FLinearColor(0.92f, 0.95f, 1.0f, 1.0f))
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(0.0f, 4.0f, 0.0f, 0.0f)
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("Launches local 128-tick listen server or connects to the lowest ping regional node.")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-							.ColorAndOpacity(FLinearColor(0.55f, 0.65f, 0.78f, 1.0f))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.Padding(16.0f, 0.0f, 0.0f, 0.0f)
-					[
-						SNew(SBox)
-						.WidthOverride(180.0f)
-						.HeightOverride(46.0f)
-						[
-							SNew(SButton)
-							.ButtonColorAndOpacity(FLinearColor(0.95f, 0.65f, 0.15f, 1.0f))
-							.OnClicked_Lambda([this]() { return HandleQuickplayClicked(); })
-							[
-								SNew(SBorder)
-								.BorderBackgroundColor(FLinearColor::Transparent)
-								.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-								.HAlign(HAlign_Center)
-								.VAlign(VAlign_Center)
-								[
-									SNew(STextBlock)
-									.Text(FText::FromString(TEXT("DEPLOY NOW")))
-									.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
-									.ColorAndOpacity(FLinearColor(0.05f, 0.06f, 0.08f, 1.0f))
-								]
-							]
-						]
-					]
-				]
+				MakeCamoSwatchButton(1, TEXT("WOODLAND"), TEXT("Woodland Tactical // Olive Drab & Khaki"), FLinearColor(0.18f, 0.26f, 0.14f))
 			]
-			// Game Modes List
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(0.0f, 0.0f, 0.0f, 8.0f)
+			[
+				MakeCamoSwatchButton(2, TEXT("DESERT"), TEXT("Desert Spec Ops // Coyote Tan & FDE"), FLinearColor(0.50f, 0.44f, 0.32f))
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				MakeCamoSwatchButton(3, TEXT("BLACKOUT"), TEXT("Stealth Blackout // Midnight Matte"), FLinearColor(0.06f, 0.06f, 0.08f))
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 2.0f, 0.0f, 10.0f)
+			[
+				SAssignNew(CamoStatusText, STextBlock)
+				.Text(FText::FromString(TEXT("ACTIVE SWATCH: DIGITAL // URBAN CHARCOAL")))
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+				.ColorAndOpacity(MWTheme::CyanAccent)
+			]
+			// 3. Stance & Locomotion Controls
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 0.0f, 0.0f, 4.0f)
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("PLAYLIST ROTATION:")))
-				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-				.ColorAndOpacity(FLinearColor(0.40f, 0.48f, 0.60f, 1.0f))
+				.Text(FText::FromString(TEXT("// OPERATOR STANCE")))
+				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+				.ColorAndOpacity(MWTheme::AmberAccent)
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(0.0f, 0.0f, 0.0f, 8.0f)
+			.Padding(0.0f, 0.0f, 0.0f, 4.0f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(0.0f, 0.0f, 3.0f, 0.0f)
+				[
+					SNew(SButton)
+					.ButtonColorAndOpacity(MWTheme::DarkGlassCard)
+					.OnClicked_Lambda([this]()
+					{
+						if (PreviewActor) PreviewActor->SetPreviewStance(0);
+						if (StanceStatusText.IsValid()) StanceStatusText->SetText(FText::FromString(TEXT("STANCE: AIMED ADS (SM_AK47)")));
+						return FReply::Handled();
+					})
+					.HAlign(HAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("ADS"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8)).ColorAndOpacity(MWTheme::CyanAccent)
+					]
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(2.0f, 0.0f)
+				[
+					SNew(SButton)
+					.ButtonColorAndOpacity(MWTheme::DarkGlassCard)
+					.OnClicked_Lambda([this]()
+					{
+						if (PreviewActor) PreviewActor->SetPreviewStance(1);
+						if (StanceStatusText.IsValid()) StanceStatusText->SetText(FText::FromString(TEXT("STANCE: LOW READY PATROL")));
+						return FReply::Handled();
+					})
+					.HAlign(HAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("LOW READY"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8)).ColorAndOpacity(MWTheme::TextPrimary)
+					]
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(3.0f, 0.0f, 0.0f, 0.0f)
+				[
+					SNew(SButton)
+					.ButtonColorAndOpacity(MWTheme::DarkGlassCard)
+					.OnClicked_Lambda([this]()
+					{
+						if (PreviewActor) PreviewActor->SetPreviewStance(2);
+						if (StanceStatusText.IsValid()) StanceStatusText->SetText(FText::FromString(TEXT("STANCE: TACTICAL WALK CYCLE")));
+						return FReply::Handled();
+					})
+					.HAlign(HAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("WALK"))).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8)).ColorAndOpacity(MWTheme::TextPrimary)
+					]
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 0.0f, 0.0f, 10.0f)
+			[
+				SAssignNew(StanceStatusText, STextBlock)
+				.Text(FText::FromString(TEXT("STANCE: AIMED ADS (SM_AK47)")))
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+				.ColorAndOpacity(MWTheme::CyanAccent)
+			]
+			// 4. Headgear & Vest Quick Toggles
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 0.0f, 0.0f, 4.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("// TACTICAL GEAR VARIANTS")))
+				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+				.ColorAndOpacity(MWTheme::AmberAccent)
+			]
+			+ SVerticalBox::Slot().AutoHeight() [ MakeQuickItemBtn([this]() { return HandleHeadgearSelected(0); }, TEXT("FAST BALLISTIC HELMET")) ]
+			+ SVerticalBox::Slot().AutoHeight() [ MakeQuickItemBtn([this]() { return HandleHeadgearSelected(1); }, TEXT("GPNVG-18 QUAD-NODS (PHOSPHOR)")) ]
+			+ SVerticalBox::Slot().AutoHeight() [ MakeQuickItemBtn([this]() { return HandleHeadgearSelected(2); }, TEXT("SPEC OPS BALACLAVA")) ]
+			+ SVerticalBox::Slot().AutoHeight() [ MakeQuickItemBtn([this]() { return HandleVestSelected(0); }, TEXT("LEVEL IV HEAVY CARRIER")) ]
+			+ SVerticalBox::Slot().AutoHeight() [ MakeQuickItemBtn([this]() { return HandleVestSelected(1); }, TEXT("LIGHTWEIGHT JPC VEST")) ]
+			// 5. Biometrics & Skeletal Telemetry
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
 			[
 				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.04f, 0.06f, 0.09f, 0.9f))
+				.BorderBackgroundColor(MWTheme::GlassBorder)
 				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(14.0f)
+				.Padding(1.0f)
 				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::DarkGlassCard)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(10.0f, 8.0f)
 					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("• TEAM DEATHMATCH (6v6) — 7,500 Score Limit, Classic MW2 Pace")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-						.ColorAndOpacity(FLinearColor(0.85f, 0.88f, 0.94f, 1.0f))
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(0.0f, 6.0f, 0.0f, 0.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("• SEARCH & DESTROY — Single-life tactical demolition and site defense")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-						.ColorAndOpacity(FLinearColor(0.85f, 0.88f, 0.94f, 1.0f))
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(0.0f, 6.0f, 0.0f, 0.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("• DOMINATION — 3-flag continuous area control and frontline warfare")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-						.ColorAndOpacity(FLinearColor(0.85f, 0.88f, 0.94f, 1.0f))
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("// BIOMETRICS & RIGGING")))
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+							.ColorAndOpacity(MWTheme::TextMuted)
+						]
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("• MODEL: HUMAN MALE 180 CM // 82 KG\n"
+								"• MESH: SK_BASEMALE (M_OPERATOR_BASEBODY)\n"
+								"• WEAPON: SM_AK47 RIGGED TO WEAPON_R\n"
+								"• IK: TWO-BONE LEFT-HAND & FOOT IK READY\n"
+								"• NETWORKING: 128 HZ TICK REPLICATION")))
+							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+							.ColorAndOpacity(MWTheme::TextSecondary)
+						]
 					]
 				]
 			]
@@ -824,100 +1223,119 @@ TSharedRef<SWidget> UMainMenuWidget::BuildGunsmithView()
 			.Padding(0.0f, 0.0f, 0.0f, 6.0f)
 			[
 				SNew(SButton)
-				.ButtonColorAndOpacity(FLinearColor(0.07f, 0.09f, 0.13f, 1.0f))
+				.ButtonColorAndOpacity(FLinearColor::Transparent)
+				.ContentPadding(0.0f)
 				.OnClicked_Lambda([this, Idx]() { return HandleSelectArchetype(Idx); })
 				[
 					SNew(SBorder)
-					.BorderBackgroundColor(FLinearColor::Transparent)
+					.BorderBackgroundColor(MWTheme::GlassBorder)
 					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-					.Padding(12.0f, 6.0f)
+					.Padding(1.0f)
 					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.FillWidth(1.0f)
-						.VAlign(VAlign_Center)
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::DarkGlassCard)
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(12.0f, 6.0f)
 						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot()
-							.AutoHeight()
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.FillWidth(1.0f)
+							.VAlign(VAlign_Center)
+							[
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(Name))
+									.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+									.ColorAndOpacity(MWTheme::TextPrimary)
+								]
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(0.0f, 2.0f, 0.0f, 0.0f)
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(Weapon + TEXT(" // ") + Role))
+									.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+									.ColorAndOpacity(MWTheme::TextMuted)
+								]
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
 							[
 								SNew(STextBlock)
-								.Text(FText::FromString(Name))
-								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-								.ColorAndOpacity(FLinearColor(0.92f, 0.94f, 0.98f, 1.0f))
+								.Text(FText::FromString(TEXT("SELECT >")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+								.ColorAndOpacity(MWTheme::CyanAccent)
 							]
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.Padding(0.0f, 2.0f, 0.0f, 0.0f)
-							[
-								SNew(STextBlock)
-								.Text(FText::FromString(Weapon + TEXT(" // ") + Role))
-								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-								.ColorAndOpacity(FLinearColor(0.50f, 0.58f, 0.70f, 1.0f))
-							]
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("SELECT >")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
-							.ColorAndOpacity(FLinearColor(0.95f, 0.65f, 0.15f, 0.8f))
 						]
 					]
 				]
 			];
 	};
 
-	return SNew(SHorizontalBox)
-		// Left Archetypes List
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.Padding(0.0f, 0.0f, 20.0f, 0.0f)
-		[
-			SNew(SBox)
-			.WidthOverride(340.0f)
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(0.0f, 0.0f, 0.0f, 10.0f)
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("/// SELECT COMBAT LOADOUT")))
-					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-					.ColorAndOpacity(FLinearColor(0.40f, 0.48f, 0.60f, 1.0f))
-				]
-				+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(0, TEXT("CLASS 1: ASSAULT"), TEXT("M4A1 Full-Auto Rifle"), TEXT("Jack of all Trades")) ]
-				+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(1, TEXT("CLASS 2: SPEC OPS STEALTH"), TEXT("MP5SD Silenced SMG"), TEXT("Ghost / Flanker")) ]
-				+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(2, TEXT("CLASS 3: HEAVY GUNNER"), TEXT("L86 LSW 100-Round Drum"), TEXT("Continuous Suppression")) ]
-				+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(3, TEXT("CLASS 4: RECON SNIPER"), TEXT("INTERVENTION .50"), TEXT("One-Shot Lethality")) ]
-				+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(4, TEXT("CLASS 5: RUN & GUN RUSHER"), TEXT("VECTOR .45 ACP"), TEXT("Extreme Rate of Fire")) ]
-			]
-		]
-		// Right Loadout & Attachment Details
-		+ SHorizontalBox::Slot()
-		.FillWidth(1.0f)
+	return SNew(SBackgroundBlur)
+		.BlurStrength(14.0f)
+		.bApplyAlphaToBlur(true)
+		.Padding(0.0f)
 		[
 			SNew(SBorder)
-			.BorderBackgroundColor(FLinearColor(0.035f, 0.045f, 0.065f, 0.95f))
+			.BorderBackgroundColor(MWTheme::DarkGlass)
 			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-			.Padding(20.0f)
+			.Padding(18.0f)
 			[
-				SNew(SScrollBox)
-				+ SScrollBox::Slot()
+				SNew(SHorizontalBox)
+				// Left Archetypes List
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(0.0f, 0.0f, 20.0f, 0.0f)
 				[
-					SAssignNew(SelectedLoadoutDetails, STextBlock)
-					.Text(FText::FromString(TEXT("SELECTED: CLASS 1 (ASSAULT)\n\n"
-						"PRIMARY: M4A1 RIFLE (Attachments: Red Dot Sight, Compensator, 40-Rnd Mag, Stippled Grip)\n"
-						"SECONDARY: USP .45 Tactical (Tactical Knife)\n"
-						"LETHAL: Frag Grenade (4.0s cookable fuse, cooking tick)\n"
-						"TACTICAL: Flashbang (Disorientation + LOS blinding)\n"
-						"PERKS: Sleight of Hand Pro | Stopping Power | Ninja Pro\n\n"
-						"RECOIL STATS: Kick 1.2° | ADS Speed 210ms | Effective Range 45m | Muzzle Velocity 880 m/s")))
-					.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-					.ColorAndOpacity(FLinearColor(0.85f, 0.88f, 0.95f, 1.0f))
+					SNew(SBox)
+					.WidthOverride(360.0f)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(0.0f, 0.0f, 0.0f, 10.0f)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("/// GUNSMITH COMBAT LOADOUTS")))
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
+							.ColorAndOpacity(MWTheme::CyanAccent)
+						]
+						+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(0, TEXT("CLASS 1: ASSAULT"), TEXT("M4A1 Full-Auto Rifle"), TEXT("Jack of all Trades")) ]
+						+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(1, TEXT("CLASS 2: SPEC OPS STEALTH"), TEXT("MP5SD Silenced SMG"), TEXT("Ghost / Flanker")) ]
+						+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(2, TEXT("CLASS 3: HEAVY GUNNER"), TEXT("L86 LSW 100-Round Drum"), TEXT("Continuous Suppression")) ]
+						+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(3, TEXT("CLASS 4: RECON SNIPER"), TEXT("INTERVENTION .50"), TEXT("One-Shot Lethality")) ]
+						+ SVerticalBox::Slot().AutoHeight() [ MakeArchetypeBtn(4, TEXT("CLASS 5: RUN & GUN RUSHER"), TEXT("VECTOR .45 ACP"), TEXT("Extreme Rate of Fire")) ]
+					]
+				]
+				// Right Loadout & Attachment Details
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				[
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::DarkGlassCard)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(20.0f)
+					[
+						SNew(SScrollBox)
+						+ SScrollBox::Slot()
+						[
+							SAssignNew(SelectedLoadoutDetails, STextBlock)
+							.Text(FText::FromString(TEXT("SELECTED: CLASS 1 (ASSAULT)\n\n"
+								"PRIMARY: M4A1 RIFLE (Attachments: Red Dot Sight, Compensator, 40-Rnd Mag, Stippled Grip)\n"
+								"SECONDARY: USP .45 Tactical (Tactical Knife)\n"
+								"LETHAL: Frag Grenade (4.0s cookable fuse, cooking tick)\n"
+								"TACTICAL: Flashbang (Disorientation + LOS blinding)\n"
+								"PERKS: Sleight of Hand Pro | Stopping Power | Ninja Pro\n\n"
+								"RECOIL STATS: Kick 1.2° | ADS Speed 210ms | Effective Range 45m | Muzzle Velocity 880 m/s")))
+							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+							.ColorAndOpacity(MWTheme::TextPrimary)
+						]
+					]
 				]
 			]
 		];
@@ -925,197 +1343,76 @@ TSharedRef<SWidget> UMainMenuWidget::BuildGunsmithView()
 
 TSharedRef<SWidget> UMainMenuWidget::BuildServerBrowserView()
 {
-	return SNew(SVerticalBox)
-		// Section Header
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(0.0f, 0.0f, 0.0f, 14.0f)
-		[
-			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("/// MULTIPLAYER HOSTING & VPS DIRECT CONNECT")))
-			.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-			.ColorAndOpacity(FLinearColor(0.40f, 0.48f, 0.60f, 1.0f))
-		]
-		// Direct IP Connection Box
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(0.0f, 0.0f, 0.0f, 16.0f)
+	return SNew(SBackgroundBlur)
+		.BlurStrength(14.0f)
+		.bApplyAlphaToBlur(true)
+		.Padding(0.0f)
 		[
 			SNew(SBorder)
-			.BorderBackgroundColor(FLinearColor(0.05f, 0.07f, 0.11f, 0.95f))
+			.BorderBackgroundColor(MWTheme::DarkGlass)
 			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
 			.Padding(18.0f)
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot()
 				.AutoHeight()
+				.Padding(0.0f, 0.0f, 0.0f, 14.0f)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("CONNECT DIRECTLY TO DEDICATED SERVER / VPS")))
-					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
-					.ColorAndOpacity(FLinearColor(0.92f, 0.95f, 1.0f, 1.0f))
+					.Text(FText::FromString(TEXT("/// MULTIPLAYER HOSTING & VPS DIRECT CONNECT")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+					.ColorAndOpacity(MWTheme::CyanAccent)
 				]
+				// Server List Preview
 				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(0.0f, 4.0f, 0.0f, 10.0f)
+				.FillHeight(1.0f)
 				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("Enter VPS IP and Port (e.g., 127.0.0.1:7777 or your public VPS IP). Uses 128-tick authoritative replication.")))
-					.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-					.ColorAndOpacity(FLinearColor(0.55f, 0.62f, 0.72f, 1.0f))
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.FillWidth(1.0f)
-					.Padding(0.0f, 0.0f, 12.0f, 0.0f)
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::DarkGlassCard)
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(14.0f)
 					[
-						SAssignNew(DirectConnectInput, SEditableTextBox)
-						.Text(FText::FromString(TEXT("127.0.0.1:7777")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-						.HintText(FText::FromString(TEXT("IP_ADDRESS:PORT")))
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SNew(SBox)
-						.WidthOverride(140.0f)
-						.HeightOverride(36.0f)
+						SNew(SScrollBox)
+						+ SScrollBox::Slot()
 						[
-							SNew(SButton)
-							.ButtonColorAndOpacity(FLinearColor(0.12f, 0.45f, 0.25f, 1.0f))
-							.OnClicked_Lambda([this]() { return HandleDirectConnectClicked(); })
-							[
-								SNew(SBorder)
-								.BorderBackgroundColor(FLinearColor::Transparent)
-								.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-								.HAlign(HAlign_Center)
-								.VAlign(VAlign_Center)
-								[
-									SNew(STextBlock)
-									.Text(FText::FromString(TEXT("CONNECT")))
-									.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-									.ColorAndOpacity(FLinearColor::White)
-								]
-							]
-						]
-					]
-				]
-			]
-		]
-		// Host Listen Server Box
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(0.0f, 0.0f, 0.0f, 16.0f)
-		[
-			SNew(SBorder)
-			.BorderBackgroundColor(FLinearColor(0.05f, 0.07f, 0.11f, 0.95f))
-			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-			.Padding(18.0f)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				.VAlign(VAlign_Center)
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("HOST LISTEN ROOM FROM CLIENT")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
-						.ColorAndOpacity(FLinearColor(0.92f, 0.95f, 1.0f, 1.0f))
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(0.0f, 4.0f, 0.0f, 0.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("Launch a peer-hosted match (?listen) directly from your client machine. Friends can connect via your IP.")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-						.ColorAndOpacity(FLinearColor(0.55f, 0.62f, 0.72f, 1.0f))
-					]
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.VAlign(VAlign_Center)
-				.Padding(16.0f, 0.0f, 0.0f, 0.0f)
-				[
-					SNew(SBox)
-					.WidthOverride(160.0f)
-					.HeightOverride(40.0f)
-					[
-						SNew(SButton)
-						.ButtonColorAndOpacity(FLinearColor(0.20f, 0.35f, 0.60f, 1.0f))
-						.OnClicked_Lambda([this]() { return HandleHostListenClicked(); })
-						[
-							SNew(SBorder)
-							.BorderBackgroundColor(FLinearColor::Transparent)
-							.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(0.0f, 0.0f, 0.0f, 8.0f)
 							[
 								SNew(STextBlock)
-								.Text(FText::FromString(TEXT("HOST LISTEN ROOM")))
+								.Text(FText::FromString(TEXT("AVAILABLE REGIONAL SERVERS (128-TICK DEDICATED VPS NODES)")))
 								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-								.ColorAndOpacity(FLinearColor::White)
+								.ColorAndOpacity(MWTheme::AmberAccent)
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(0.0f, 4.0f)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("• [EU CENTRAL] Frankfurt #1 — 12/12 Players | Map: Rust Tactical | Ping: 18ms")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+								.ColorAndOpacity(MWTheme::TextPrimary)
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(0.0f, 4.0f)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("• [US EAST] Virginia #2 — 8/12 Players | Map: Terminal 24/7 | Ping: 82ms")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+								.ColorAndOpacity(MWTheme::TextPrimary)
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(0.0f, 4.0f)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("• [LOCAL VPS] 127.0.0.1:7777 — Standalone Dedicated Server Binary Ready")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+								.ColorAndOpacity(MWTheme::EmeraldReady)
 							]
 						]
-					]
-				]
-			]
-		]
-		// Server List Preview
-		+ SVerticalBox::Slot()
-		.FillHeight(1.0f)
-		[
-			SNew(SBorder)
-			.BorderBackgroundColor(FLinearColor(0.035f, 0.045f, 0.065f, 0.95f))
-			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-			.Padding(14.0f)
-			[
-				SNew(SScrollBox)
-				+ SScrollBox::Slot()
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(0.0f, 0.0f, 0.0f, 8.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("AVAILABLE REGIONAL SERVERS (128-TICK DEDICATED VPS NODES)")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-						.ColorAndOpacity(FLinearColor(0.95f, 0.65f, 0.15f, 1.0f))
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(0.0f, 4.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("• [EU CENTRAL] Frankfurt #1 — 12/12 Players | Map: Rust Tactical | Ping: 18ms")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-						.ColorAndOpacity(FLinearColor(0.85f, 0.88f, 0.94f, 1.0f))
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(0.0f, 4.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("• [US EAST] Virginia #2 — 8/12 Players | Map: Terminal 24/7 | Ping: 82ms")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-						.ColorAndOpacity(FLinearColor(0.85f, 0.88f, 0.94f, 1.0f))
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(0.0f, 4.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("• [LOCAL VPS] 127.0.0.1:7777 — Standalone Dedicated Server Binary Ready")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-						.ColorAndOpacity(FLinearColor(0.2f, 0.9f, 0.4f, 1.0f))
 					]
 				]
 			]
@@ -1124,81 +1421,92 @@ TSharedRef<SWidget> UMainMenuWidget::BuildServerBrowserView()
 
 TSharedRef<SWidget> UMainMenuWidget::BuildSettingsView()
 {
-	return SNew(SScrollBox)
-		+ SScrollBox::Slot()
-		.Padding(0.0f, 0.0f, 16.0f, 0.0f)
+	return SNew(SBackgroundBlur)
+		.BlurStrength(14.0f)
+		.bApplyAlphaToBlur(true)
+		.Padding(0.0f)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(0.0f, 0.0f, 0.0f, 12.0f)
+			SNew(SBorder)
+			.BorderBackgroundColor(MWTheme::DarkGlass)
+			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+			.Padding(18.0f)
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("/// OPERATOR PREFERENCES & CLIENT SETTINGS")))
-				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-				.ColorAndOpacity(FLinearColor(0.40f, 0.48f, 0.60f, 1.0f))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(0.0f, 0.0f, 0.0f, 12.0f)
-			[
-				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.04f, 0.06f, 0.09f, 0.95f))
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(18.0f)
+				SNew(SScrollBox)
+				+ SScrollBox::Slot()
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
 					.AutoHeight()
+					.Padding(0.0f, 0.0f, 0.0f, 12.0f)
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("GAMEPLAY & CONTROLS:")))
+						.Text(FText::FromString(TEXT("/// OPERATOR PREFERENCES & CLIENT SETTINGS")))
 						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-						.ColorAndOpacity(FLinearColor(0.95f, 0.65f, 0.15f, 1.0f))
+						.ColorAndOpacity(MWTheme::CyanAccent)
 					]
 					+ SVerticalBox::Slot()
 					.AutoHeight()
-					.Padding(0.0f, 6.0f, 0.0f, 0.0f)
+					.Padding(0.0f, 0.0f, 0.0f, 12.0f)
 					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("• Field of View (FOV): 105° Vertical | ADS Relative Scaling Enabled\n"
-							"• Mouse Sensitivity: 1.85 (Raw Input, Zero Acceleration)\n"
-							"• Invert Y Axis: Disabled\n"
-							"• Weapon Mount Activation: ADS + Melee Key\n"
-							"• Tactical Sprint Behavior: Double Tap W / Shift")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-						.ColorAndOpacity(FLinearColor(0.85f, 0.88f, 0.95f, 1.0f))
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::DarkGlassCard)
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(18.0f)
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("GAMEPLAY & CONTROLS:")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+								.ColorAndOpacity(MWTheme::AmberAccent)
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(0.0f, 6.0f, 0.0f, 0.0f)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("• Field of View (FOV): 105° Vertical | ADS Relative Scaling Enabled\n"
+									"• Mouse Sensitivity: 1.85 (Raw Input, Zero Acceleration)\n"
+									"• Invert Y Axis: Disabled\n"
+									"• Weapon Mount Activation: ADS + Melee Key\n"
+									"• Tactical Sprint Behavior: Double Tap W / Shift")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+								.ColorAndOpacity(MWTheme::TextPrimary)
+							]
+						]
 					]
-				]
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(SBorder)
-				.BorderBackgroundColor(FLinearColor(0.04f, 0.06f, 0.09f, 0.95f))
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(18.0f)
-				[
-					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("AUDIO & ACOUSTIC SIMULATION:")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-						.ColorAndOpacity(FLinearColor(0.95f, 0.65f, 0.15f, 1.0f))
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(0.0f, 6.0f, 0.0f, 0.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("• Master Volume: 100% | Effects: 100% | Music: 45%\n"
-							"• Acoustic Occlusion: Geometric raycast attenuation enabled\n"
-							"• Concussion Tinnitus: High-frequency ear ringing on close explosion\n"
-							"• Hitmaker Sound: Classic MW2 high-clarity metallic chirp")))
-						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-						.ColorAndOpacity(FLinearColor(0.85f, 0.88f, 0.95f, 1.0f))
+						SNew(SBorder)
+						.BorderBackgroundColor(MWTheme::DarkGlassCard)
+						.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+						.Padding(18.0f)
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("AUDIO & ACOUSTIC SIMULATION:")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+								.ColorAndOpacity(MWTheme::AmberAccent)
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(0.0f, 6.0f, 0.0f, 0.0f)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("• Master Volume: 100% | Effects: 100% | Music: 45%\n"
+									"• Acoustic Occlusion: Geometric raycast attenuation enabled\n"
+									"• Concussion Tinnitus: High-frequency ear ringing on close explosion\n"
+									"• Hitmaker Sound: Classic MW2 high-clarity metallic chirp")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+								.ColorAndOpacity(MWTheme::TextPrimary)
+							]
+						]
 					]
 				]
 			]
@@ -1213,9 +1521,9 @@ TSharedRef<SWidget> UMainMenuWidget::BuildFooter()
 		.VAlign(VAlign_Center)
 		[
 			SAssignNew(NetworkStatusText, STextBlock)
-			.Text(FText::FromString(TEXT("SYSTEM READY // ENGINE: UE 5.8 // BUILD: STANDALONE MONOLITHIC // NET: 128-HZ")))
-			.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-			.ColorAndOpacity(FLinearColor(0.45f, 0.50f, 0.60f, 1.0f))
+			.Text(FText::FromString(TEXT("SYSTEM: READY // ENGINE: UE 5.8 // BUILD: STANDALONE WIN64 // NET: 128-HZ")))
+			.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+			.ColorAndOpacity(MWTheme::TextMuted)
 		]
 		+ SHorizontalBox::Slot()
 		.FillWidth(1.0f)
@@ -1223,9 +1531,9 @@ TSharedRef<SWidget> UMainMenuWidget::BuildFooter()
 		.VAlign(VAlign_Center)
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("PRESS [ESC] TO CLOSE // NOBLE FERMI MULTIPLAYER")))
-			.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-			.ColorAndOpacity(FLinearColor(0.45f, 0.50f, 0.60f, 1.0f))
+			.Text(FText::FromString(TEXT("NOBLE FERMI // MODERN WARFARE TACTICAL LOBBY")))
+			.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+			.ColorAndOpacity(MWTheme::TextMuted)
 		];
 }
 
@@ -1239,19 +1547,17 @@ void UMainMenuWidget::NavigateToSection(EFPSMenuSection Section)
 		{
 		case EFPSMenuSection::Home:
 		case EFPSMenuSection::Play:
-			TargetIndex = 0;
-			break;
 		case EFPSMenuSection::Customization:
-			TargetIndex = 1;
+			TargetIndex = 0; // Modern Warfare 3-Zone Lobby!
 			break;
 		case EFPSMenuSection::Loadout:
-			TargetIndex = 2;
+			TargetIndex = 1; // Gunsmith View
 			break;
 		case EFPSMenuSection::ServerBrowser:
-			TargetIndex = 3;
+			TargetIndex = 2; // Server Browser View
 			break;
 		case EFPSMenuSection::Settings:
-			TargetIndex = 4;
+			TargetIndex = 3; // Settings View
 			break;
 		default:
 			TargetIndex = 0;
@@ -1260,12 +1566,55 @@ void UMainMenuWidget::NavigateToSection(EFPSMenuSection Section)
 		ContentSwitcher->SetActiveWidgetIndex(TargetIndex);
 	}
 
+	UpdateTabVisuals();
+
 	if (TransitionSound)
 	{
 		UGameplayStatics::PlaySound2D(this, TransitionSound);
 	}
 
 	OnSectionChanged.Broadcast(Section);
+}
+
+void UMainMenuWidget::UpdateModeCardVisuals()
+{
+	if (ModeCardBorder0.IsValid())
+	{
+		ModeCardBorder0->SetBorderBackgroundColor(SelectedModeIndex == 0 ? MWTheme::ActiveBorder : MWTheme::GlassBorder);
+	}
+	if (ModeCardBorder1.IsValid())
+	{
+		ModeCardBorder1->SetBorderBackgroundColor(SelectedModeIndex == 1 ? MWTheme::ActiveBorder : MWTheme::GlassBorder);
+	}
+	if (ModeCardBorder2.IsValid())
+	{
+		ModeCardBorder2->SetBorderBackgroundColor(SelectedModeIndex == 2 ? MWTheme::ActiveBorder : MWTheme::GlassBorder);
+	}
+}
+
+void UMainMenuWidget::UpdateTabVisuals()
+{
+	const bool bIsPlayOrLobby = (CurrentSection == EFPSMenuSection::Play || CurrentSection == EFPSMenuSection::Home);
+	const bool bIsOperator = (CurrentSection == EFPSMenuSection::Customization);
+	const bool bIsGunsmith = (CurrentSection == EFPSMenuSection::Loadout);
+	const bool bIsSettings = (CurrentSection == EFPSMenuSection::Settings);
+
+	if (TabIndicatorPlay.IsValid())
+	{
+		TabIndicatorPlay->SetBorderBackgroundColor(bIsPlayOrLobby ? MWTheme::CyanAccent : FLinearColor::Transparent);
+	}
+	if (TabIndicatorOperator.IsValid())
+	{
+		TabIndicatorOperator->SetBorderBackgroundColor(bIsOperator ? MWTheme::CyanAccent : FLinearColor::Transparent);
+	}
+	if (TabIndicatorGunsmith.IsValid())
+	{
+		TabIndicatorGunsmith->SetBorderBackgroundColor(bIsGunsmith ? MWTheme::CyanAccent : FLinearColor::Transparent);
+	}
+	if (TabIndicatorSettings.IsValid())
+	{
+		TabIndicatorSettings->SetBorderBackgroundColor(bIsSettings ? MWTheme::CyanAccent : FLinearColor::Transparent);
+	}
 }
 
 void UMainMenuWidget::StartMatchmaking()
@@ -1324,6 +1673,17 @@ void UMainMenuWidget::RequestQuit()
 FReply UMainMenuWidget::HandleTabClicked(EFPSMenuSection Section)
 {
 	NavigateToSection(Section);
+	return FReply::Handled();
+}
+
+FReply UMainMenuWidget::HandleModeCardClicked(int32 ModeIndex)
+{
+	SelectedModeIndex = FMath::Clamp(ModeIndex, 0, 2);
+	UpdateModeCardVisuals();
+	if (TransitionSound)
+	{
+		UGameplayStatics::PlaySound2D(this, TransitionSound);
+	}
 	return FReply::Handled();
 }
 
@@ -1427,11 +1787,19 @@ FReply UMainMenuWidget::HandleCamoSelected(uint8 CamoIdx)
 	{
 		switch (CamoIdx)
 		{
-		case 0: CamoStatusText->SetText(FText::FromString(TEXT("PATTERN: URBAN DIGITAL // CHARCOAL"))); break;
-		case 1: CamoStatusText->SetText(FText::FromString(TEXT("PATTERN: WOODLAND TACTICAL // RANGER OLIVE"))); break;
-		case 2: CamoStatusText->SetText(FText::FromString(TEXT("PATTERN: DESERT SPEC OPS // COYOTE TAN"))); break;
-		case 3: CamoStatusText->SetText(FText::FromString(TEXT("PATTERN: STEALTH BLACKOUT // MIDNIGHT MATTE"))); break;
+		case 0: CamoStatusText->SetText(FText::FromString(TEXT("ACTIVE SWATCH: DIGITAL // URBAN CHARCOAL"))); break;
+		case 1: CamoStatusText->SetText(FText::FromString(TEXT("ACTIVE SWATCH: WOODLAND // RANGER OLIVE"))); break;
+		case 2: CamoStatusText->SetText(FText::FromString(TEXT("ACTIVE SWATCH: DESERT // COYOTE TAN"))); break;
+		case 3: CamoStatusText->SetText(FText::FromString(TEXT("ACTIVE SWATCH: BLACKOUT // MIDNIGHT MATTE"))); break;
 		}
+	}
+	if (CenterPillText.IsValid())
+	{
+		FString CamoName = TEXT("DIGITAL");
+		if (CamoIdx == 1) CamoName = TEXT("WOODLAND");
+		else if (CamoIdx == 2) CamoName = TEXT("DESERT");
+		else if (CamoIdx == 3) CamoName = TEXT("BLACKOUT");
+		CenterPillText->SetText(FText::FromString(FString::Printf(TEXT("OPERATOR: TASK FORCE ECHO // CAMO: %s // 360° TURNTABLE"), *CamoName)));
 	}
 	if (TransitionSound) UGameplayStatics::PlaySound2D(this, TransitionSound);
 	return FReply::Handled();
@@ -1487,13 +1855,13 @@ FReply UMainMenuWidget::HandleToggleAimingStance()
 			switch (NextStance)
 			{
 			case 0:
-				StanceStatusText->SetText(FText::FromString(TEXT("STANCE: AIMED WEAPON (AK-47 ADS // IK HAND LOCK)")));
+				StanceStatusText->SetText(FText::FromString(TEXT("STANCE: AIMED ADS (SM_AK47)")));
 				break;
 			case 1:
-				StanceStatusText->SetText(FText::FromString(TEXT("STANCE: LOW-READY PATROL (AK-47 LOWERED)")));
+				StanceStatusText->SetText(FText::FromString(TEXT("STANCE: LOW READY PATROL")));
 				break;
 			case 2:
-				StanceStatusText->SetText(FText::FromString(TEXT("STANCE: TACTICAL WALK CYCLE (AIMED GAIT)")));
+				StanceStatusText->SetText(FText::FromString(TEXT("STANCE: TACTICAL WALK CYCLE")));
 				break;
 			}
 		}

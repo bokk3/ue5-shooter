@@ -20,12 +20,12 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	RootScene = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
 	RootComponent = RootScene;
 
-	// 2. Camera: Positioned in front-left looking directly at operator's torso/chest
+	// 2. Camera: Positioned directly in front looking at operator's torso/chest, horizontally centered
 	PreviewCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("PreviewCamera"));
 	PreviewCamera->SetupAttachment(RootComponent);
-	PreviewCamera->SetRelativeLocation(FVector(250.0f, -40.0f, 120.0f));
-	PreviewCamera->SetRelativeRotation(FRotator(-3.4f, 171.0f, 0.0f));
-	PreviewCamera->FieldOfView = 52.0f;
+	PreviewCamera->SetRelativeLocation(FVector(250.0f, 0.0f, 115.0f));
+	PreviewCamera->SetRelativeRotation(FRotator(-3.0f, 180.0f, 0.0f));
+	PreviewCamera->FieldOfView = 50.0f;
 	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMethod = true;
 	PreviewCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
 	PreviewCamera->PostProcessSettings.bOverride_AutoExposureBias = true;
@@ -39,26 +39,26 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	PreviewCamera->PostProcessSettings.bOverride_BloomIntensity = true;
 	PreviewCamera->PostProcessSettings.BloomIntensity = 0.1f;
 
-	// 3. Studio Lighting: 3-point tactical dynamic lighting (Movable, calibrated high-output studio lumens)
+	// 3. Studio Lighting: 3-point tactical dynamic lighting (Warm amber key light, cool cyan rim light)
 	StudioKeyLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioKeyLight"));
 	StudioKeyLight->SetupAttachment(RootComponent);
 	StudioKeyLight->SetMobility(EComponentMobility::Movable);
-	StudioKeyLight->SetRelativeLocation(FVector(190.0f, -130.0f, 220.0f));
-	StudioKeyLight->SetRelativeRotation(FRotator(-40.0f, 145.0f, 0.0f));
-	StudioKeyLight->SetIntensity(16000.0f);
-	StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.96f, 0.90f));
-	StudioKeyLight->SetAttenuationRadius(700.0f);
+	StudioKeyLight->SetRelativeLocation(FVector(190.0f, -120.0f, 210.0f));
+	StudioKeyLight->SetRelativeRotation(FRotator(-35.0f, 145.0f, 0.0f));
+	StudioKeyLight->SetIntensity(22000.0f);
+	StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.78f, 0.40f)); // Warm amber key light
+	StudioKeyLight->SetAttenuationRadius(750.0f);
 	StudioKeyLight->SetInnerConeAngle(25.0f);
 	StudioKeyLight->SetOuterConeAngle(55.0f);
 
 	StudioRimLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioRimLight"));
 	StudioRimLight->SetupAttachment(RootComponent);
 	StudioRimLight->SetMobility(EComponentMobility::Movable);
-	StudioRimLight->SetRelativeLocation(FVector(-150.0f, 110.0f, 170.0f));
+	StudioRimLight->SetRelativeLocation(FVector(-160.0f, 120.0f, 175.0f));
 	StudioRimLight->SetRelativeRotation(FRotator(-25.0f, -35.0f, 0.0f));
-	StudioRimLight->SetIntensity(10000.0f);
-	StudioRimLight->SetLightColor(FLinearColor(0.25f, 0.55f, 1.0f)); // Tactical cyan-blue rim
-	StudioRimLight->SetAttenuationRadius(600.0f);
+	StudioRimLight->SetIntensity(18000.0f);
+	StudioRimLight->SetLightColor(FLinearColor(0.0f, 0.898f, 1.0f)); // Tactical cyan rim light (#00E5FF)
+	StudioRimLight->SetAttenuationRadius(650.0f);
 	StudioRimLight->SetInnerConeAngle(30.0f);
 	StudioRimLight->SetOuterConeAngle(65.0f);
 
@@ -66,17 +66,17 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	StudioFillLight->SetupAttachment(RootComponent);
 	StudioFillLight->SetMobility(EComponentMobility::Movable);
 	StudioFillLight->SetRelativeLocation(FVector(160.0f, 140.0f, 90.0f));
-	StudioFillLight->SetIntensity(6000.0f);
-	StudioFillLight->SetLightColor(FLinearColor(0.70f, 0.75f, 0.85f));
-	StudioFillLight->SetAttenuationRadius(550.0f);
+	StudioFillLight->SetIntensity(7000.0f);
+	StudioFillLight->SetLightColor(FLinearColor(0.12f, 0.22f, 0.35f)); // Deep blue-slate fill
+	StudioFillLight->SetAttenuationRadius(600.0f);
 
 	StudioAmbientLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("StudioAmbientLight"));
 	StudioAmbientLight->SetupAttachment(RootComponent);
 	StudioAmbientLight->SetMobility(EComponentMobility::Movable);
 	StudioAmbientLight->SetRelativeLocation(FVector(0.0f, 0.0f, 150.0f));
-	StudioAmbientLight->SetIntensity(2500.0f);
-	StudioAmbientLight->SetLightColor(FLinearColor(0.65f, 0.70f, 0.80f));
-	StudioAmbientLight->SetAttenuationRadius(650.0f);
+	StudioAmbientLight->SetIntensity(3000.0f);
+	StudioAmbientLight->SetLightColor(FLinearColor(0.08f, 0.12f, 0.18f));
+	StudioAmbientLight->SetAttenuationRadius(700.0f);
 	StudioAmbientLight->SetCastShadows(false);
 
 	// 4. Turntable Root (Rotates in Tick)
