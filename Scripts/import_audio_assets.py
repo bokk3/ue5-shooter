@@ -15,10 +15,6 @@ for root, dirs, files in os.walk(audio_dir):
     for f in sorted(files):
         if not f.endswith(".wav"):
             continue
-        # Skip full takes / raw backups
-        if "FullTake" in f or "Loop" in f and os.path.getsize(os.path.join(root, f)) > 20*1024*1024:
-            # Skip massive 100MB ambiences for quick import, focus on combat SFX & footsteps
-            continue
             
         full_path = os.path.join(root, f)
         rel_dir = os.path.relpath(root, audio_dir).replace("\\", "/")

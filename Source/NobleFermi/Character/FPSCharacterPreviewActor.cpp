@@ -9,6 +9,7 @@
 #include "Materials/MaterialInterface.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Animation/AnimSequence.h"
+#include "Engine/SkeletalMeshSocket.h"
 
 AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 {
@@ -328,13 +329,75 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: Playing Anim_BaseMale_Idle_ADS on SK_BaseMale!"));
 	}
 
-	if (BodyMesh && !BodyMesh->GetMaterial(0))
+	if (BodyMesh)
 	{
-		UMaterialInterface* LoadedMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
-		if (LoadedMat)
+		UMaterialInterface* CurrentMat = BodyMesh->GetMaterial(0);
+		if (!CurrentMat || !CurrentMat->GetName().Contains(TEXT("M_Operator_BaseBody")))
 		{
-			BodyMesh->SetMaterial(0, LoadedMat);
-			UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: Loaded M_Operator_BaseBody via LoadObject fallback!"));
+			UMaterialInterface* LoadedMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
+			if (LoadedMat)
+			{
+				BodyMesh->SetMaterial(0, LoadedMat);
+				UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: Loaded M_Operator_BaseBody via LoadObject fallback!"));
+			}
+		}
+
+		UMaterialInstanceDynamic* BodyMID = BodyMesh->CreateDynamicMaterialInstance(0);
+		if (BodyMID)
+		{
+			if (UTexture* CamoTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Camo_Digital.T_Camo_Digital")))
+			{
+				BodyMID->SetTextureParameterValue(TEXT("Texture_Camo"), CamoTex);
+			}
+			if (UTexture* MaskTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Operator_Body_Mask.T_Operator_Body_Mask")))
+			{
+				BodyMID->SetTextureParameterValue(TEXT("Texture_BodyMask"), MaskTex);
+			}
+			if (UTexture* NormTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Ripstop_Normal.T_Ripstop_Normal")))
+			{
+				BodyMID->SetTextureParameterValue(TEXT("Texture_RipstopNormal"), NormTex);
+			}
+			if (UTexture* RoughTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Ripstop_Roughness.T_Ripstop_Roughness")))
+			{
+				BodyMID->SetTextureParameterValue(TEXT("Texture_RipstopRoughness"), RoughTex);
+			}
+
+			BodyMID->SetVectorParameterValue(TEXT("CamoColorPrimary"), FLinearColor(0.25f, 0.28f, 0.32f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("CamoColorSecondary"), FLinearColor(0.12f, 0.14f, 0.17f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("CamoColorTertiary"), FLinearColor(0.42f, 0.44f, 0.46f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("TorsoColor"), FLinearColor(0.18f, 0.20f, 0.23f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("SkinTone"), FLinearColor(0.82f, 0.62f, 0.50f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("GearColor"), FLinearColor(0.05f, 0.06f, 0.07f, 1.0f));
+			BodyMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.75f);
+			BodyMID->SetScalarParameterValue(TEXT("SubsurfaceIntensity"), 0.40f);
+			BodyMID->SetScalarParameterValue(TEXT("CamoTiling"), 6.0f);
+			BodyMID->SetScalarParameterValue(TEXT("RipstopTiling"), 24.0f);
+		}
+
+		// Ensure weapon_r socket exists on right hand for weapon attachment
+		if (USkeletalMesh* SkelMesh = Cast<USkeletalMesh>(BodyMesh->GetSkeletalMeshAsset()))
+		{
+			bool bSocketFound = false;
+			for (const USkeletalMeshSocket* S : SkelMesh->GetMeshOnlySocketList())
+			{
+				if (S && S->SocketName == FName(TEXT("weapon_r")))
+				{
+					bSocketFound = true;
+					break;
+				}
+			}
+			if (!bSocketFound)
+			{
+				USkeletalMeshSocket* WeaponRSocket = NewObject<USkeletalMeshSocket>(SkelMesh);
+				if (WeaponRSocket)
+				{
+					WeaponRSocket->SocketName = FName(TEXT("weapon_r"));
+					WeaponRSocket->BoneName = FName(TEXT("hand_r"));
+					WeaponRSocket->RelativeLocation = FVector::ZeroVector;
+					WeaponRSocket->RelativeRotation = FRotator::ZeroRotator;
+					SkelMesh->GetMeshOnlySocketList().Add(WeaponRSocket);
+				}
+			}
 		}
 	}
 
@@ -355,18 +418,20 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		AK47Mesh->SetRelativeRotation(FRotator::ZeroRotator);
 		AK47Mesh->SetVisibility(true);
 
-		if (!AK47Mesh->GetMaterial(0))
+		auto EnsureAKMat = [this](int32 Slot, const TCHAR* ExpectedName, const TCHAR* Path)
 		{
-			if (UMaterialInterface* M0 = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"))) AK47Mesh->SetMaterial(0, M0);
-		}
-		if (!AK47Mesh->GetMaterial(1))
-		{
-			if (UMaterialInterface* M1 = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"))) AK47Mesh->SetMaterial(1, M1);
-		}
-		if (!AK47Mesh->GetMaterial(2))
-		{
-			if (UMaterialInterface* M2 = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"))) AK47Mesh->SetMaterial(2, M2);
-		}
+			UMaterialInterface* CurrentMat = AK47Mesh->GetMaterial(Slot);
+			if (!CurrentMat || !CurrentMat->GetName().Contains(ExpectedName))
+			{
+				if (UMaterialInterface* LoadedMat = LoadObject<UMaterialInterface>(nullptr, Path))
+				{
+					AK47Mesh->SetMaterial(Slot, LoadedMat);
+				}
+			}
+		};
+		EnsureAKMat(0, TEXT("M_AK47_Steel"), TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
+		EnsureAKMat(1, TEXT("M_AK47_Wood"), TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"));
+		EnsureAKMat(2, TEXT("M_AK47_Bakelite"), TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"));
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("[PREVIEW_ACTOR] BeginPlay: BodyMesh Valid=%d, SkeletalMeshAsset=%s, Visible=%d, AK47Mesh=%s"),

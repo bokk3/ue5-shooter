@@ -19,6 +19,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Engine/StaticMeshSocket.h"
 
 AFPSWeaponBase::AFPSWeaponBase()
 {
@@ -146,6 +147,29 @@ void AFPSWeaponBase::BeginPlay()
 		if (SteelMat) AK47StaticMesh->SetMaterial(0, SteelMat);
 		if (WoodMat) AK47StaticMesh->SetMaterial(1, WoodMat);
 		if (BakeMat) AK47StaticMesh->SetMaterial(2, BakeMat);
+
+		// Ensure sockets exist on SM_AK47 static mesh at runtime
+		if (UStaticMesh* SM = AK47StaticMesh->GetStaticMesh())
+		{
+			auto EnsureStaticSocket = [SM](FName SocketName, const FVector& Loc, const FRotator& Rot)
+			{
+				if (!SM->FindSocket(SocketName))
+				{
+					UStaticMeshSocket* NewSocket = NewObject<UStaticMeshSocket>(SM);
+					if (NewSocket)
+					{
+						NewSocket->SocketName = SocketName;
+						NewSocket->RelativeLocation = Loc;
+						NewSocket->RelativeRotation = Rot;
+						SM->AddSocket(NewSocket);
+					}
+				}
+			};
+
+			EnsureStaticSocket(FName(TEXT("weapon_l_ik")), FVector(2.6f, -17.5f, -2.6f), FRotator::ZeroRotator);
+			EnsureStaticSocket(FName(TEXT("Muzzle_Flash_Socket")), FVector(0.0f, -52.0f, 2.4f), FRotator(0.0f, -90.0f, 0.0f));
+			EnsureStaticSocket(FName(TEXT("Ejection_Port_Socket")), FVector(2.2f, -4.0f, 2.5f), FRotator::ZeroRotator);
+		}
 
 		// Hide legacy procedural box/cylinder weapon shapes when 3D AK-47 mesh is active
 		TArray<UStaticMeshComponent*> LegacyParts = {
@@ -413,7 +437,11 @@ void AFPSWeaponBase::FireShot()
 	OnWeaponFired.Broadcast();
 
 	// Weapon Gunshot Audio (Strictly 1 single shot per trigger cycle with dynamic distance attenuation)
-	const FVector MuzzleWorldLoc = GetActorLocation() + GetActorForwardVector() * 48.0f + FVector(0.0f, 0.0f, 4.0f);
+	FVector MuzzleWorldLoc = GetActorLocation() + GetActorForwardVector() * 48.0f + FVector(0.0f, 0.0f, 4.0f);
+	if (AK47StaticMesh && AK47StaticMesh->DoesSocketExist(TEXT("Muzzle_Flash_Socket")))
+	{
+		MuzzleWorldLoc = AK47StaticMesh->GetSocketLocation(TEXT("Muzzle_Flash_Socket"));
+	}
 	if (FireSound)
 	{
 		UFPSAudioSubsystem::PlaySpatialSoundWithFalloff(

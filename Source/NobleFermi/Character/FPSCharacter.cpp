@@ -16,6 +16,7 @@
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Animation/AnimSequence.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Engine/SkeletalMeshSocket.h"
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
 #include "Engine/World.h"
@@ -99,6 +100,11 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	if (BaseMaleMeshFinder.Succeeded())
 	{
 		GetMesh()->SetSkeletalMesh(BaseMaleMeshFinder.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseBodyMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
+	if (BaseBodyMatFinder.Succeeded())
+	{
+		GetMesh()->SetMaterial(0, BaseBodyMatFinder.Object);
 	}
 
 	// Ballistic collision routing: root movement capsule ignores visibility trace so bullet line traces strike anatomical bone capsules directly
@@ -229,7 +235,8 @@ void AFPSCharacter::BeginPlay()
 			GetMesh()->Play(true);
 		}
 
-		if (!GetMesh()->GetMaterial(0))
+		UMaterialInterface* CurrentMat = GetMesh()->GetMaterial(0);
+		if (!CurrentMat || !CurrentMat->GetName().Contains(TEXT("M_Operator_BaseBody")))
 		{
 			UMaterialInterface* BaseBodyMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
 			if (BaseBodyMat)
@@ -241,6 +248,23 @@ void AFPSCharacter::BeginPlay()
 		UMaterialInstanceDynamic* BodyMID = GetMesh()->CreateDynamicMaterialInstance(0);
 		if (BodyMID)
 		{
+			if (UTexture* CamoTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Camo_Digital.T_Camo_Digital")))
+			{
+				BodyMID->SetTextureParameterValue(TEXT("Texture_Camo"), CamoTex);
+			}
+			if (UTexture* MaskTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Operator_Body_Mask.T_Operator_Body_Mask")))
+			{
+				BodyMID->SetTextureParameterValue(TEXT("Texture_BodyMask"), MaskTex);
+			}
+			if (UTexture* NormTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Ripstop_Normal.T_Ripstop_Normal")))
+			{
+				BodyMID->SetTextureParameterValue(TEXT("Texture_RipstopNormal"), NormTex);
+			}
+			if (UTexture* RoughTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Ripstop_Roughness.T_Ripstop_Roughness")))
+			{
+				BodyMID->SetTextureParameterValue(TEXT("Texture_RipstopRoughness"), RoughTex);
+			}
+
 			BodyMID->SetVectorParameterValue(TEXT("CamoColorPrimary"), FLinearColor(0.25f, 0.28f, 0.32f, 1.0f));
 			BodyMID->SetVectorParameterValue(TEXT("CamoColorSecondary"), FLinearColor(0.12f, 0.14f, 0.17f, 1.0f));
 			BodyMID->SetVectorParameterValue(TEXT("CamoColorTertiary"), FLinearColor(0.42f, 0.44f, 0.46f, 1.0f));
@@ -251,6 +275,32 @@ void AFPSCharacter::BeginPlay()
 			BodyMID->SetScalarParameterValue(TEXT("SubsurfaceIntensity"), 0.40f);
 			BodyMID->SetScalarParameterValue(TEXT("CamoTiling"), 6.0f);
 			BodyMID->SetScalarParameterValue(TEXT("RipstopTiling"), 24.0f);
+		}
+
+		// Ensure weapon_r socket exists on right hand for weapon rigging
+		if (USkeletalMesh* SkelMesh = Cast<USkeletalMesh>(GetMesh()->GetSkeletalMeshAsset()))
+		{
+			bool bSocketFound = false;
+			for (const USkeletalMeshSocket* S : SkelMesh->GetMeshOnlySocketList())
+			{
+				if (S && S->SocketName == FName(TEXT("weapon_r")))
+				{
+					bSocketFound = true;
+					break;
+				}
+			}
+			if (!bSocketFound)
+			{
+				USkeletalMeshSocket* WeaponRSocket = NewObject<USkeletalMeshSocket>(SkelMesh);
+				if (WeaponRSocket)
+				{
+					WeaponRSocket->SocketName = FName(TEXT("weapon_r"));
+					WeaponRSocket->BoneName = FName(TEXT("hand_r"));
+					WeaponRSocket->RelativeLocation = FVector::ZeroVector;
+					WeaponRSocket->RelativeRotation = FRotator::ZeroRotator;
+					SkelMesh->GetMeshOnlySocketList().Add(WeaponRSocket);
+				}
+			}
 		}
 	}
 
