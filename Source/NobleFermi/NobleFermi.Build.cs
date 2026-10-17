@@ -21,11 +21,22 @@ public class NobleFermi : ModuleRules
 			"SlateCore",
 			"CommonUI",
 			"CommonInput",
-			"PhysicsCore"
+			"PhysicsCore",
+			"AnimationCore",
+			"AnimGraphRuntime"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
 			"AudioMixer"
 		});
+
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[] {
+				"UnrealEd",
+				"AnimGraph",
+				"BlueprintGraph"
+			});
+		}
 	}
 }

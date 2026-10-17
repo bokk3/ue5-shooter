@@ -75,7 +75,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
 	class UFPSBodyMechanicsComponent* GetBodyMechanicsComponent() const { return BodyMechanicsComponent; }
 
-	// Tactical Locomotion Animations
+	// Tactical Locomotion Animation Blueprint & Assets
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TSubclassOf<class UAnimInstance> AnimBlueprintClass;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Animations")
+	class UFPSAnimInstance* GetFPSAnimInstance() const;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
 	TObjectPtr<class UAnimSequence> AnimIdleADS;
 

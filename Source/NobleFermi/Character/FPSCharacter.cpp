@@ -1,4 +1,5 @@
 #include "Character/FPSCharacter.h"
+#include "Character/FPSAnimInstance.h"
 #include "Character/FPSCharacterMovementComponent.h"
 #include "Combat/FPSHealthComponent.h"
 #include "Combat/FPSFermiTimeBubble.h"
@@ -139,8 +140,15 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 		AnimSprint = SprintAnimFinder.Object;
 	}
 
-	// Default to tactical high-ready idle animation with natural thoracic breathing
-	if (AnimIdleADS)
+	// Tactical Locomotion Animation Blueprint (ABP_BaseMale parenting UFPSAnimInstance)
+	static ConstructorHelpers::FClassFinder<UAnimInstance> AnimBPFinder(TEXT("/Game/Characters/BaseMale/ABP_BaseMale.ABP_BaseMale_C"));
+	if (AnimBPFinder.Succeeded())
+	{
+		AnimBlueprintClass = AnimBPFinder.Class;
+		GetMesh()->SetAnimInstanceClass(AnimBlueprintClass);
+		GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+	}
+	else if (AnimIdleADS)
 	{
 		GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		GetMesh()->SetAnimation(AnimIdleADS);
@@ -226,13 +234,27 @@ void AFPSCharacter::BeginPlay()
 			AnimWalkBackwards = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk_Backwards.Anim_BaseMale_Walk_Backwards"));
 		}
 
-		UAnimSequence* InitialAnim = AnimLowReady ? AnimLowReady : AnimIdleADS;
-		if (InitialAnim && !CurrentLocomotionAnim)
+		// Runtime fallback for Animation Blueprint mode
+		if (!AnimBlueprintClass)
 		{
-			GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-			GetMesh()->SetAnimation(InitialAnim);
-			CurrentLocomotionAnim = InitialAnim;
-			GetMesh()->Play(true);
+			AnimBlueprintClass = LoadClass<UAnimInstance>(nullptr, TEXT("/Game/Characters/BaseMale/ABP_BaseMale.ABP_BaseMale_C"));
+		}
+
+		if (AnimBlueprintClass)
+		{
+			GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+			GetMesh()->SetAnimInstanceClass(AnimBlueprintClass);
+		}
+		else
+		{
+			UAnimSequence* InitialAnim = AnimLowReady ? AnimLowReady : AnimIdleADS;
+			if (InitialAnim && !CurrentLocomotionAnim)
+			{
+				GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+				GetMesh()->SetAnimation(InitialAnim);
+				CurrentLocomotionAnim = InitialAnim;
+				GetMesh()->Play(true);
+			}
 		}
 
 		UMaterialInterface* CurrentMat = GetMesh()->GetMaterial(0);
@@ -992,6 +1014,14 @@ void AFPSCharacter::UpdateLocomotionAnimation(float DeltaTime)
 		}
 	}
 
+	// When running Animation Blueprint, UFPSAnimInstance drives blending and procedural Two-Bone IK deterministically
+	if (UFPSAnimInstance* AnimInst = Cast<UFPSAnimInstance>(GetMesh()->GetAnimInstance()))
+	{
+		// AnimInstance is actively running NativeUpdateAnimation and NativePostEvaluateAnimation
+		return;
+	}
+
+	// Fallback to single-node animation if AnimInstance is not active
 	if (TargetAnim && TargetAnim != CurrentLocomotionAnim)
 	{
 		CurrentLocomotionAnim = TargetAnim;
@@ -1003,6 +1033,11 @@ void AFPSCharacter::UpdateLocomotionAnimation(float DeltaTime)
 	{
 		GetMesh()->SetPlayRate(PlayRate);
 	}
+}
+
+UFPSAnimInstance* AFPSCharacter::GetFPSAnimInstance() const
+{
+	return GetMesh() ? Cast<UFPSAnimInstance>(GetMesh()->GetAnimInstance()) : nullptr;
 }
 
 void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
