@@ -874,6 +874,7 @@ void main() {
   // Input
   // ------------------------------------------------------------------
   function onMove(e) {
+    if (e.pointerType === 'touch') return;
     const x = e.clientX;
     const y = e.clientY;
     S.ptrT[0] = (x / S.W - 0.5) * 2;
@@ -898,7 +899,7 @@ void main() {
   }
 
   function onDown(e) {
-    if (S.reduced || !S.ok) return;
+    if (e.pointerType === 'touch' || S.reduced || !S.ok) return;
     rainAt(e.clientX, e.clientY, 1.5, S.t);
   }
 

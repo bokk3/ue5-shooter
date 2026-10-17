@@ -168,8 +168,8 @@
     .hud-corner > .corner-bl {
       content: '';
       position: absolute;
-      width: 9px;
-      height: 9px;
+      width: 14px;
+      height: 14px;
       pointer-events: none;
       transition:
         width 0.45s var(--ease-luxury),
@@ -183,29 +183,33 @@
       left: -1px;
       border-top: 2px solid #00E5FF;
       border-left: 2px solid #00E5FF;
+      border-top-left-radius: inherit;
     }
     .hud-corner::after {
       bottom: -1px;
       right: -1px;
       border-bottom: 2px solid #00E5FF;
       border-right: 2px solid #00E5FF;
+      border-bottom-right-radius: inherit;
     }
     .hud-corner > .corner-tr {
       top: -1px;
       right: -1px;
       border-top: 2px solid rgba(255, 179, 0, 0.75);
       border-right: 2px solid rgba(255, 179, 0, 0.75);
+      border-top-right-radius: inherit;
     }
     .hud-corner > .corner-bl {
       bottom: -1px;
       left: -1px;
       border-bottom: 2px solid rgba(255, 179, 0, 0.75);
       border-left: 2px solid rgba(255, 179, 0, 0.75);
+      border-bottom-left-radius: inherit;
     }
     .hud-corner:hover::before,
     .hud-corner:hover::after {
-      width: 14px;
-      height: 14px;
+      width: 18px;
+      height: 18px;
       border-color: #FFB300;
     }
 
@@ -251,20 +255,42 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      will-change: transform, opacity, filter;
+      will-change: transform, opacity;
       transform-origin: center top;
       margin-bottom: 4.5rem;
     }
     .sticky-card-inner {
       width: 100%;
       max-width: 80rem;
-      border-radius: 0.75rem;
+      border-radius: 1rem;
+      background: linear-gradient(145deg, rgba(6, 14, 25, 0.95) 0%, rgba(3, 8, 16, 0.98) 100%);
       box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.85), 0 10px 30px -8px rgba(0, 0, 0, 0.55), 0 0 1px 1px rgba(0, 229, 255, 0.22);
     }
     .sticky-card-inner:hover {
       border-color: rgba(0, 229, 255, 0.68);
       transform: translateY(-2px);
       box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.85), 0 20px 48px -8px rgba(0, 229, 255, 0.30), 0 0 14px 1px rgba(0, 229, 255, 0.40);
+    }
+
+    /* Mobile Responsiveness & Natural Scroll Flow */
+    @media (max-width: 767px) {
+      .sticky-card-section {
+        position: relative !important;
+        top: auto !important;
+        min-height: auto !important;
+        margin-bottom: 2.25rem !important;
+        display: block !important;
+        transform: none !important;
+        opacity: 1 !important;
+      }
+      .sticky-card-inner {
+        border-radius: 1rem !important;
+        margin-left: auto;
+        margin-right: auto;
+        opacity: 1 !important;
+        transform: none !important;
+        pointer-events: auto !important;
+      }
     }
 
     /* Top Edge Specular Horizon Line */
@@ -367,7 +393,7 @@
           decoding="async"
           class="h-8 sm:h-9 w-auto object-contain drop-shadow-[0_0_14px_rgba(255,179,0,0.35)]"
         />
-        <span class="hidden xl:inline-block text-[11px] font-mono text-cyan-300 px-2.5 py-0.5 rounded bg-cyan-950/70 border border-cyan-500/35">
+        <span class="hidden xl:inline-block text-[11px] font-mono text-cyan-300 px-2.5 py-0.5 rounded-md bg-cyan-950/70 border border-cyan-500/35">
           UE 5.8 // C++20 MONOLITH
         </span>
       </a>
@@ -381,13 +407,13 @@
       </nav>
 
       <!-- Right Controls: Rainburst Pulse, Reduced Motion Toggle & Launch CTA -->
-      <div class="flex items-center space-x-3 text-xs font-mono">
+      <div class="flex items-center space-x-2 sm:space-x-3 text-xs font-mono">
         <button
           id="btn-droplet-pulse"
           type="button"
           onclick="emitManualWavePulse()"
           title="Splash Fresh Raindrops onto Window Glass"
-          class="btn-luxury hidden sm:inline-flex items-center space-x-2 px-3 py-1.5 rounded bg-slate-900/90 border border-cyan-500/35 text-cyan-300 hover:border-cyan-400"
+          class="btn-luxury hidden sm:inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-cyan-500/35 text-cyan-300 hover:border-cyan-400"
         >
           <span class="w-1.5 h-1.5 rounded-full bg-tacticalCyan animate-ping"></span>
           <span>RAINBURST ON GLASS</span>
@@ -398,7 +424,7 @@
           type="button"
           onclick="toggleReducedMotionMode()"
           aria-pressed="false"
-          class="btn-luxury px-2.5 py-1.5 rounded bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:border-amber-400/60 hover:text-amber-300"
+          class="btn-luxury px-2.5 py-1.5 rounded-lg bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:border-amber-400/60 hover:text-amber-300"
           title="Toggle Accessibility Reduced Motion"
         >
           <span id="motion-status-label">MOTION: FULL</span>
@@ -406,7 +432,7 @@
 
         <a
           href="#card-deploy"
-          class="btn-luxury px-4 py-1.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-bold rounded shadow-[0_0_20px_rgba(255,179,0,0.35)]"
+          class="btn-luxury px-3.5 sm:px-4 py-1.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-bold rounded-lg shadow-[0_0_20px_rgba(255,179,0,0.35)]"
         >
           DEPLOY BUILD
         </a>
@@ -440,7 +466,7 @@
           <div
             onclick="emitManualWavePulse()"
             title="Click to Splash Raindrops onto the Window Glass"
-            class="hud-card hud-corner p-5 sm:p-7 rounded-xl cursor-pointer group inline-block max-w-full"
+            class="hud-card hud-corner p-5 sm:p-7 rounded-2xl cursor-pointer group inline-block max-w-full"
           >
             <span class="corner-tr"></span><span class="corner-bl"></span>
             <img
@@ -480,7 +506,7 @@
         <div class="reveal-hero flex flex-wrap items-center gap-4 mb-12 font-mono text-xs sm:text-sm">
           <a
             href="#card-chrono"
-            class="btn-luxury px-7 py-4 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-bold rounded-md glow-amber flex items-center space-x-3"
+            class="btn-luxury px-7 py-4 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-bold rounded-lg glow-amber flex items-center space-x-3"
           >
             <span>INSPECT ENGINE ARCHITECTURE</span>
             <span>&darr;</span>
@@ -489,23 +515,23 @@
           <button
             type="button"
             onclick="emitManualWavePulse()"
-            class="btn-luxury px-6 py-4 bg-slate-950/85 border border-cyan-500/45 text-cyan-300 font-semibold rounded-md hover:bg-cyan-950/40 flex items-center space-x-2.5"
+            class="btn-luxury px-6 py-4 bg-slate-950/85 border border-cyan-500/45 text-cyan-300 font-semibold rounded-lg hover:bg-cyan-950/40 flex items-center space-x-2.5"
           >
             <span class="w-2 h-2 rounded-full bg-tacticalCyan"></span>
             <span>SPLASH RAINDROPS ON WINDOW</span>
           </button>
 
           <!-- Direct Connect IP Pill -->
-          <div class="hud-corner flex items-center gap-3 bg-slate-950/90 border border-cyan-900/60 px-4 py-3 rounded-md">
+          <div class="hud-corner flex items-center gap-3 bg-slate-950/90 border border-cyan-900/60 px-4 py-3 rounded-lg">
             <span class="corner-tr"></span>
             <span class="corner-bl"></span>
             <span class="text-slate-400 text-xs">DIRECT IP:</span>
-            <code id="server-ip" class="px-2.5 py-1 bg-black/90 rounded border border-cyan-500/30 text-tacticalCyan font-bold text-xs">127.0.0.1:7777</code>
+            <code id="server-ip" class="px-2.5 py-1 bg-black/90 rounded-md border border-cyan-500/30 text-tacticalCyan font-bold text-xs">127.0.0.1:7777</code>
             <button
               type="button"
               onclick="copyIp()"
               id="btn-copy-ip"
-              class="btn-luxury px-3 py-1 bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-400/40 text-cyan-200 rounded text-xs font-bold"
+              class="btn-luxury px-3 py-1 bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-400/40 text-cyan-200 rounded-md text-xs font-bold"
             >
               COPY
             </button>
@@ -514,28 +540,28 @@
 
         <!-- 4 Live Architectural Metric Pillars -->
         <div class="reveal-hero grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="hud-card hud-corner p-5 rounded-md">
+          <div class="hud-card hud-corner p-5 rounded-xl">
             <span class="corner-tr"></span><span class="corner-bl"></span>
             <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest mb-1">SERVER TICKRATE</div>
             <div class="text-2xl sm:text-3xl font-display font-bold text-tacticalCyan glow-cyan-text">128.0 HZ</div>
             <div class="text-[11px] font-mono text-emeraldReady mt-1">7.81ms Frame Budget</div>
           </div>
 
-          <div class="hud-card hud-corner p-5 rounded-md">
+          <div class="hud-card hud-corner p-5 rounded-xl">
             <span class="corner-tr"></span><span class="corner-bl"></span>
             <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest mb-1">CHRONO DILATION</div>
             <div class="text-2xl sm:text-3xl font-display font-bold text-amber-400 glow-gold-text">0.25x c</div>
             <div class="text-[11px] font-mono text-slate-300 mt-1">450cm Relativistic Sphere</div>
           </div>
 
-          <div class="hud-card hud-corner p-5 rounded-md">
+          <div class="hud-card hud-corner p-5 rounded-xl">
             <span class="corner-tr"></span><span class="corner-bl"></span>
             <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest mb-1">SKELETAL RIG</div>
             <div class="text-2xl sm:text-3xl font-display font-bold text-white">21 BONES</div>
             <div class="text-[11px] font-mono text-cyan-300 mt-1">Two-Bone Left-Hand IK</div>
           </div>
 
-          <div class="hud-card hud-corner p-5 rounded-md">
+          <div class="hud-card hud-corner p-5 rounded-xl">
             <span class="corner-tr"></span><span class="corner-bl"></span>
             <div class="text-[11px] font-mono text-slate-400 uppercase tracking-widest mb-1">UI RENDERING</div>
             <div class="text-2xl sm:text-3xl font-display font-bold text-emeraldReady">PURE SLATE</div>
@@ -580,7 +606,7 @@
               <!-- Left Column: Narrative & Mechanics -->
               <div class="lg:col-span-7 space-y-6">
                 <div class="flex flex-wrap items-center gap-3 font-mono text-xs">
-                  <span class="px-2.5 py-1 rounded bg-cyan-950 border border-cyan-500/40 text-tacticalCyan font-bold">
+                  <span class="px-2.5 py-1 rounded-md bg-cyan-950 border border-cyan-500/40 text-tacticalCyan font-bold">
                     CHAPTER 01 / 04
                   </span>
                   <span class="text-amber-400">AFPSFermiTimeBubble &amp; AFPSFermiDecoyActor</span>
@@ -600,7 +626,7 @@
                     type="button"
                     onclick="selectChronoSpec(0)"
                     id="chrono-tab-0"
-                    class="telemetry-tab active text-left p-3.5 rounded border border-cyan-500/30 bg-slate-950/70"
+                    class="telemetry-tab active text-left p-3.5 rounded-lg border border-cyan-500/30 bg-slate-950/70"
                   >
                     <div class="font-bold text-white mb-1">[ALT] CHRONO DIVE</div>
                     <div class="text-[11px] text-slate-400">0.25x Bubble + +20 Stamina Near-Miss Graze</div>
@@ -610,7 +636,7 @@
                     type="button"
                     onclick="selectChronoSpec(1)"
                     id="chrono-tab-1"
-                    class="telemetry-tab text-left p-3.5 rounded border border-slate-800 bg-slate-950/70"
+                    class="telemetry-tab text-left p-3.5 rounded-lg border border-slate-800 bg-slate-950/70"
                   >
                     <div class="font-bold text-white mb-1">[Q] ACOUSTIC DECOY</div>
                     <div class="text-[11px] text-slate-400">620 cm/s Hologram + 2,500cm Bot Baiting</div>
@@ -620,7 +646,7 @@
                     type="button"
                     onclick="selectChronoSpec(2)"
                     id="chrono-tab-2"
-                    class="telemetry-tab text-left p-3.5 rounded border border-slate-800 bg-slate-950/70"
+                    class="telemetry-tab text-left p-3.5 rounded-lg border border-slate-800 bg-slate-950/70"
                   >
                     <div class="font-bold text-white mb-1">[Q+Q] QUANTUM SWAP</div>
                     <div class="text-[11px] text-slate-400">Instant Phase-Teleport + Momentum Preservation</div>
@@ -628,7 +654,7 @@
                 </div>
 
                 <!-- Dynamic Telemetry Readout Box -->
-                <div id="chrono-spec-readout" class="bg-black/75 border border-cyan-900/60 rounded p-4 font-mono text-xs text-slate-300 space-y-1.5">
+                <div id="chrono-spec-readout" class="bg-black/75 border border-cyan-900/60 rounded-lg p-4 font-mono text-xs text-slate-300 space-y-1.5">
                   <div class="text-tacticalCyan font-bold">// TELEMETRY: AFPSFermiTimeBubble::Tick()</div>
                   <div>&bull; Incoming hitscan raycasts intersect sphere boundary &rarr; convert to physical 3D brass slug</div>
                   <div>&bull; Passing within <span class="text-amber-400">120.0f cm</span> of player capsule triggers <span class="text-emeraldReady">BULLET DODGE (+50 GOLD)</span> &amp; refunds +20 Stamina</div>
@@ -637,14 +663,14 @@
 
               <!-- Right Column: Live Interactive Chrono-Field Visualizer -->
               <div class="lg:col-span-5">
-                <div class="bg-[#02060D] border border-cyan-500/30 rounded-lg p-5 relative overflow-hidden">
+                <div class="bg-[#02060D] border border-cyan-500/30 rounded-xl p-5 relative overflow-hidden">
                   <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-4">
                     <span class="text-tacticalCyan font-bold">CHRONO-SPHERE FIELD MONITOR</span>
-                    <span class="px-2 py-0.5 rounded bg-emerald-950/80 text-emeraldReady border border-emerald-500/30">0.25x ACTIVE</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emeraldReady border border-emerald-500/30">0.25x ACTIVE</span>
                   </div>
 
                   <!-- SVG Vector Schematic of the Fermi Time Bubble & Dilated Slugs -->
-                  <svg viewBox="0 0 360 260" class="w-full h-auto rounded bg-[#030914] border border-slate-800/80">
+                  <svg viewBox="0 0 360 260" class="w-full h-auto rounded-lg bg-[#030914] border border-slate-800/80">
                     <defs>
                       <radialGradient id="bubbleGrad" cx="50%" cy="50%" r="50%">
                         <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.04" />
@@ -710,7 +736,7 @@
               <!-- Left Column: Specs & Hit Zones -->
               <div class="lg:col-span-7 space-y-6">
                 <div class="flex flex-wrap items-center gap-3 font-mono text-xs">
-                  <span class="px-2.5 py-1 rounded bg-amber-950/90 border border-amber-500/40 text-amber-400 font-bold">
+                  <span class="px-2.5 py-1 rounded-md bg-amber-950/90 border border-amber-500/40 text-amber-400 font-bold">
                     CHAPTER 02 / 04
                   </span>
                   <span class="text-cyan-300">SK_BaseMale // UFPSAnimInstance // Two-Bone IK</span>
@@ -726,25 +752,25 @@
 
                 <!-- Anatomical Multiplier Matrix -->
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
-                  <div class="p-3.5 rounded bg-slate-950/85 border border-rose-500/40">
+                  <div class="p-3.5 rounded-lg bg-slate-950/85 border border-rose-500/40">
                     <div class="text-rose-400 font-bold">HEAD / CRANIUM</div>
                     <div class="text-xl font-display font-bold text-white mt-1">2.50x DMG</div>
                     <div class="text-[10px] text-slate-400 mt-1">Pops Ballistic Helmet</div>
                   </div>
 
-                  <div class="p-3.5 rounded bg-slate-950/85 border border-cyan-500/40">
+                  <div class="p-3.5 rounded-lg bg-slate-950/85 border border-cyan-500/40">
                     <div class="text-tacticalCyan font-bold">UPPER CHEST</div>
                     <div class="text-xl font-display font-bold text-white mt-1">1.00x DMG</div>
                     <div class="text-[10px] text-slate-400 mt-1">Lvl-IV Plate Carrier</div>
                   </div>
 
-                  <div class="p-3.5 rounded bg-slate-950/85 border border-amber-500/40">
+                  <div class="p-3.5 rounded-lg bg-slate-950/85 border border-amber-500/40">
                     <div class="text-amber-400 font-bold">CLAVICLE / NECK</div>
                     <div class="text-xl font-display font-bold text-white mt-1">1.20x DMG</div>
                     <div class="text-[10px] text-slate-400 mt-1">High-Trauma Zone</div>
                   </div>
 
-                  <div class="p-3.5 rounded bg-slate-950/85 border border-slate-700">
+                  <div class="p-3.5 rounded-lg bg-slate-950/85 border border-slate-700">
                     <div class="text-emeraldReady font-bold">EXTREMITIES</div>
                     <div class="text-xl font-display font-bold text-white mt-1">0.75x DMG</div>
                     <div class="text-[10px] text-slate-400 mt-1">Procedural Limb Flinch</div>
@@ -758,15 +784,15 @@
 
               <!-- Right Column: Interactive Hit-Zone & Armor Fracture Inspector -->
               <div class="lg:col-span-5">
-                <div class="bg-[#02060D] border border-amber-500/30 rounded-lg p-5">
+                <div class="bg-[#02060D] border border-amber-500/30 rounded-xl p-5">
                   <div class="flex items-center justify-between text-[11px] font-mono mb-4">
                     <span class="text-amber-400 font-bold">PHYSICAL TRAUMA &amp; COSMETIC RIG</span>
-                    <span id="plate-state-badge" class="px-2 py-0.5 rounded bg-cyan-950 text-tacticalCyan border border-cyan-500/30">LVL-IV INTACT (100)</span>
+                    <span id="plate-state-badge" class="px-2 py-0.5 rounded-md bg-cyan-950 text-tacticalCyan border border-cyan-500/30">LVL-IV INTACT (100)</span>
                   </div>
 
                   <!-- Interactive Armor & Helmet Simulation Controls -->
                   <div class="space-y-3 font-mono text-xs">
-                    <div class="p-3.5 rounded bg-slate-950 border border-slate-800 flex items-center justify-between">
+                    <div class="p-3.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between">
                       <div>
                         <div class="text-white font-bold">SPINE_03 // CERAMIC CARRIER</div>
                         <div id="plate-readout-desc" class="text-[11px] text-slate-400">4-Cell Cobalt Armor Matrix Active</div>
@@ -774,13 +800,13 @@
                       <button
                         type="button"
                         onclick="triggerDemoPlateShatter()"
-                        class="btn-luxury px-3 py-1.5 rounded bg-cyan-950 hover:bg-cyan-900 border border-cyan-400/50 text-cyan-200 font-bold"
+                        class="btn-luxury px-3 py-1.5 rounded-md bg-cyan-950 hover:bg-cyan-900 border border-cyan-400/50 text-cyan-200 font-bold"
                       >
                         TEST SHATTER
                       </button>
                     </div>
 
-                    <div class="p-3.5 rounded bg-slate-950 border border-slate-800 flex items-center justify-between">
+                    <div class="p-3.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between">
                       <div>
                         <div class="text-white font-bold">HEAD // BALLISTIC HELMET</div>
                         <div id="helmet-readout-desc" class="text-[11px] text-slate-400">2.5x Lethal Impulse Detachment</div>
@@ -788,22 +814,22 @@
                       <button
                         type="button"
                         onclick="triggerDemoHelmetPop()"
-                        class="btn-luxury px-3 py-1.5 rounded bg-rose-950 hover:bg-rose-900 border border-rose-400/50 text-rose-200 font-bold"
+                        class="btn-luxury px-3 py-1.5 rounded-md bg-rose-950 hover:bg-rose-900 border border-rose-400/50 text-rose-200 font-bold"
                       >
                         TEST HELMET POP
                       </button>
                     </div>
 
-                    <div class="p-3.5 rounded bg-slate-950 border border-slate-800">
+                    <div class="p-3.5 rounded-lg bg-slate-950 border border-slate-800">
                       <div class="flex justify-between text-[11px] text-slate-400 mb-2">
                         <span>RUNTIME MATERIAL INSTANCES (MID)</span>
                         <span class="text-amber-400">4 CAMO PRESETS</span>
                       </div>
                       <div class="grid grid-cols-4 gap-2 text-[10px] text-center">
-                        <span class="py-1 rounded bg-slate-900 border border-cyan-500/30 text-cyan-300">URBAN</span>
-                        <span class="py-1 rounded bg-slate-900 border border-emerald-500/30 text-emerald-300">WOODLAND</span>
-                        <span class="py-1 rounded bg-slate-900 border border-amber-500/30 text-amber-300">DESERT</span>
-                        <span class="py-1 rounded bg-slate-900 border border-slate-600 text-slate-200">BLACKOUT</span>
+                        <span class="py-1 rounded-md bg-slate-900 border border-cyan-500/30 text-cyan-300">URBAN</span>
+                        <span class="py-1 rounded-md bg-slate-900 border border-emerald-500/30 text-emerald-300">WOODLAND</span>
+                        <span class="py-1 rounded-md bg-slate-900 border border-amber-500/30 text-amber-300">DESERT</span>
+                        <span class="py-1 rounded-md bg-slate-900 border border-slate-600 text-slate-200">BLACKOUT</span>
                       </div>
                     </div>
                   </div>
@@ -824,7 +850,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               <div class="lg:col-span-7 space-y-6">
                 <div class="flex flex-wrap items-center gap-3 font-mono text-xs">
-                  <span class="px-2.5 py-1 rounded bg-emerald-950/90 border border-emerald-500/40 text-emeraldReady font-bold">
+                  <span class="px-2.5 py-1 rounded-md bg-emerald-950/90 border border-emerald-500/40 text-emeraldReady font-bold">
                     CHAPTER 03 / 04
                   </span>
                   <span class="text-cyan-300">UFPSRadarSubsystem // UFPSAudioSubsystem // 128-Hz Tick</span>
@@ -839,14 +865,14 @@
                 </p>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
-                  <div class="p-4 rounded bg-slate-950/80 border border-cyan-900/60">
+                  <div class="p-4 rounded-lg bg-slate-950/80 border border-cyan-900/60">
                     <div class="text-tacticalCyan font-bold mb-1">3-LANE TACTICAL BOT AI</div>
                     <p class="text-slate-400 leading-relaxed">
                       Autonomous Team Bravo operators (<span class="text-white">VIPER-1, SPECTRE-2, JACKAL-3, PHANTOM-4</span>) patrol Container Yard (Flag A), Center Oil Derrick (Flag B), and Pipeline Bunker (Flag C).
                     </p>
                   </div>
 
-                  <div class="p-4 rounded bg-slate-950/80 border border-amber-900/60">
+                  <div class="p-4 rounded-lg bg-slate-950/80 border border-amber-900/60">
                     <div class="text-amber-400 font-bold mb-1">PERSISTENT ECONOMY &amp; BOUNTIES</div>
                     <p class="text-slate-400 leading-relaxed">
                       Real-time combat accolades (<span class="text-white">Matrix Dodge, Fermi Phantom, Chrono Diver, Armor Breaker</span>) credit persistent Gold &amp; Opal balances via <code class="text-cyan-300">UFPSEconomySubsystem</code>.
@@ -857,22 +883,22 @@
 
               <!-- Right Column: Live 128-Hz Telemetry & Lane Matrix -->
               <div class="lg:col-span-5">
-                <div class="bg-[#02060D] border border-emerald-500/30 rounded-lg p-5 font-mono text-xs space-y-4">
+                <div class="bg-[#02060D] border border-emerald-500/30 rounded-xl p-5 font-mono text-xs space-y-4">
                   <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                     <span class="text-emeraldReady font-bold">RUST TACTICAL // 3-LANE TOPOLOGY</span>
                     <span class="text-slate-400">60M &times; 60M</span>
                   </div>
 
                   <div class="space-y-2.5">
-                    <div class="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-cyan-500/25">
+                    <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-cyan-500/25">
                       <span class="text-tacticalCyan font-bold">FLAG A // CONTAINER YARD</span>
                       <span class="text-slate-400">[-14.0m, -10.0m]</span>
                     </div>
-                    <div class="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-amber-500/25">
+                    <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-amber-500/25">
                       <span class="text-amber-400 font-bold">FLAG B // OIL DERRICK CORE</span>
                       <span class="text-slate-400">[+00.0m, +00.0m]</span>
                     </div>
-                    <div class="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-emerald-500/25">
+                    <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-emerald-500/25">
                       <span class="text-emeraldReady font-bold">FLAG C // PIPELINE BUNKER</span>
                       <span class="text-slate-400">[+14.0m, +10.0m]</span>
                     </div>
@@ -899,7 +925,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               <div class="lg:col-span-5 space-y-5">
                 <div class="flex flex-wrap items-center gap-3 font-mono text-xs">
-                  <span class="px-2.5 py-1 rounded bg-amber-950 border border-amber-500/40 text-amber-400 font-bold">
+                  <span class="px-2.5 py-1 rounded-md bg-amber-950 border border-amber-500/40 text-amber-400 font-bold">
                     CHAPTER 04 / 04
                   </span>
                   <span class="text-cyan-300">STANDALONE CLIENT &amp; HEADLESS SERVER</span>
@@ -913,7 +939,7 @@
                   Launch directly into the 3-zone Modern Warfare glass command lobby with live 3-point rim lighting on <code class="text-cyan-300 font-mono">AFPSCharacterPreviewActor</code>, or spin up an authoritative 128-tick headless dedicated server on Windows or Linux VPS infrastructure.
                 </p>
 
-                <div class="p-4 rounded bg-slate-950/90 border border-slate-800 font-mono text-xs space-y-2 text-slate-300">
+                <div class="p-4 rounded-lg bg-slate-950/90 border border-slate-800 font-mono text-xs space-y-2 text-slate-300">
                   <div class="text-tacticalCyan font-bold">KEYBIND QUICK REFERENCE</div>
                   <div class="grid grid-cols-2 gap-y-1.5 text-[11px]">
                     <span><strong class="text-amber-400">[WASD + SHIFT]</strong> Tac-Sprint</span>
@@ -928,34 +954,34 @@
 
               <!-- Right Column: Copyable CLI Blocks -->
               <div class="lg:col-span-7 space-y-4 font-mono text-xs">
-                <div class="bg-black/90 border border-cyan-900/60 p-5 rounded-lg">
+                <div class="bg-black/90 border border-cyan-900/60 p-5 rounded-xl">
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-cyan-300 font-bold">1 // UNIVERSAL CLIENT LAUNCHER (3D LOBBY &rarr; RUST TACTICAL)</span>
                     <button
                       type="button"
                       onclick="copyCommand('cmd-client', this)"
-                      class="btn-luxury px-2.5 py-1 rounded bg-cyan-950 border border-cyan-500/40 text-cyan-300 text-[11px]"
+                      class="btn-luxury px-2.5 py-1 rounded-md bg-cyan-950 border border-cyan-500/40 text-cyan-300 text-[11px]"
                     >
                       COPY CMD
                     </button>
                   </div>
-                  <pre id="cmd-client" class="bg-slate-950 p-3.5 rounded text-tacticalCyan overflow-x-auto border border-slate-800/80 leading-relaxed">.\Launch_Menu.bat
+                  <pre id="cmd-client" class="bg-slate-950 p-3.5 rounded-lg text-tacticalCyan overflow-x-auto border border-slate-800/80 leading-relaxed">.\Launch_Menu.bat
 # Or run packaged monolithic binary directly:
 Packaged\Windows\NobleFermi.exe -windowed -ResX=1280 -ResY=720 -log</pre>
                 </div>
 
-                <div class="bg-black/90 border border-amber-900/60 p-5 rounded-lg">
+                <div class="bg-black/90 border border-amber-900/60 p-5 rounded-xl">
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-amber-400 font-bold">2 // 128-TICK HEADLESS DEDICATED VPS SERVER</span>
                     <button
                       type="button"
                       onclick="copyCommand('cmd-server', this)"
-                      class="btn-luxury px-2.5 py-1 rounded bg-amber-950 border border-amber-500/40 text-amber-300 text-[11px]"
+                      class="btn-luxury px-2.5 py-1 rounded-md bg-amber-950 border border-amber-500/40 text-amber-300 text-[11px]"
                     >
                       COPY CMD
                     </button>
                   </div>
-                  <pre id="cmd-server" class="bg-slate-950 p-3.5 rounded text-amber-400 overflow-x-auto border border-slate-800/80 leading-relaxed">.\Launch_DedicatedServer.bat
+                  <pre id="cmd-server" class="bg-slate-950 p-3.5 rounded-lg text-amber-400 overflow-x-auto border border-slate-800/80 leading-relaxed">.\Launch_DedicatedServer.bat
 # Headless command for Windows / Linux VPS:
 Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode -server -nullrhi -log -PORT=7777 -TickRate=128 -MaxPlayers=18</pre>
                 </div>
@@ -1078,15 +1104,19 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
       }
     });
 
+    let resizeTimer = null;
     window.addEventListener('resize', () => {
-      if (isDesktopDevice() && isReducedMotion) {
-        isReducedMotion = false;
-        updateMotionUI();
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (isDesktopDevice() && isReducedMotion) {
+          isReducedMotion = false;
+          updateMotionUI();
+        }
         initScrollAnimations();
         if (window.WetGlass) {
-          window.WetGlass.setReducedMotion(false);
+          window.WetGlass.setReducedMotion(isReducedMotion);
         }
-      }
+      }, 120);
     }, { passive: true });
 
     // ---------------------------------------------------------------------
@@ -1125,7 +1155,8 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
         return;
       }
 
-      if (typeof Lenis !== 'undefined') {
+      // Restrict virtual scroll to desktop so mobile retains native 120Hz touch momentum
+      if (typeof Lenis !== 'undefined' && isDesktopDevice()) {
         lenisInstance = new Lenis({
           duration: 1.15,
           easing: (t) => 1 - Math.pow(1 - t, 4),
@@ -1151,26 +1182,35 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
         }
       );
 
-      const cards = gsap.utils.toArray('.sticky-card-section');
-      cards.forEach((card, index) => {
-        if (index === cards.length - 1) return;
-        const inner = card.querySelector('.sticky-card-inner');
-        const nextCard = cards[index + 1];
+      // Desktop sticky-deck cards: each card scales and completely fades out to 0
+      if (isDesktopDevice()) {
+        const cards = gsap.utils.toArray('.sticky-card-section');
+        cards.forEach((card, index) => {
+          if (index === cards.length - 1) return;
+          const inner = card.querySelector('.sticky-card-inner');
+          const nextCard = cards[index + 1];
 
-        gsap.to(inner, {
-          scale: 0.92 - index * 0.015,
-          opacity: 0.38,
-          y: -22,
-          force3D: true,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: nextCard,
-            start: 'top 88%',
-            end: 'top 18%',
-            scrub: 0.45,
-          },
+          gsap.to(inner, {
+            scale: 0.93,
+            opacity: 0,
+            y: -30,
+            force3D: true,
+            ease: 'power1.inOut',
+            scrollTrigger: {
+              trigger: nextCard,
+              start: 'top 85%',
+              end: 'top 22%',
+              scrub: 0.35,
+              onUpdate: (self) => {
+                inner.style.pointerEvents = self.progress > 0.85 ? 'none' : 'auto';
+              },
+            },
+          });
         });
-      });
+      } else {
+        // Natural mobile flow: cards remain fully visible without sticky overlap
+        gsap.set('.sticky-card-inner', { clearProps: 'all' });
+      }
     }
 
     // ---------------------------------------------------------------------
@@ -1217,11 +1257,11 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
       const desc = document.getElementById('plate-readout-desc');
       if (!plateIntact) {
         badge.textContent = 'PLATE SHATTERED (+75G)';
-        badge.className = 'px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-500/40';
+        badge.className = 'px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-500/40';
         desc.innerHTML = '<span class="text-amber-400">Shard Ejected (440 cm/s) + 5 Ballistic Spark Tracers</span>';
       } else {
         badge.textContent = 'LVL-IV INTACT (100)';
-        badge.className = 'px-2 py-0.5 rounded bg-cyan-950 text-tacticalCyan border border-cyan-500/30';
+        badge.className = 'px-2 py-0.5 rounded-md bg-cyan-950 text-tacticalCyan border border-cyan-500/30';
         desc.textContent = '4-Cell Cobalt Armor Matrix Active';
       }
       emitManualWavePulse();
