@@ -913,10 +913,15 @@ void main() {
   // ------------------------------------------------------------------
   // Public API
   // ------------------------------------------------------------------
+  function isDesktop() {
+    return (window.innerWidth || 0) >= 768 || (window.matchMedia && window.matchMedia('(min-width: 768px)').matches);
+  }
+
   function init(canvas, opts) {
     if (S.canvas || !canvas) return S.ok;
     S.canvas = canvas;
-    S.reduced = !!(opts && opts.reducedMotion);
+    // Desktop is authoritatively locked to Full Motion
+    S.reduced = isDesktop() ? false : !!(opts && opts.reducedMotion);
     let gl = null;
     try {
       gl = canvas.getContext('webgl', {
@@ -984,7 +989,8 @@ void main() {
   }
 
   function setReducedMotion(on) {
-    S.reduced = !!on;
+    // Desktop is authoritatively locked to Full Motion
+    S.reduced = isDesktop() ? false : !!on;
     if (!S.ok) return;
     if (S.reduced) { stop(); renderStatic(); } else start();
   }

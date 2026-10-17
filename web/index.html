@@ -291,15 +291,17 @@
       box-shadow: 0 0 18px rgba(0, 229, 255, 0.32);
     }
 
-    /* Accessibility: Full prefers-reduced-motion Support */
-    @media (prefers-reduced-motion: reduce) {
-      *, ::before, ::after {
+    /* Motion Mode Policy: Desktop is locked to Full Motion; Reduced Motion only on Mobile/Touch */
+    @media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+      body:not(.desktop-full-motion) *,
+      body:not(.desktop-full-motion) ::before,
+      body:not(.desktop-full-motion) ::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
       }
-      .sticky-card-section {
+      body:not(.desktop-full-motion) .sticky-card-section {
         position: relative !important;
         top: 0 !important;
         margin-bottom: 2.5rem !important;
@@ -309,13 +311,20 @@
       }
     }
 
-    body.reduced-motion-forced .sticky-card-section {
+    body.reduced-motion-forced:not(.desktop-full-motion) .sticky-card-section {
       position: relative !important;
       top: 0 !important;
       margin-bottom: 2.5rem !important;
       transform: none !important;
       opacity: 1 !important;
       filter: none !important;
+    }
+
+    body.reduced-motion-forced:not(.desktop-full-motion) *,
+    body.reduced-motion-forced:not(.desktop-full-motion) ::before,
+    body.reduced-motion-forced:not(.desktop-full-motion) ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
     }
   </style>
 </head>
@@ -987,27 +996,67 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
 
   <script>
     // ---------------------------------------------------------------------
-    // 0. ACCESSIBILITY & MOTION PREFERENCES
+    // 0. ACCESSIBILITY & MOTION PREFERENCES (Desktop Locked to Full Motion)
     // ---------------------------------------------------------------------
+    function isDesktopDevice() {
+      return (window.innerWidth || 0) >= 768 || (window.matchMedia && window.matchMedia('(min-width: 768px)').matches);
+    }
+
     const mediaReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let isReducedMotion = mediaReducedMotion.matches;
+    // Desktop is authoritatively locked to Full Motion; reduced motion permitted only on mobile
+    let isReducedMotion = !isDesktopDevice() && mediaReducedMotion.matches;
     let lenisInstance = null;
 
     function updateMotionUI() {
       const btn = document.getElementById('btn-motion-toggle');
       const label = document.getElementById('motion-status-label');
+      const isDesktop = isDesktopDevice();
+
+      if (isDesktop) {
+        isReducedMotion = false;
+        document.body.classList.add('desktop-full-motion');
+        document.body.classList.remove('reduced-motion-forced');
+        if (btn) {
+          btn.setAttribute('aria-pressed', 'false');
+          btn.setAttribute('title', 'Desktop Engine: 128-Hz Full Motion Active (Click to Pulse)');
+          btn.classList.remove('hover:border-amber-400/60', 'hover:text-amber-300');
+          btn.classList.add('border-cyan-500/40', 'text-cyan-300');
+        }
+        if (label) {
+          label.innerHTML = '<span class="text-tacticalCyan font-bold tracking-wider">MOTION: FULL</span>';
+        }
+        return;
+      }
+
+      document.body.classList.remove('desktop-full-motion');
       if (isReducedMotion) {
         document.body.classList.add('reduced-motion-forced');
-        if (btn) btn.setAttribute('aria-pressed', 'true');
+        if (btn) {
+          btn.setAttribute('aria-pressed', 'true');
+          btn.classList.remove('border-cyan-500/40', 'text-cyan-300');
+          btn.classList.add('hover:border-amber-400/60', 'hover:text-amber-300');
+        }
         if (label) label.textContent = 'MOTION: REDUCED';
       } else {
         document.body.classList.remove('reduced-motion-forced');
-        if (btn) btn.setAttribute('aria-pressed', 'false');
+        if (btn) {
+          btn.setAttribute('aria-pressed', 'false');
+          btn.classList.remove('border-cyan-500/40', 'text-cyan-300');
+          btn.classList.add('hover:border-amber-400/60', 'hover:text-amber-300');
+        }
         if (label) label.textContent = 'MOTION: FULL';
       }
     }
 
     function toggleReducedMotionMode() {
+      if (isDesktopDevice()) {
+        // Desktop is authoritatively locked to Full Motion — trigger interactive ripple pulse!
+        isReducedMotion = false;
+        updateMotionUI();
+        emitManualWavePulse();
+        return;
+      }
+
       isReducedMotion = !isReducedMotion;
       updateMotionUI();
       initScrollAnimations();
@@ -1017,13 +1066,28 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
     }
 
     mediaReducedMotion.addEventListener('change', (e) => {
-      isReducedMotion = e.matches;
+      if (isDesktopDevice()) {
+        isReducedMotion = false;
+      } else {
+        isReducedMotion = e.matches;
+      }
       updateMotionUI();
       initScrollAnimations();
       if (window.WetGlass) {
         window.WetGlass.setReducedMotion(isReducedMotion);
       }
     });
+
+    window.addEventListener('resize', () => {
+      if (isDesktopDevice() && isReducedMotion) {
+        isReducedMotion = false;
+        updateMotionUI();
+        initScrollAnimations();
+        if (window.WetGlass) {
+          window.WetGlass.setReducedMotion(false);
+        }
+      }
+    }, { passive: true });
 
     // ---------------------------------------------------------------------
     // 1. POINTER TELEMETRY & MANUAL WAVE PULSE (WET GLASS API)
