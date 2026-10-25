@@ -35,6 +35,7 @@ void AFPSMenuGameMode::BeginPlay()
 			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.VolumetricFog 0"));
 			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.VolumetricCloud 0"));
 			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.SkyLight.RealTimeReflectionCapture 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.DepthOfFieldQuality 0"));
 			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.ScreenPercentage 70"));
 			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("t.MaxFPS 60"));
 		}
@@ -54,6 +55,7 @@ void AFPSMenuGameMode::BeginPlay()
 		FRotator::ZeroRotator,
 		SpawnParams
 	);
+	UE_LOG(LogTemp, Warning, TEXT("[GAMEMODE] Spawned ActivePreviewActor: %s"), ActivePreviewActor ? *ActivePreviewActor->GetName() : TEXT("FAILED"));
 	// 1.5. Spawn 3D Industrial Hangar Diorama & Rain-Glass Optics Stage around the Operator Turntable
 	UClass* HangarToSpawn = HangarStageClass ? HangarStageClass.Get() : AFPSMenuHangarStage::StaticClass();
 	ActiveHangarStage = World->SpawnActor<AFPSMenuHangarStage>(
@@ -62,6 +64,7 @@ void AFPSMenuGameMode::BeginPlay()
 		FRotator::ZeroRotator,
 		SpawnParams
 	);
+	UE_LOG(LogTemp, Warning, TEXT("[GAMEMODE] Spawned ActiveHangarStage: %s"), ActiveHangarStage ? *ActiveHangarStage->GetName() : TEXT("FAILED"));
 	if (ActiveHangarStage && ActivePreviewActor)
 	{
 		ActiveHangarStage->ConfigurePreviewActorAndCamera(ActivePreviewActor);
@@ -99,6 +102,46 @@ void AFPSMenuGameMode::BeginPlay()
 			IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 			PlatformFile.CreateDirectoryTree(*ScreenshotDir);
 
+			// Diagnostic dump right before screenshot
+			if (ActivePreviewActor)
+			{
+				UStaticMeshComponent* Op = ActivePreviewActor->OperatorMesh;
+				FBoxSphereBounds B = Op ? Op->CalcBounds(Op->GetComponentTransform()) : FBoxSphereBounds();
+				UE_LOG(LogTemp, Warning, TEXT("[SCREENSHOT_DIAG] ActivePreviewActor=%s, OperatorMesh valid=%d, Asset=%s, Vis=%d, Hidden=%d, Radius=%.1f, Loc=%s"),
+					*ActivePreviewActor->GetName(),
+					Op != nullptr,
+					(Op && Op->GetStaticMesh()) ? *Op->GetStaticMesh()->GetName() : TEXT("NONE"),
+					Op ? Op->IsVisible() : 0,
+					Op ? Op->bHiddenInGame : 0,
+					B.SphereRadius,
+					Op ? *Op->GetComponentLocation().ToString() : TEXT("NONE"));
+
+				UStaticMeshComponent* Ped = ActivePreviewActor->PedestalMesh;
+				UE_LOG(LogTemp, Warning, TEXT("[SCREENSHOT_DIAG] PedestalMesh valid=%d, Asset=%s, Vis=%d, Hidden=%d"),
+					Ped != nullptr,
+					(Ped && Ped->GetStaticMesh()) ? *Ped->GetStaticMesh()->GetName() : TEXT("NONE"),
+					Ped ? Ped->IsVisible() : 0,
+					Ped ? Ped->bHiddenInGame : 0);
+			}
+			if (ActiveHangarStage)
+			{
+				UStaticMeshComponent* Floor = ActiveHangarStage->WetFloorPlane;
+				UE_LOG(LogTemp, Warning, TEXT("[SCREENSHOT_DIAG] WetFloorPlane valid=%d, Asset=%s, Vis=%d, Loc=%s"),
+					Floor != nullptr,
+					(Floor && Floor->GetStaticMesh()) ? *Floor->GetStaticMesh()->GetName() : TEXT("NONE"),
+					Floor ? Floor->IsVisible() : 0,
+					Floor ? *Floor->GetComponentLocation().ToString() : TEXT("NONE"));
+			}
+			if (APlayerController* PCLocal = UGameplayStatics::GetPlayerController(this, 0))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[SCREENSHOT_DIAG] ViewTarget=%s, CameraMgr=%s, CamLoc=%s, CamRot=%s, CamFOV=%.1f"),
+					PCLocal->GetViewTarget() ? *PCLocal->GetViewTarget()->GetName() : TEXT("NONE"),
+					PCLocal->PlayerCameraManager ? *PCLocal->PlayerCameraManager->GetName() : TEXT("NONE"),
+					PCLocal->PlayerCameraManager ? *PCLocal->PlayerCameraManager->GetCameraLocation().ToString() : TEXT("NONE"),
+					PCLocal->PlayerCameraManager ? *PCLocal->PlayerCameraManager->GetCameraRotation().ToString() : TEXT("NONE"),
+					PCLocal->PlayerCameraManager ? PCLocal->PlayerCameraManager->GetFOVAngle() : 0.0f);
+			}
+
 			const FString ScreenshotFile = FPaths::Combine(ScreenshotDir, TEXT("menu_real_actual.png"));
 			FScreenshotRequest::RequestScreenshot(ScreenshotFile, true, false);
 			UE_LOG(LogTemp, Warning, TEXT("[SCREENSHOT] Real in-engine screenshot queued to: %s"), *ScreenshotFile);
@@ -115,6 +158,6 @@ void AFPSMenuGameMode::BeginPlay()
 				UE_LOG(LogTemp, Warning, TEXT("[SCREENSHOT] Safety timeout reached, requesting exit..."));
 				FGenericPlatformMisc::RequestExit(false);
 			}), 6.0f, false);
-		}), 4.0f, false);
+		}), 7.0f, false);
 	}
 }

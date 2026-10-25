@@ -151,6 +151,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hangar|Lighting")
 	TObjectPtr<USpotLightComponent> OperatorFrontFillSpotLight;
 
+	/** 4B. Rear Hangar Bulkhead Architectural Wash Light */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hangar|Lighting")
+	TObjectPtr<UPointLightComponent> BulkheadWashLight;
+
 	/** 5. Exponential Height Fog + Volumetric Fog (#040A12) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hangar|Atmosphere")
 	TObjectPtr<UExponentialHeightFogComponent> HangarHeightFog;
@@ -164,7 +168,7 @@ protected:
 
 private:
 	// Modular Construction Helpers
-	void ConstructLayer1FloorAndPlinth(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* SteelMat);
+	void ConstructLayer1FloorAndPlinth(UStaticMesh* FloorMesh, UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* SteelMat);
 	void ConstructLayer2LeftStormWindows(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* SteelMat);
 	void ConstructLayer3RightCommandConsoles(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* SteelMat);
 	void ConstructLayer4OverheadGantry(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* SteelMat);

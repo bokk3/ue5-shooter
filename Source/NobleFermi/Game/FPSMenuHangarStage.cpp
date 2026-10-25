@@ -10,6 +10,7 @@
 #include "Components/PointLightComponent.h"
 #include "Components/RectLightComponent.h"
 #include "Components/SkyLightComponent.h"
+#include "Components/DirectionalLightComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Camera/CameraComponent.h"
@@ -85,17 +86,18 @@ AFPSMenuHangarStage::AFPSMenuHangarStage()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereFinder(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> FloorFinder(TEXT("/Game/Environment/Hangar/SM_Hangar_Floor.SM_Hangar_Floor"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SteelMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseMatFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 
 	UStaticMesh* CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object : nullptr;
 	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object : nullptr;
 	UStaticMesh* SphereMesh = SphereFinder.Succeeded() ? SphereFinder.Object : nullptr;
-	UMaterialInterface* SteelMat = SteelMatFinder.Succeeded() ? SteelMatFinder.Object : (BaseMatFinder.Succeeded() ? BaseMatFinder.Object : nullptr);
-	UMaterialInterface* BaseMat = BaseMatFinder.Succeeded() ? BaseMatFinder.Object.Get() : SteelMat;
+	UStaticMesh* FloorMesh = FloorFinder.Succeeded() ? FloorFinder.Object.Get() : CubeMesh;
+	UMaterialInterface* SteelMat = SteelMatFinder.Succeeded() ? SteelMatFinder.Object.Get() : nullptr;
+	UMaterialInterface* BaseMat = SteelMat;
 
 	// Build all 5 architectural depth layers + RainFX + Three-Tone Lighting Rig
-	ConstructLayer1FloorAndPlinth(CubeMesh, CylinderMesh, SteelMat);
+	ConstructLayer1FloorAndPlinth(FloorMesh, CubeMesh, CylinderMesh, SteelMat);
 	ConstructLayer2LeftStormWindows(CubeMesh, CylinderMesh, SteelMat);
 	ConstructLayer3RightCommandConsoles(CubeMesh, CylinderMesh, SteelMat);
 	ConstructLayer4OverheadGantry(CubeMesh, CylinderMesh, SteelMat);
@@ -107,16 +109,16 @@ AFPSMenuHangarStage::AFPSMenuHangarStage()
 // =========================================================================================
 // LAYER 1: WET INDUSTRIAL GRATE & CONCRETE FLOOR + TURNTABLE PLINTH
 // =========================================================================================
-void AFPSMenuHangarStage::ConstructLayer1FloorAndPlinth(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* SteelMat)
+void AFPSMenuHangarStage::ConstructLayer1FloorAndPlinth(UStaticMesh* FloorMesh, UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* SteelMat)
 {
 	// 1. Wide Wet Industrial Floor Plane (Z top surface = -0.2cm directly under Operator's boots)
 	WetFloorPlane = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WetFloorPlane"));
 	WetFloorPlane->SetupAttachment(RootComponent);
 	WetFloorPlane->SetMobility(EComponentMobility::Movable);
-	if (CubeMesh) WetFloorPlane->SetStaticMesh(CubeMesh);
+	if (FloorMesh) WetFloorPlane->SetStaticMesh(FloorMesh);
 	if (SteelMat) WetFloorPlane->SetMaterial(0, SteelMat);
-	WetFloorPlane->SetRelativeLocation(FVector(-550.0f, 0.0f, -10.2f));
-	WetFloorPlane->SetRelativeScale3D(FVector(24.0f, 24.0f, 0.20f));
+	WetFloorPlane->SetRelativeLocation(FVector(0.0f, 0.0f, -0.2f));
+	WetFloorPlane->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	WetFloorPlane->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WetFloorPlane->SetCastShadow(true);
 
@@ -154,7 +156,7 @@ void AFPSMenuHangarStage::ConstructLayer1FloorAndPlinth(UStaticMesh* CubeMesh, U
 	AddFloorGrate(TEXT("FloorDrainCurb_FarLeft"), FVector(-350.0f, 195.0f, 0.25f), FRotator::ZeroRotator, FVector(12.0f, 0.10f, 0.012f));
 	AddFloorGrate(TEXT("FloorDrainCurb_FarRight"), FVector(-350.0f, -195.0f, 0.25f), FRotator::ZeroRotator, FVector(12.0f, 0.10f, 0.012f));
 
-	// 3. Raised Low-Profile Tactical Turntable Plinth (2.5cm height, beveled dark metal rim around character feet)
+	// 3. Raised Low-Profile Tactical Turntable Plinth (Handled by AFPSCharacterPreviewActor::PedestalMesh)
 	PlinthOuterRing = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlinthOuterRing"));
 	PlinthOuterRing->SetupAttachment(RootComponent);
 	PlinthOuterRing->SetMobility(EComponentMobility::Movable);
@@ -163,7 +165,8 @@ void AFPSMenuHangarStage::ConstructLayer1FloorAndPlinth(UStaticMesh* CubeMesh, U
 	PlinthOuterRing->SetRelativeLocation(FVector(0.0f, 0.0f, -1.2f));
 	PlinthOuterRing->SetRelativeScale3D(FVector(1.12f, 1.12f, 0.032f));
 	PlinthOuterRing->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	PlinthOuterRing->SetCastShadow(true);
+	PlinthOuterRing->SetCastShadow(false);
+	PlinthOuterRing->SetVisibility(false);
 
 	PlinthBevelRing = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlinthBevelRing"));
 	PlinthBevelRing->SetupAttachment(RootComponent);
@@ -174,10 +177,11 @@ void AFPSMenuHangarStage::ConstructLayer1FloorAndPlinth(UStaticMesh* CubeMesh, U
 	PlinthBevelRing->SetRelativeScale3D(FVector(0.98f, 0.98f, 0.036f));
 	PlinthBevelRing->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PlinthBevelRing->SetCastShadow(false);
+	PlinthBevelRing->SetVisibility(false);
 
-	// 12 Cyan Emissive Micro-Pips embedded around the Turntable Plinth perimeter
+	// 12 Cyan Emissive Micro-Pips embedded around the Turntable Plinth perimeter (radius 136cm)
 	const int32 NumPips = 12;
-	const float PipRadius = 53.0f;
+	const float PipRadius = 136.0f;
 	for (int32 i = 0; i < NumPips; ++i)
 	{
 		const float AngleRad = (static_cast<float>(i) / static_cast<float>(NumPips)) * 2.0f * UE_PI;
@@ -499,29 +503,29 @@ void AFPSMenuHangarStage::ConstructLayer5DeepBackgroundBulkhead(UStaticMesh* Cub
 		DeepBulkheadMeshes.Add(Comp);
 	};
 
-	// Rear Hangar Bulkhead Wall at X = -1250cm (12.5 meters behind Operator) — guarantees 0 skybox/void leak
-	AddBulkhead(TEXT("RearBulkheadWall"), CubeMesh, FVector(-1250.0f, 0.0f, 160.0f), FRotator::ZeroRotator, FVector(0.50f, 18.0f, 4.20f));
+	// Rear Hangar Bulkhead Wall at X = -720cm (7.2 meters behind Operator) — provides authoritative visible architecture
+	AddBulkhead(TEXT("RearBulkheadWall"), CubeMesh, FVector(-720.0f, 0.0f, 160.0f), FRotator::ZeroRotator, FVector(0.50f, 18.0f, 4.20f));
 
 	// Industrial Blast Door Frame & Ribbed Steel Pylons along the rear bulkhead
-	AddBulkhead(TEXT("RearBlastDoorFrame_L"), CubeMesh, FVector(-1210.0f, 160.0f, 130.0f), FRotator::ZeroRotator, FVector(0.45f, 0.55f, 2.80f));
-	AddBulkhead(TEXT("RearBlastDoorFrame_R"), CubeMesh, FVector(-1210.0f, -160.0f, 130.0f), FRotator::ZeroRotator, FVector(0.45f, 0.55f, 2.80f));
-	AddBulkhead(TEXT("RearBlastDoorHeader"), CubeMesh, FVector(-1210.0f, 0.0f, 255.0f), FRotator::ZeroRotator, FVector(0.50f, 3.80f, 0.45f));
+	AddBulkhead(TEXT("RearBlastDoorFrame_L"), CubeMesh, FVector(-680.0f, 160.0f, 130.0f), FRotator::ZeroRotator, FVector(0.45f, 0.55f, 2.80f));
+	AddBulkhead(TEXT("RearBlastDoorFrame_R"), CubeMesh, FVector(-680.0f, -160.0f, 130.0f), FRotator::ZeroRotator, FVector(0.45f, 0.55f, 2.80f));
+	AddBulkhead(TEXT("RearBlastDoorHeader"), CubeMesh, FVector(-680.0f, 0.0f, 255.0f), FRotator::ZeroRotator, FVector(0.50f, 3.80f, 0.45f));
 
 	for (int32 Rib = -3; Rib <= 3; ++Rib)
 	{
 		AddBulkhead(
 			FString::Printf(TEXT("RearBulkheadRib_%d"), Rib + 3),
 			CubeMesh,
-			FVector(-1222.0f, Rib * 110.0f, 150.0f),
+			FVector(-690.0f, Rib * 110.0f, 150.0f),
 			FRotator::ZeroRotator,
 			FVector(0.25f, 0.22f, 3.40f)
 		);
 	}
 
 	// Right-side enclosing industrial wall behind the command consoles & Right UI Panel (Y = -360)
-	AddBulkhead(TEXT("RightEnclosureWall"), CubeMesh, FVector(-550.0f, -360.0f, 160.0f), FRotator::ZeroRotator, FVector(15.0f, 0.50f, 4.20f));
+	AddBulkhead(TEXT("RightEnclosureWall"), CubeMesh, FVector(-450.0f, -360.0f, 160.0f), FRotator::ZeroRotator, FVector(15.0f, 0.50f, 4.20f));
 	// Far Left enclosing wall behind the exterior backdrop (Y = +480)
-	AddBulkhead(TEXT("LeftExteriorEnclosureWall"), CubeMesh, FVector(-550.0f, 480.0f, 160.0f), FRotator::ZeroRotator, FVector(15.0f, 0.50f, 4.20f));
+	AddBulkhead(TEXT("LeftExteriorEnclosureWall"), CubeMesh, FVector(-450.0f, 480.0f, 160.0f), FRotator::ZeroRotator, FVector(15.0f, 0.50f, 4.20f));
 }
 
 // =========================================================================================
@@ -607,12 +611,12 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	WarmWindowKeySpotLight->SetMobility(EComponentMobility::Movable);
 	WarmWindowKeySpotLight->SetRelativeLocation(FVector(-420.0f, 245.0f, 195.0f));
 	WarmWindowKeySpotLight->SetRelativeRotation(FRotator(-18.0f, -32.0f, 0.0f));
-	WarmWindowKeySpotLight->SetIntensity(48000.0f);
-	WarmWindowKeySpotLight->SetLightColor(FLinearColor(1.0f, 0.44f, 0.08f)); // Saturated Fiery Sodium Amber (#FF7A1A)
-	WarmWindowKeySpotLight->SetAttenuationRadius(1400.0f);
+	WarmWindowKeySpotLight->SetIntensity(4500.0f);
+	WarmWindowKeySpotLight->SetLightColor(FLinearColor(1.0f, 0.52f, 0.16f)); // Saturated Fiery Sodium Amber (#FF7A1A)
+	WarmWindowKeySpotLight->SetAttenuationRadius(2800.0f);
 	WarmWindowKeySpotLight->SetInnerConeAngle(22.0f);
 	WarmWindowKeySpotLight->SetOuterConeAngle(52.0f);
-	WarmWindowKeySpotLight->SetVolumetricScatteringIntensity(2.5f);
+	WarmWindowKeySpotLight->SetVolumetricScatteringIntensity(1.5f);
 	WarmWindowKeySpotLight->SetCastShadows(true);
 
 	WarmOperatorRimSpotLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("WarmOperatorRimSpotLight"));
@@ -621,7 +625,7 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	// Positioned at Left-Rear (+Y, -X) pointing at Operator's right helmet/shoulder/leg and wet floor
 	WarmOperatorRimSpotLight->SetRelativeLocation(FVector(-145.0f, 165.0f, 168.0f));
 	WarmOperatorRimSpotLight->SetRelativeRotation(FRotator(-22.0f, -46.0f, 0.0f));
-	WarmOperatorRimSpotLight->SetIntensity(28000.0f);
+	WarmOperatorRimSpotLight->SetIntensity(2200.0f);
 	WarmOperatorRimSpotLight->SetLightColor(FLinearColor(1.0f, 0.56f, 0.14f)); // Warm Amber-Orange (#FFA033)
 	WarmOperatorRimSpotLight->SetAttenuationRadius(850.0f);
 	WarmOperatorRimSpotLight->SetInnerConeAngle(26.0f);
@@ -634,18 +638,18 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	// Area light along the slanted left bay windows to cast a wide orange specular ribbon across the left wet floor
 	WarmWindowRectLight->SetRelativeLocation(FVector(-320.0f, 185.0f, 125.0f));
 	WarmWindowRectLight->SetRelativeRotation(FRotator(-16.0f, -45.0f, 0.0f));
-	WarmWindowRectLight->SetIntensity(18000.0f);
-	WarmWindowRectLight->SetLightColor(FLinearColor(1.0f, 0.46f, 0.09f));
-	WarmWindowRectLight->SetSourceWidth(260.0f);
-	WarmWindowRectLight->SetSourceHeight(160.0f);
-	WarmWindowRectLight->SetAttenuationRadius(950.0f);
+	WarmWindowRectLight->SetIntensity(1800.0f);
+	WarmWindowRectLight->SetLightColor(FLinearColor(1.0f, 0.48f, 0.12f));
+	WarmWindowRectLight->SetSourceWidth(320.0f);
+	WarmWindowRectLight->SetSourceHeight(200.0f);
+	WarmWindowRectLight->SetAttenuationRadius(2200.0f);
 	WarmWindowRectLight->SetCastShadows(false);
 
 	ExteriorAmberGlowLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("ExteriorAmberGlowLight"));
 	ExteriorAmberGlowLight->SetupAttachment(RootComponent);
 	ExteriorAmberGlowLight->SetMobility(EComponentMobility::Movable);
 	ExteriorAmberGlowLight->SetRelativeLocation(FVector(-540.0f, 310.0f, 140.0f));
-	ExteriorAmberGlowLight->SetIntensity(36000.0f);
+	ExteriorAmberGlowLight->SetIntensity(2500.0f);
 	ExteriorAmberGlowLight->SetLightColor(FLinearColor(1.0f, 0.42f, 0.06f));
 	ExteriorAmberGlowLight->SetAttenuationRadius(650.0f);
 	ExteriorAmberGlowLight->SetCastShadows(false);
@@ -659,20 +663,20 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	CoolOverheadRectLight->SetMobility(EComponentMobility::Movable);
 	CoolOverheadRectLight->SetRelativeLocation(FVector(-260.0f, -20.0f, 215.0f));
 	CoolOverheadRectLight->SetRelativeRotation(FRotator(-75.0f, 0.0f, 0.0f));
-	CoolOverheadRectLight->SetIntensity(6500.0f);
-	CoolOverheadRectLight->SetLightColor(FLinearColor(0.14f, 0.32f, 0.46f)); // Deep Steel Blue (#2A5C7A)
-	CoolOverheadRectLight->SetSourceWidth(320.0f);
-	CoolOverheadRectLight->SetSourceHeight(240.0f);
-	CoolOverheadRectLight->SetAttenuationRadius(950.0f);
+	CoolOverheadRectLight->SetIntensity(1600.0f);
+	CoolOverheadRectLight->SetLightColor(FLinearColor(0.20f, 0.38f, 0.54f)); // Deep Steel Blue (#2A5C7A)
+	CoolOverheadRectLight->SetSourceWidth(400.0f);
+	CoolOverheadRectLight->SetSourceHeight(300.0f);
+	CoolOverheadRectLight->SetAttenuationRadius(2600.0f);
 	CoolOverheadRectLight->SetCastShadows(false);
 
 	HangarSkyLight = CreateDefaultSubobject<USkyLightComponent>(TEXT("HangarSkyLight"));
 	HangarSkyLight->SetupAttachment(RootComponent);
 	HangarSkyLight->SetMobility(EComponentMobility::Movable);
-	HangarSkyLight->SetIntensity(0.85f);
-	HangarSkyLight->SetLightColor(FLinearColor(0.11f, 0.23f, 0.32f)); // #1B3B52
-	HangarSkyLight->bLowerHemisphereIsBlack = true;
-	HangarSkyLight->LowerHemisphereColor = FLinearColor(0.015f, 0.03f, 0.05f, 1.0f);
+	HangarSkyLight->SetIntensity(0.8f);
+	HangarSkyLight->SetLightColor(FLinearColor(0.35f, 0.48f, 0.62f)); // Cool Steel Ambient
+	HangarSkyLight->bLowerHemisphereIsBlack = false;
+	HangarSkyLight->LowerHemisphereColor = FLinearColor(0.15f, 0.22f, 0.28f, 1.0f);
 	HangarSkyLight->bRealTimeCapture = false;
 
 	// -------------------------------------------------------------------------
@@ -683,9 +687,9 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	CyanConsoleBounceLight->SetupAttachment(RootComponent);
 	CyanConsoleBounceLight->SetMobility(EComponentMobility::Movable);
 	CyanConsoleBounceLight->SetRelativeLocation(FVector(-330.0f, -115.0f, 95.0f));
-	CyanConsoleBounceLight->SetIntensity(11000.0f);
+	CyanConsoleBounceLight->SetIntensity(2200.0f);
 	CyanConsoleBounceLight->SetLightColor(FLinearColor(0.0f, 0.867f, 0.961f)); // Noble Fermi Cyan (#00DDF5)
-	CyanConsoleBounceLight->SetAttenuationRadius(560.0f);
+	CyanConsoleBounceLight->SetAttenuationRadius(2000.0f);
 	CyanConsoleBounceLight->SetCastShadows(false);
 
 	CyanOperatorRimSpotLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("CyanOperatorRimSpotLight"));
@@ -694,7 +698,7 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	// Positioned behind Operator's left side (-Y) casting cool turquoise rim on left arm/vest & right floor puddles
 	CyanOperatorRimSpotLight->SetRelativeLocation(FVector(-150.0f, -135.0f, 148.0f));
 	CyanOperatorRimSpotLight->SetRelativeRotation(FRotator(-18.0f, 44.0f, 0.0f));
-	CyanOperatorRimSpotLight->SetIntensity(20000.0f);
+	CyanOperatorRimSpotLight->SetIntensity(2400.0f);
 	CyanOperatorRimSpotLight->SetLightColor(FLinearColor(0.0f, 0.867f, 0.961f)); // #00DDF5
 	CyanOperatorRimSpotLight->SetAttenuationRadius(720.0f);
 	CyanOperatorRimSpotLight->SetInnerConeAngle(25.0f);
@@ -707,7 +711,7 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	// Placed 22cm in front of the right-side monitors pointing directly AT the monitor screens to boost #00DDF5 pixels to 3.5x HDR
 	CyanScreenIllumRectLight->SetRelativeLocation(FVector(-362.0f, -112.0f, 108.0f));
 	CyanScreenIllumRectLight->SetRelativeRotation(FRotator(0.0f, -168.0f, 0.0f));
-	CyanScreenIllumRectLight->SetIntensity(9500.0f);
+	CyanScreenIllumRectLight->SetIntensity(1200.0f);
 	CyanScreenIllumRectLight->SetLightColor(FLinearColor(0.0f, 0.92f, 1.0f));
 	CyanScreenIllumRectLight->SetSourceWidth(115.0f);
 	CyanScreenIllumRectLight->SetSourceHeight(75.0f);
@@ -719,7 +723,7 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	LeftCrateCyanPipLight->SetupAttachment(RootComponent);
 	LeftCrateCyanPipLight->SetMobility(EComponentMobility::Movable);
 	LeftCrateCyanPipLight->SetRelativeLocation(FVector(-265.0f, 82.0f, 26.0f));
-	LeftCrateCyanPipLight->SetIntensity(1800.0f);
+	LeftCrateCyanPipLight->SetIntensity(400.0f);
 	LeftCrateCyanPipLight->SetLightColor(FLinearColor(0.0f, 0.867f, 0.961f));
 	LeftCrateCyanPipLight->SetAttenuationRadius(85.0f);
 	LeftCrateCyanPipLight->SetCastShadows(false);
@@ -732,19 +736,29 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	OperatorFrontFillSpotLight->SetMobility(EComponentMobility::Movable);
 	OperatorFrontFillSpotLight->SetRelativeLocation(FVector(235.0f, 18.0f, 132.0f));
 	OperatorFrontFillSpotLight->SetRelativeRotation(FRotator(-6.0f, 176.0f, 0.0f));
-	OperatorFrontFillSpotLight->SetIntensity(5500.0f);
-	OperatorFrontFillSpotLight->SetLightColor(FLinearColor(0.784f, 0.863f, 0.941f)); // #C8DCF0
-	OperatorFrontFillSpotLight->SetAttenuationRadius(450.0f);
+	OperatorFrontFillSpotLight->SetIntensity(1200.0f);
+	OperatorFrontFillSpotLight->SetLightColor(FLinearColor(0.85f, 0.90f, 0.96f));
+	OperatorFrontFillSpotLight->SetAttenuationRadius(1200.0f);
 	OperatorFrontFillSpotLight->SetInnerConeAngle(35.0f);
 	OperatorFrontFillSpotLight->SetOuterConeAngle(65.0f);
 	OperatorFrontFillSpotLight->SetCastShadows(false);
+
+	// 4B. Dedicated Rear Hangar Bulkhead Architectural Wash Light
+	BulkheadWashLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("BulkheadWashLight"));
+	BulkheadWashLight->SetupAttachment(RootComponent);
+	BulkheadWashLight->SetMobility(EComponentMobility::Movable);
+	BulkheadWashLight->SetRelativeLocation(FVector(-550.0f, 0.0f, 220.0f));
+	BulkheadWashLight->SetIntensity(3000.0f);
+	BulkheadWashLight->SetLightColor(FLinearColor(0.24f, 0.40f, 0.56f));
+	BulkheadWashLight->SetAttenuationRadius(2200.0f);
+	BulkheadWashLight->SetCastShadows(false);
 
 	// -------------------------------------------------------------------------
 	// 5. VOLUMETRIC FOG & LIGHT SHAFTS (#040A12 Deep Dark Navy)
 	// -------------------------------------------------------------------------
 	HangarHeightFog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("HangarHeightFog"));
 	HangarHeightFog->SetupAttachment(RootComponent);
-	HangarHeightFog->SetFogDensity(0.018f);
+	HangarHeightFog->SetFogDensity(0.00002f);
 	HangarHeightFog->SetFogHeightFalloff(0.25f);
 	HangarHeightFog->SetFogInscatteringColor(FLinearColor(0.016f, 0.039f, 0.071f)); // #040A12
 	HangarHeightFog->SetVolumetricFog(false); // Enabled dynamically when Ultra GI mode is active
@@ -754,7 +768,7 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 
 	// -------------------------------------------------------------------------
 	// 6. CAMERA, EXPOSURE & POST-PROCESS LOCK
-	// Manual Exposure Lock + FocalDistance=250cm Physical DoF + 0.35 Vignette + Deep Navy Shadows
+	// Cinematic Auto Exposure + Full Depth of Field + Deep Navy Shadows
 	// -------------------------------------------------------------------------
 	HangarPostProcess = CreateDefaultSubobject<UPostProcessComponent>(TEXT("HangarPostProcess"));
 	HangarPostProcess->SetupAttachment(RootComponent);
@@ -762,17 +776,15 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	HangarPostProcess->Priority = 10.0f;
 
 	FPostProcessSettings& PP = HangarPostProcess->Settings;
-	// Locked Manual Exposure
+	// Eye Adaptation Auto Exposure
 	PP.bOverride_AutoExposureMethod = true;
-	PP.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+	PP.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
 	PP.bOverride_AutoExposureBias = true;
 	PP.AutoExposureBias = 0.0f;
-	PP.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
-	PP.AutoExposureApplyPhysicalCameraExposure = 0;
-	PP.bOverride_AutoExposureMinBrightness = true;
-	PP.AutoExposureMinBrightness = 1.0f;
-	PP.bOverride_AutoExposureMaxBrightness = true;
-	PP.AutoExposureMaxBrightness = 1.0f;
+	PP.bOverride_AutoExposureMinBrightness = false;
+	PP.bOverride_AutoExposureMaxBrightness = false;
+	PP.bOverride_DepthOfFieldFocalDistance = false;
+	PP.bOverride_DepthOfFieldFstop = false;
 
 	// Controlled Bloom so cyan terminals and amber windows glow without whiteout clipping
 	PP.bOverride_BloomIntensity = true;
@@ -780,13 +792,10 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	PP.bOverride_BloomThreshold = true;
 	PP.BloomThreshold = 0.85f;
 
-	// Physical Depth of Field focused precisely on Operator Turntable (Distance = 335cm)
-	PP.bOverride_DepthOfFieldFocalDistance = true;
-	PP.DepthOfFieldFocalDistance = 335.0f;
-	PP.bOverride_DepthOfFieldFstop = true;
-	PP.DepthOfFieldFstop = 3.2f;
-	PP.bOverride_DepthOfFieldSensorWidth = true;
-	PP.DepthOfFieldSensorWidth = 24.576f;
+	// Physical Depth of Field disabled to guarantee razor-sharp 3D operator & environment rendering
+	PP.bOverride_DepthOfFieldFocalDistance = false;
+	PP.bOverride_DepthOfFieldFstop = false;
+	PP.bOverride_DepthOfFieldSensorWidth = false;
 
 	// Vignette (0.35 intensity) & Deep Navy Shadow Grading (#050B13)
 	PP.bOverride_VignetteIntensity = true;
@@ -1122,25 +1131,16 @@ void AFPSMenuHangarStage::BuildAndApplyProceduralPBRMaterials()
 	// 2. Apply M_HangarFloor_Wet onto WetFloorPlane
 	// BaseColor: #070B10 to #0E151D, Roughness: 0.08-0.14 in puddles, 0.48-0.62 on grates
 	// -------------------------------------------------------------------------
-	if (WetFloorPlane && MasterMultiMat)
+	if (WetFloorPlane)
 	{
-		WetFloorPlane->SetMaterial(0, MasterMultiMat);
+		if (SteelBaseMat) WetFloorPlane->SetMaterial(0, SteelBaseMat);
 		WetFloorMID = WetFloorPlane->CreateDynamicMaterialInstance(0);
 		if (WetFloorMID)
 		{
-			WetFloorMID->SetTextureParameterValue(TEXT("Texture_Camo"), HangarPBRCache::FloorMaskTex);
-			WetFloorMID->SetTextureParameterValue(TEXT("Texture_BodyMask"), HangarPBRCache::ZeroBodyMaskTex);
-			WetFloorMID->SetTextureParameterValue(TEXT("Texture_RipstopNormal"), HangarPBRCache::FloorNormalTex);
-			WetFloorMID->SetTextureParameterValue(TEXT("Texture_RipstopRoughness"), HangarPBRCache::FloorRoughnessTex);
-
-			// Deep charcoal/navy metal & wet puddles (#070B10 to #0E151D)
-			WetFloorMID->SetVectorParameterValue(TEXT("CamoColorPrimary"), FLinearColor(0.008f, 0.014f, 0.022f, 1.0f));
-			WetFloorMID->SetVectorParameterValue(TEXT("CamoColorSecondary"), FLinearColor(0.018f, 0.032f, 0.048f, 1.0f));
-			WetFloorMID->SetVectorParameterValue(TEXT("CamoColorTertiary"), FLinearColor(0.005f, 0.010f, 0.016f, 1.0f));
-			WetFloorMID->SetScalarParameterValue(TEXT("RoughnessBase"), 1.0f);
-			WetFloorMID->SetScalarParameterValue(TEXT("SubsurfaceIntensity"), 0.0f);
-			WetFloorMID->SetScalarParameterValue(TEXT("CamoTiling"), 14.0f);
-			WetFloorMID->SetScalarParameterValue(TEXT("RipstopTiling"), 14.0f);
+			WetFloorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.05f, 0.07f, 0.09f, 1.0f));
+			WetFloorMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.05f, 0.07f, 0.09f, 1.0f));
+			WetFloorMID->SetScalarParameterValue(TEXT("Roughness"), 0.18f);
+			WetFloorMID->SetScalarParameterValue(TEXT("Metallic"), 0.85f);
 		}
 	}
 
@@ -1158,10 +1158,10 @@ void AFPSMenuHangarStage::BuildAndApplyProceduralPBRMaterials()
 
 	for (UStaticMeshComponent* Strip : FloorGrateStrips)
 	{
-		SetMetallicSteelColor(Strip, FLinearColor(0.014f, 0.022f, 0.032f, 1.0f));
+		SetMetallicSteelColor(Strip, FLinearColor(0.20f, 0.25f, 0.30f, 1.0f));
 	}
-	SetMetallicSteelColor(PlinthOuterRing, FLinearColor(0.018f, 0.026f, 0.038f, 1.0f));
-	SetMetallicSteelColor(PlinthBevelRing, FLinearColor(0.032f, 0.048f, 0.068f, 1.0f));
+	SetMetallicSteelColor(PlinthOuterRing, FLinearColor(0.22f, 0.28f, 0.35f, 1.0f));
+	SetMetallicSteelColor(PlinthBevelRing, FLinearColor(0.30f, 0.36f, 0.44f, 1.0f));
 
 	// Cyan Emissive Micro-Pips around Turntable Plinth
 	for (UStaticMeshComponent* Pip : PlinthCyanPips)
@@ -1217,23 +1217,23 @@ void AFPSMenuHangarStage::BuildAndApplyProceduralPBRMaterials()
 	// Dark Industrial Steel on Beams, Silhouettes, Console Racks, Gantry, and Deep Bulkhead
 	for (UStaticMeshComponent* Beam : LeftStructuralBeams)
 	{
-		SetMetallicSteelColor(Beam, FLinearColor(0.016f, 0.022f, 0.030f, 1.0f));
+		SetMetallicSteelColor(Beam, FLinearColor(0.18f, 0.24f, 0.30f, 1.0f));
 	}
 	for (UStaticMeshComponent* Sil : ExteriorSilhouetteMeshes)
 	{
-		SetMetallicSteelColor(Sil, FLinearColor(0.010f, 0.012f, 0.016f, 1.0f));
+		SetMetallicSteelColor(Sil, FLinearColor(0.14f, 0.18f, 0.22f, 1.0f));
 	}
 	for (UStaticMeshComponent* Rack : ConsoleRackFrames)
 	{
-		SetMetallicSteelColor(Rack, FLinearColor(0.015f, 0.024f, 0.035f, 1.0f));
+		SetMetallicSteelColor(Rack, FLinearColor(0.20f, 0.26f, 0.32f, 1.0f));
 	}
 	for (UStaticMeshComponent* Gantry : OverheadGantryMeshes)
 	{
-		SetMetallicSteelColor(Gantry, FLinearColor(0.012f, 0.018f, 0.026f, 1.0f));
+		SetMetallicSteelColor(Gantry, FLinearColor(0.18f, 0.24f, 0.30f, 1.0f));
 	}
 	for (UStaticMeshComponent* Bulkhead : DeepBulkheadMeshes)
 	{
-		SetMetallicSteelColor(Bulkhead, FLinearColor(0.009f, 0.014f, 0.022f, 1.0f));
+		SetMetallicSteelColor(Bulkhead, FLinearColor(0.16f, 0.22f, 0.28f, 1.0f));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1319,63 +1319,60 @@ void AFPSMenuHangarStage::ConfigurePreviewActorAndCamera(AFPSCharacterPreviewAct
 	// (Note: Does NOT touch Operator mesh, rig, camo material, or turntable rotation!)
 	if (InPreviewActor->StudioKeyLight)
 	{
-		// Warm Sodium-Amber Key/Rim from Screen Left (+Y) hitting Operator's right helmet, shoulder, and forearm
 		InPreviewActor->StudioKeyLight->SetRelativeLocation(FVector(110.0f, 155.0f, 185.0f));
 		InPreviewActor->StudioKeyLight->SetRelativeRotation(FRotator(-22.0f, -125.0f, 0.0f));
-		InPreviewActor->StudioKeyLight->SetIntensity(20000.0f);
-		InPreviewActor->StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.58f, 0.20f)); // Warm Amber
+		InPreviewActor->StudioKeyLight->SetIntensity(1500.0f);
+		InPreviewActor->StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.70f, 0.35f)); // Warm Amber
 	}
 
 	if (InPreviewActor->StudioRimLight)
 	{
-		// Noble Fermi Cyan Rim Counter-Light from Screen Right (-Y) hitting Operator's left arm & vest
 		InPreviewActor->StudioRimLight->SetRelativeLocation(FVector(-95.0f, -155.0f, 160.0f));
 		InPreviewActor->StudioRimLight->SetRelativeRotation(FRotator(-16.0f, 55.0f, 0.0f));
-		InPreviewActor->StudioRimLight->SetIntensity(16000.0f);
-		InPreviewActor->StudioRimLight->SetLightColor(FLinearColor(0.0f, 0.867f, 0.961f)); // #00DDF5 Cyan
+		InPreviewActor->StudioRimLight->SetIntensity(1800.0f);
+		InPreviewActor->StudioRimLight->SetLightColor(FLinearColor(0.0f, 0.898f, 1.0f)); // Tactical Cyan
 	}
 
 	if (InPreviewActor->StudioFillLight)
 	{
-		// Subtle cool steel-blue fill from front-center
-		InPreviewActor->StudioFillLight->SetRelativeLocation(FVector(180.0f, -60.0f, 105.0f));
-		InPreviewActor->StudioFillLight->SetIntensity(4200.0f);
-		InPreviewActor->StudioFillLight->SetLightColor(FLinearColor(0.14f, 0.28f, 0.42f));
+		InPreviewActor->StudioFillLight->SetRelativeLocation(FVector(150.0f, 0.0f, 115.0f));
+		InPreviewActor->StudioFillLight->SetIntensity(600.0f);
+		InPreviewActor->StudioFillLight->SetLightColor(FLinearColor(1.0f, 0.96f, 0.90f));
 	}
 
 	if (InPreviewActor->StudioAmbientLight)
 	{
-		InPreviewActor->StudioAmbientLight->SetIntensity(1800.0f);
-		InPreviewActor->StudioAmbientLight->SetLightColor(FLinearColor(0.05f, 0.10f, 0.16f));
+		InPreviewActor->StudioAmbientLight->SetIntensity(200.0f);
+		InPreviewActor->StudioAmbientLight->SetLightColor(FLinearColor(0.35f, 0.45f, 0.55f));
 	}
 
-	// Lock PreviewCamera Exposure, Vignette & Physical Depth of Field (FocalDistance = 250cm)
+	if (InPreviewActor->StudioSunLight)
+	{
+		InPreviewActor->StudioSunLight->SetIntensity(0.0f);
+	}
+
+	// Lock PreviewCamera Exposure & Vignette
 	if (InPreviewActor->PreviewCamera)
 	{
 		FPostProcessSettings& CamPP = InPreviewActor->PreviewCamera->PostProcessSettings;
 		CamPP.bOverride_AutoExposureMethod = true;
-		CamPP.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+		CamPP.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
 		CamPP.bOverride_AutoExposureBias = true;
 		CamPP.AutoExposureBias = 0.0f;
-		CamPP.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
-		CamPP.AutoExposureApplyPhysicalCameraExposure = 0;
-		CamPP.bOverride_AutoExposureMinBrightness = true;
-		CamPP.AutoExposureMinBrightness = 1.0f;
-		CamPP.bOverride_AutoExposureMaxBrightness = true;
-		CamPP.AutoExposureMaxBrightness = 1.0f;
+		CamPP.bOverride_AutoExposureMinBrightness = false;
+		CamPP.AutoExposureMinBrightness = 0.5f;
+		CamPP.bOverride_AutoExposureMaxBrightness = false;
+		CamPP.AutoExposureMaxBrightness = 8.0f;
 
 		CamPP.bOverride_BloomIntensity = true;
 		CamPP.BloomIntensity = 0.28f;
 
-		CamPP.bOverride_DepthOfFieldFocalDistance = true;
-		CamPP.DepthOfFieldFocalDistance = 335.0f;
-		CamPP.bOverride_DepthOfFieldFstop = true;
-		CamPP.DepthOfFieldFstop = 3.2f;
-		CamPP.bOverride_DepthOfFieldSensorWidth = true;
-		CamPP.DepthOfFieldSensorWidth = 24.576f;
+		CamPP.bOverride_DepthOfFieldFocalDistance = false;
+		CamPP.bOverride_DepthOfFieldFstop = false;
+		CamPP.bOverride_DepthOfFieldSensorWidth = false;
 
 		CamPP.bOverride_VignetteIntensity = true;
-		CamPP.VignetteIntensity = 0.35f;
+		CamPP.VignetteIntensity = 0.25f;
 	}
 }
 

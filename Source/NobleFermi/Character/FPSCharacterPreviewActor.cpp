@@ -5,6 +5,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/DirectionalLightComponent.h"
 #include "Camera/CameraComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -24,67 +25,70 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	RootScene = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
 	RootComponent = RootScene;
 
-	// 2. Camera: Calibrated to frame the full Task Force Echo Operator (mid-shin Z=20cm to ~19cm above helmet crown Z=202cm)
+	// 2. Camera: Calibrated to frame the full Task Force Echo Operator & Hangar stage
 	PreviewCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("PreviewCamera"));
 	PreviewCamera->SetupAttachment(RootComponent);
-	PreviewCamera->SetRelativeLocation(FVector(335.0f, 0.0f, 126.0f));
-	PreviewCamera->SetRelativeRotation(FRotator(-1.6f, 180.0f, 0.0f));
-	PreviewCamera->FieldOfView = 54.0f;
+	PreviewCamera->SetRelativeLocation(FVector(400.0f, 0.0f, 90.0f));
+	PreviewCamera->SetRelativeRotation(FRotator(-1.5f, 180.0f, 0.0f));
+	PreviewCamera->FieldOfView = 50.0f;
 	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMethod = true;
-	PreviewCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+	PreviewCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
 	PreviewCamera->PostProcessSettings.bOverride_AutoExposureBias = true;
 	PreviewCamera->PostProcessSettings.AutoExposureBias = 0.0f;
-	PreviewCamera->PostProcessSettings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
-	PreviewCamera->PostProcessSettings.AutoExposureApplyPhysicalCameraExposure = 0;
-	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMinBrightness = true;
-	PreviewCamera->PostProcessSettings.AutoExposureMinBrightness = 1.0f;
-	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMaxBrightness = true;
-	PreviewCamera->PostProcessSettings.AutoExposureMaxBrightness = 1.0f;
+	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMinBrightness = false;
+	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMaxBrightness = false;
 	PreviewCamera->PostProcessSettings.bOverride_BloomIntensity = true;
-	PreviewCamera->PostProcessSettings.BloomIntensity = 0.1f;
+	PreviewCamera->PostProcessSettings.BloomIntensity = 0.25f;
 
-	// 3. Studio Lighting: 3-point tactical dynamic lighting (Warm amber key light, cool cyan rim light)
+	// 3. Studio Lighting: 3-point tactical dynamic lighting
 	StudioKeyLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioKeyLight"));
 	StudioKeyLight->SetupAttachment(RootComponent);
 	StudioKeyLight->SetMobility(EComponentMobility::Movable);
 	StudioKeyLight->SetRelativeLocation(FVector(190.0f, -120.0f, 210.0f));
 	StudioKeyLight->SetRelativeRotation(FRotator(-35.0f, 145.0f, 0.0f));
-	StudioKeyLight->SetIntensity(22000.0f);
+	StudioKeyLight->SetIntensity(1500.0f);
 	StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.78f, 0.40f)); // Warm amber key light
-	StudioKeyLight->SetAttenuationRadius(750.0f);
+	StudioKeyLight->SetAttenuationRadius(1500.0f);
 	StudioKeyLight->SetInnerConeAngle(25.0f);
-	StudioKeyLight->SetOuterConeAngle(55.0f);
+	StudioKeyLight->SetOuterConeAngle(65.0f);
 
 	StudioRimLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("StudioRimLight"));
 	StudioRimLight->SetupAttachment(RootComponent);
 	StudioRimLight->SetMobility(EComponentMobility::Movable);
 	StudioRimLight->SetRelativeLocation(FVector(-160.0f, 120.0f, 175.0f));
 	StudioRimLight->SetRelativeRotation(FRotator(-25.0f, -35.0f, 0.0f));
-	StudioRimLight->SetIntensity(18000.0f);
+	StudioRimLight->SetIntensity(1800.0f);
 	StudioRimLight->SetLightColor(FLinearColor(0.0f, 0.898f, 1.0f)); // Tactical cyan rim light (#00E5FF)
-	StudioRimLight->SetAttenuationRadius(650.0f);
+	StudioRimLight->SetAttenuationRadius(1400.0f);
 	StudioRimLight->SetInnerConeAngle(30.0f);
-	StudioRimLight->SetOuterConeAngle(65.0f);
+	StudioRimLight->SetOuterConeAngle(70.0f);
 	StudioRimLight->SetCastShadows(false);
 
 	StudioFillLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("StudioFillLight"));
 	StudioFillLight->SetupAttachment(RootComponent);
 	StudioFillLight->SetMobility(EComponentMobility::Movable);
-	StudioFillLight->SetRelativeLocation(FVector(160.0f, 140.0f, 90.0f));
-	StudioFillLight->SetIntensity(7000.0f);
-	StudioFillLight->SetLightColor(FLinearColor(0.12f, 0.22f, 0.35f)); // Deep blue-slate fill
-	StudioFillLight->SetAttenuationRadius(600.0f);
+	StudioFillLight->SetRelativeLocation(FVector(150.0f, 0.0f, 120.0f));
+	StudioFillLight->SetIntensity(600.0f);
+	StudioFillLight->SetLightColor(FLinearColor(0.85f, 0.92f, 1.0f)); // Clean fill
+	StudioFillLight->SetAttenuationRadius(1500.0f);
 	StudioFillLight->SetCastShadows(false);
 
 	StudioAmbientLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("StudioAmbientLight"));
 	StudioAmbientLight->SetupAttachment(RootComponent);
 	StudioAmbientLight->SetMobility(EComponentMobility::Movable);
 	StudioAmbientLight->SetRelativeLocation(FVector(0.0f, 0.0f, 150.0f));
-	StudioAmbientLight->SetIntensity(3000.0f);
-	StudioAmbientLight->SetLightColor(FLinearColor(0.08f, 0.12f, 0.18f));
-	StudioAmbientLight->SetAttenuationRadius(700.0f);
+	StudioAmbientLight->SetIntensity(200.0f);
+	StudioAmbientLight->SetLightColor(FLinearColor(0.35f, 0.45f, 0.55f));
+	StudioAmbientLight->SetAttenuationRadius(1500.0f);
 	StudioAmbientLight->SetCastShadows(false);
 
+	StudioSunLight = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("StudioSunLight"));
+	StudioSunLight->SetupAttachment(RootComponent);
+	StudioSunLight->SetMobility(EComponentMobility::Movable);
+	StudioSunLight->SetRelativeRotation(FRotator(-30.0f, 165.0f, 0.0f));
+	StudioSunLight->SetIntensity(0.0f); // Disabled inside indoor hangar stage
+	StudioSunLight->SetLightColor(FLinearColor(1.0f, 0.95f, 0.88f));
+	StudioSunLight->SetCastShadows(false);
 	// 4. Turntable Root (Rotates in Tick)
 	TurntableRoot = CreateDefaultSubobject<USceneComponent>(TEXT("TurntableRoot"));
 	TurntableRoot->SetupAttachment(RootComponent);
@@ -115,62 +119,66 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 		Comp->SetCastShadow(true);
 	};
 
-	// 5.5 Master Anatomical Player Body (SK_BaseMale with connected limbs & realistic muscle deformation)
-	BodyMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BodyMesh"));
-	BodyMesh->SetupAttachment(TurntableRoot);
-	BodyMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
-	BodyMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
-	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BodyMesh->SetCastShadow(true);
+	bIsRotating = false;
 
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> BaseMaleFinder(TEXT("/Game/Characters/BaseMale/SK_BaseMale.SK_BaseMale"));
-	if (BaseMaleFinder.Succeeded())
+	// 5. Tactical Turntable Pedestal (Radius 135cm, Height 14cm with beveled rim)
+	PedestalMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PedestalMesh"));
+	PedestalMesh->SetupAttachment(TurntableRoot);
+	PedestalMesh->SetMobility(EComponentMobility::Movable);
+	PedestalMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+	PedestalMesh->SetRelativeRotation(FRotator::ZeroRotator);
+	PedestalMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+	PedestalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PedestalMesh->SetCastShadow(true);
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlinthFinder(TEXT("/Game/Environment/Hangar/SM_Hangar_Plinth.SM_Hangar_Plinth"));
+	if (PlinthFinder.Succeeded())
 	{
-		BodyMesh->SetSkeletalMesh(BaseMaleFinder.Object);
+		PedestalMesh->SetStaticMesh(PlinthFinder.Object);
 	}
 
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
-	if (IdleAnimFinder.Succeeded())
-	{
-		AnimIdleADS = IdleAnimFinder.Object;
-	}
+	// 5.5 Master High-Fidelity Posed Operator (Vanguard Spec-Ops Soldier with 7-Zone Tactical Armor, Visor, Boots & AK-47)
+	OperatorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OperatorMesh"));
+	OperatorMesh->SetupAttachment(TurntableRoot);
+	OperatorMesh->SetMobility(EComponentMobility::Movable);
+	OperatorMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+	OperatorMesh->SetRelativeRotation(FRotator(0.0f, 15.0f, 0.0f)); // Heroic 15-degree angle facing camera
+	OperatorMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+	OperatorMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OperatorMesh->SetCastShadow(true);
+	OperatorMesh->SetVisibility(true);
 
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> LowReadyAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_LowReady.Anim_BaseMale_LowReady"));
-	if (LowReadyAnimFinder.Succeeded())
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PosedSoldierFinder(TEXT("/Game/Characters/BaseMale/SM_Soldier_Posed.SM_Soldier_Posed"));
+	if (PosedSoldierFinder.Succeeded())
 	{
-		AnimLowReady = LowReadyAnimFinder.Object;
+		OperatorMesh->SetStaticMesh(PosedSoldierFinder.Object);
 	}
-
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> WalkAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk.Anim_BaseMale_Walk"));
-	if (WalkAnimFinder.Succeeded())
-	{
-		AnimWalk = WalkAnimFinder.Object;
-	}
-
-	// Use UFPSAnimInstance C++ 21-Bone Procedural Low-Ready & Two-Bone IK Solver on SK_BaseMale
-	BodyMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
-	BodyMesh->SetAnimInstanceClass(UFPSAnimInstance::StaticClass());
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseBodyMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
-	if (BaseBodyMatFinder.Succeeded())
-	{
-		BodyMesh->SetMaterial(0, BaseBodyMatFinder.Object);
-	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> VisorMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Soldier_Visor.M_Soldier_Visor"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKSteelMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKWoodMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKBakeMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"));
 
-	// 5.6 7-Zone Socket-Driven 3D Tactical Gear & Carbine Rig Component
+	if (BaseBodyMatFinder.Succeeded()) OperatorMesh->SetMaterial(0, BaseBodyMatFinder.Object);
+	if (VisorMatFinder.Succeeded()) OperatorMesh->SetMaterial(1, VisorMatFinder.Object);
+	if (AKSteelMatFinder.Succeeded()) OperatorMesh->SetMaterial(2, AKSteelMatFinder.Object);
+	if (AKWoodMatFinder.Succeeded()) OperatorMesh->SetMaterial(3, AKWoodMatFinder.Object);
+	if (AKBakeMatFinder.Succeeded()) OperatorMesh->SetMaterial(4, AKBakeMatFinder.Object);
+
+	if (AKSteelMatFinder.Succeeded()) PedestalMesh->SetMaterial(0, AKSteelMatFinder.Object);
+	if (VisorMatFinder.Succeeded()) PedestalMesh->SetMaterial(1, VisorMatFinder.Object);
+
+	// Skeletal BodyMesh kept as inactive fallback
+	BodyMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BodyMesh"));
+	BodyMesh->SetupAttachment(TurntableRoot);
+	BodyMesh->SetVisibility(false);
+
 	OperatorGearComponent = CreateDefaultSubobject<UFPSOperatorGearComponent>(TEXT("OperatorGearComponent"));
 
-	// 5.7 Legacy AK47Mesh (Attached to TurntableRoot and hidden because OperatorGearComponent->CarbineProcMesh renders the 1:1 Spec-Ops Carbine)
 	AK47Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AK47Mesh"));
 	AK47Mesh->SetupAttachment(TurntableRoot);
-	AK47Mesh->SetRelativeLocation(FVector::ZeroVector);
-	AK47Mesh->SetRelativeRotation(FRotator::ZeroRotator);
-	AK47Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	AK47Mesh->SetCastShadow(false);
 	AK47Mesh->SetVisibility(false);
-
-	// 6. Turntable Pedestal
-	SetupMeshComp(PedestalMesh, TEXT("PedestalMesh"), CylinderMesh, FVector(0.0f, 0.0f, -2.0f), FRotator::ZeroRotator, FVector(0.9f, 0.9f, 0.04f));
 
 	// 7. Human Male Anatomical Skeleton (180 cm anthropometry fallback)
 	SetupMeshComp(PelvisMesh, TEXT("PelvisMesh"), CubeMesh, FVector(0.0f, 0.0f, 96.0f), FRotator::ZeroRotator, FVector(0.24f, 0.32f, 0.16f));
@@ -238,92 +246,111 @@ void AFPSCharacterPreviewActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Ensure SK_BaseMale is loaded
-	if (BodyMesh && !BodyMesh->GetSkeletalMeshAsset())
-	{
-		if (USkeletalMesh* LoadedMesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Characters/BaseMale/SK_BaseMale.SK_BaseMale")))
-		{
-			BodyMesh->SetSkeletalMesh(LoadedMesh);
-		}
-	}
+	UE_LOG(LogTemp, Warning, TEXT("[PREVIEW] AFPSCharacterPreviewActor::BeginPlay() running. PreviewCamera: %s at %s"),
+		PreviewCamera ? TEXT("VALID") : TEXT("NULL"),
+		PreviewCamera ? *PreviewCamera->GetRelativeLocation().ToString() : TEXT("NONE"));
 
-	if (BodyMesh)
+	// Ensure OperatorMesh is loaded and visible
+	if (OperatorMesh)
 	{
-		UMaterialInterface* CurrentMat = BodyMesh->GetMaterial(0);
-		if (!CurrentMat || !CurrentMat->GetName().Contains(TEXT("M_Operator_BaseBody")))
+		if (!OperatorMesh->GetStaticMesh())
 		{
-			if (UMaterialInterface* LoadedMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody")))
+			if (UStaticMesh* LoadedPosed = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Characters/BaseMale/SM_Soldier_Posed.SM_Soldier_Posed")))
 			{
-				BodyMesh->SetMaterial(0, LoadedMat);
+				OperatorMesh->SetStaticMesh(LoadedPosed);
 			}
 		}
 
-		// Run C++ UFPSAnimInstance (21-bone Low-Ready Carbine + Two-Bone IK solver)
-		BodyMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
-		BodyMesh->SetAnimInstanceClass(UFPSAnimInstance::StaticClass());
-		BodyMesh->InitAnim(true);
+		OperatorMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+		OperatorMesh->SetRelativeRotation(FRotator(0.0f, 15.0f, 0.0f));
+		OperatorMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+		OperatorMesh->SetVisibility(true, true);
+		OperatorMesh->SetHiddenInGame(false, true);
 
-		if (UFPSAnimInstance* FPSAnim = Cast<UFPSAnimInstance>(BodyMesh->GetAnimInstance()))
-		{
-			FPSAnim->bIsMenuPreview = true;
-			FPSAnim->MenuPoseIndex = CurrentStanceIndex; // 0 = Low-Ready Carbine
-		}
+		if (UMaterialInterface* BodyMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody")))
+			OperatorMesh->SetMaterial(0, BodyMat);
+		if (UMaterialInterface* VisorMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Soldier_Visor.M_Soldier_Visor")))
+			OperatorMesh->SetMaterial(1, VisorMat);
+		if (UMaterialInterface* AKSteel = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel")))
+			OperatorMesh->SetMaterial(2, AKSteel);
+		if (UMaterialInterface* AKWood = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood")))
+			OperatorMesh->SetMaterial(3, AKWood);
+		if (UMaterialInterface* AKBake = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite")))
+			OperatorMesh->SetMaterial(4, AKBake);
 	}
 
-	if (BodyMesh && BodyMesh->GetSkeletalMeshAsset())
-	{
-		// Hide all legacy primitive blocks when SK_BaseMale + UFPSOperatorGearComponent are active
-		auto HideComp = [](UStaticMeshComponent* Comp)
-		{
-			if (Comp)
-			{
-				Comp->SetVisibility(false);
-				Comp->SetHiddenInGame(true);
-			}
-		};
-		HideComp(PelvisMesh);
-		HideComp(SpineLowerMesh);
-		HideComp(SpineUpperMesh);
-		HideComp(ChestMesh);
-		HideComp(NeckMesh);
-		HideComp(HeadMesh);
-		HideComp(RightClavicleMesh);
-		HideComp(RightUpperArmMesh);
-		HideComp(RightForearmMesh);
-		HideComp(RightHandMesh);
-		HideComp(LeftClavicleMesh);
-		HideComp(LeftUpperArmMesh);
-		HideComp(LeftForearmMesh);
-		HideComp(LeftHandMesh);
-		HideComp(LeftThighMesh);
-		HideComp(LeftCalfMesh);
-		HideComp(RightThighMesh);
-		HideComp(RightCalfMesh);
-		HideComp(LeftBootMesh);
-		HideComp(RightBootMesh);
-		HideComp(VestMesh);
-		HideComp(HelmetMesh);
-		HideComp(NVGMesh);
-		HideComp(BalaclavaMesh);
-		HideComp(CapMesh);
-		HideComp(WeaponReceiverMesh);
-		HideComp(WeaponBarrelMesh);
-		HideComp(WeaponOpticMesh);
-		HideComp(WeaponMagMesh);
-		HideComp(WeaponStockMesh);
-		HideComp(AK47Mesh);
-
-		BodyMesh->SetVisibility(true);
-	}
-
-	// Pedestal dark metallic material
+	// Ensure PedestalMesh is loaded and visible
 	if (PedestalMesh)
 	{
-		if (UMaterialInstanceDynamic* PedestalMID = PedestalMesh->CreateDynamicMaterialInstance(0))
+		if (!PedestalMesh->GetStaticMesh())
 		{
-			PedestalMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.03f, 0.04f, 0.06f));
+			if (UStaticMesh* LoadedPlinth = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Environment/Hangar/SM_Hangar_Plinth.SM_Hangar_Plinth")))
+			{
+				PedestalMesh->SetStaticMesh(LoadedPlinth);
+			}
 		}
+
+		PedestalMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+		PedestalMesh->SetRelativeRotation(FRotator::ZeroRotator);
+		PedestalMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+		PedestalMesh->SetVisibility(true, true);
+		PedestalMesh->SetHiddenInGame(false, true);
+
+		if (UMaterialInterface* AKSteel = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel")))
+			PedestalMesh->SetMaterial(0, AKSteel);
+		if (UMaterialInterface* VisorMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Soldier_Visor.M_Soldier_Visor")))
+			PedestalMesh->SetMaterial(1, VisorMat);
 	}
+
+	// Hide all legacy primitive boxes and inactive BodyMesh
+	auto HideComp = [](UPrimitiveComponent* Comp)
+	{
+		if (Comp)
+		{
+			Comp->SetVisibility(false);
+			Comp->SetHiddenInGame(true);
+		}
+	};
+	HideComp(BodyMesh);
+	HideComp(AK47Mesh);
+	HideComp(PelvisMesh);
+	HideComp(SpineLowerMesh);
+	HideComp(SpineUpperMesh);
+	HideComp(ChestMesh);
+	HideComp(NeckMesh);
+	HideComp(HeadMesh);
+	HideComp(RightClavicleMesh);
+	HideComp(RightUpperArmMesh);
+	HideComp(RightForearmMesh);
+	HideComp(RightHandMesh);
+	HideComp(LeftClavicleMesh);
+	HideComp(LeftUpperArmMesh);
+	HideComp(LeftForearmMesh);
+	HideComp(LeftHandMesh);
+	HideComp(LeftThighMesh);
+	HideComp(LeftCalfMesh);
+	HideComp(RightThighMesh);
+	HideComp(RightCalfMesh);
+	HideComp(LeftBootMesh);
+	HideComp(RightBootMesh);
+	HideComp(VestMesh);
+	HideComp(HelmetMesh);
+	HideComp(NVGMesh);
+	HideComp(BalaclavaMesh);
+	HideComp(CapMesh);
+	HideComp(WeaponReceiverMesh);
+	HideComp(WeaponBarrelMesh);
+	HideComp(WeaponOpticMesh);
+	HideComp(WeaponMagMesh);
+	HideComp(WeaponStockMesh);
+
+	UE_LOG(LogTemp, Warning, TEXT("[PREVIEW_DIAG] OperatorMesh valid=%d, Asset=%s, Vis=%d, Hidden=%d, Loc=%s, Pedestal=%s"),
+		OperatorMesh != nullptr,
+		(OperatorMesh && OperatorMesh->GetStaticMesh()) ? *OperatorMesh->GetStaticMesh()->GetName() : TEXT("NULL"),
+		OperatorMesh ? OperatorMesh->IsVisible() : 0,
+		OperatorMesh ? OperatorMesh->bHiddenInGame : 0,
+		OperatorMesh ? *OperatorMesh->GetComponentLocation().ToString() : TEXT("NONE"),
+		(PedestalMesh && PedestalMesh->GetStaticMesh()) ? *PedestalMesh->GetStaticMesh()->GetName() : TEXT("NULL"));
 
 	// Sync persistent equipped loadout from UFPSEconomySubsystem if available
 	if (UGameInstance* GI = GetGameInstance())
@@ -337,17 +364,34 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		}
 	}
 
-	// Initialize the 7-Zone Socket-Driven 3D Tactical Gear & Carbine Rig
-	if (OperatorGearComponent && BodyMesh)
-	{
-		OperatorGearComponent->InitializeGearRig(BodyMesh, TurntableRoot, true);
-	}
+	// The high-fidelity SK_BaseMale model contains full integrated tactical armor, helmet, visor, and boots.
+	// OperatorGearComponent procedural box rig is disabled to keep the clean textured mesh.
 
 	ApplyCamoColors();
 	ApplyHeadgearVisibility();
 	ApplyVestConfiguration();
 	ApplyWeaponFinish();
 	SetPreviewStance(CurrentStanceIndex);
+}
+
+void AFPSCharacterPreviewActor::CalcCamera(float DeltaTime, struct FMinimalViewInfo& OutResult)
+{
+	if (PreviewCamera)
+	{
+		PreviewCamera->GetCameraView(DeltaTime, OutResult);
+	}
+	else
+	{
+		Super::CalcCamera(DeltaTime, OutResult);
+	}
+
+	static bool bLoggedCameraOnce = false;
+	if (!bLoggedCameraOnce)
+	{
+		bLoggedCameraOnce = true;
+		UE_LOG(LogTemp, Warning, TEXT("[CALC_CAMERA] PreviewCamera active! POV Loc=%s, Rot=%s, FOV=%.1f"),
+			*OutResult.Location.ToString(), *OutResult.Rotation.ToString(), OutResult.FOV);
+	}
 }
 
 void AFPSCharacterPreviewActor::Tick(float DeltaTime)
@@ -360,11 +404,7 @@ void AFPSCharacterPreviewActor::Tick(float DeltaTime)
 		TurntableRoot->AddLocalRotation(FRotator(0.0f, RotationSpeed * DeltaTime, 0.0f));
 	}
 
-	// 2. Pin 7-Zone Tactical Armor & Carbine to animated SK_BaseMale bones
-	if (OperatorGearComponent)
-	{
-		OperatorGearComponent->UpdateGearTransforms();
-	}
+	// 2. Tactical weapon socket stays locked to animated weapon_r bone
 
 	// 3. Fallback procedural idle breathing
 	UpdateAimingPose(DeltaTime);
@@ -439,32 +479,83 @@ void AFPSCharacterPreviewActor::ResetFacing()
 
 void AFPSCharacterPreviewActor::ApplyCamoColors()
 {
-	if (OperatorGearComponent)
+	if (OperatorMesh)
 	{
-		OperatorGearComponent->ApplyCamoPreset(static_cast<int32>(CurrentCamo));
+		UMaterialInstanceDynamic* BodyMID = Cast<UMaterialInstanceDynamic>(OperatorMesh->GetMaterial(0));
+		if (!BodyMID)
+		{
+			BodyMID = OperatorMesh->CreateDynamicMaterialInstance(0);
+		}
+		if (BodyMID)
+		{
+			// Clean tactical tints for Vanguard Spec-Ops Soldier
+			FLinearColor CamoTint = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f); // UrbanDigital (Task Force Echo Slate / Default)
+			if (CurrentCamo == EOperatorCamo::WoodlandTactical)
+			{
+				CamoTint = FLinearColor(0.85f, 1.05f, 0.85f, 1.0f); // Tactical Woodland Olive
+			}
+			else if (CurrentCamo == EOperatorCamo::DesertSpecOps)
+			{
+				CamoTint = FLinearColor(1.15f, 1.05f, 0.90f, 1.0f); // Desert Sand SpecOps
+			}
+			else if (CurrentCamo == EOperatorCamo::StealthBlackout)
+			{
+				CamoTint = FLinearColor(0.70f, 0.72f, 0.76f, 1.0f); // Stealth Blackout Dark Slate
+			}
+			BodyMID->SetVectorParameterValue(TEXT("CamoColorPrimary"), CamoTint);
+			BodyMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.45f);
+		}
+
+		if (UMaterialInstanceDynamic* VisorMID = Cast<UMaterialInstanceDynamic>(OperatorMesh->GetMaterial(1)))
+		{
+			VisorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.01f, 0.08f, 0.12f));
+			VisorMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 0.898f, 1.0f));
+			VisorMID->SetScalarParameterValue(TEXT("EmissiveIntensity"), 1.6f);
+		}
+		else if (UMaterialInstanceDynamic* NewVisorMID = OperatorMesh->CreateDynamicMaterialInstance(1))
+		{
+			NewVisorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.01f, 0.08f, 0.12f));
+			NewVisorMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 0.898f, 1.0f));
+			NewVisorMID->SetScalarParameterValue(TEXT("EmissiveIntensity"), 1.6f);
+		}
 	}
 }
 
 void AFPSCharacterPreviewActor::ApplyHeadgearVisibility()
 {
-	if (OperatorGearComponent)
-	{
-		OperatorGearComponent->ApplyHeadgearVariant(static_cast<int32>(CurrentHeadgear));
-	}
+	// Integrated into master soldier mesh
 }
 
 void AFPSCharacterPreviewActor::ApplyVestConfiguration()
 {
-	if (OperatorGearComponent)
-	{
-		OperatorGearComponent->ApplyVestVariant(static_cast<int32>(CurrentVest));
-	}
+	// Integrated into master soldier mesh
 }
 
 void AFPSCharacterPreviewActor::ApplyWeaponFinish()
 {
-	if (OperatorGearComponent)
+	if (OperatorMesh)
 	{
-		OperatorGearComponent->ApplyWeaponFinishVariant(static_cast<int32>(CurrentWeaponFinish));
+		UMaterialInstanceDynamic* SteelMID = Cast<UMaterialInstanceDynamic>(OperatorMesh->GetMaterial(2));
+		if (!SteelMID)
+		{
+			SteelMID = OperatorMesh->CreateDynamicMaterialInstance(2);
+		}
+		if (SteelMID)
+		{
+			FLinearColor SteelTint(0.12f, 0.13f, 0.15f, 1.0f);
+			if (CurrentWeaponFinish == EOperatorWeaponFinish::DesertTanCerakote)
+			{
+				SteelTint = FLinearColor(0.65f, 0.55f, 0.40f, 1.0f);
+			}
+			else if (CurrentWeaponFinish == EOperatorWeaponFinish::CarbonFiberSpecOps)
+			{
+				SteelTint = FLinearColor(0.04f, 0.04f, 0.05f, 1.0f);
+			}
+			else if (CurrentWeaponFinish == EOperatorWeaponFinish::GoldOpalDamascene)
+			{
+				SteelTint = FLinearColor(0.08f, 0.10f, 0.12f, 1.0f);
+			}
+			SteelMID->SetVectorParameterValue(TEXT("BaseColor"), SteelTint);
+		}
 	}
 }

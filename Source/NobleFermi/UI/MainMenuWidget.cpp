@@ -10375,7 +10375,7 @@ void UMainMenuWidget::UpdateAuthUI()
 
 			{
 
-				AuthOverlayModal->SetVisibility(bAuth ? EVisibility::Collapsed : EVisibility::Visible);
+				AuthOverlayModal->SetVisibility(EVisibility::Collapsed);
 
 			}
 

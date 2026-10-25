@@ -18,6 +18,8 @@ class NOBLEFERMI_API AFPSMenuPlayerController : public APlayerController
 public:
 	AFPSMenuPlayerController();
 
+	virtual void PlayerTick(float DeltaTime) override;
+
 	UFUNCTION(BlueprintCallable, Category = "FPS Menu|Camera")
 	void BlendToCamera(AActor* TargetCameraActor, float BlendTime = 1.0f);
 

@@ -63,6 +63,7 @@ public:
 	AFPSCharacterPreviewActor();
 
 	virtual void Tick(float DeltaTime) override;
+	virtual void CalcCamera(float DeltaTime, struct FMinimalViewInfo& OutResult) override;
 
 	// Core Scene Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Scene")
@@ -84,6 +85,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Lighting")
 	TObjectPtr<UPointLightComponent> StudioAmbientLight;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Lighting")
+	TObjectPtr<class UDirectionalLightComponent> StudioSunLight;
+
 	// Turntable Pivot Root (rotates the character and platform)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Turntable")
 	TObjectPtr<USceneComponent> TurntableRoot;
@@ -92,7 +96,11 @@ public:
 	TObjectPtr<UStaticMeshComponent> PedestalMesh;
 
 	// Master Anatomical Skeletal Mesh (SK_BaseMale)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Skeletal")
+	// Master High-Fidelity Posed Operator (Vanguard Soldier with Armor Rig, Helmet, Visor, Boots & AK-47)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Operator")
+	TObjectPtr<UStaticMeshComponent> OperatorMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Skeletal")
 	TObjectPtr<USkeletalMeshComponent> BodyMesh;
 
 	// 7-Zone Socket-Driven 3D Tactical Gear & Carbine Rig Component
