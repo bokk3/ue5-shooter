@@ -19,3 +19,6 @@ ThirdParty/*
 
 .wrangler/*
 **/.wrangler/*
+
+*.zip
+Releases/*
