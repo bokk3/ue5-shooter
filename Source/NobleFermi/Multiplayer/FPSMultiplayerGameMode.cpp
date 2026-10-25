@@ -4,8 +4,12 @@
 #include "Character/FPSCharacter.h"
 #include "Weapons/FPSWeaponBase.h"
 #include "Map/FPSCombatArenaMapActor.h"
+#include "Map/FPSCoastalOperationsMapActor.h"
+#include "Economy/FPSEconomySubsystem.h"
 #include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "Misc/ConfigCacheIni.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
 
@@ -21,35 +25,100 @@ AFPSMultiplayerGameMode::AFPSMultiplayerGameMode()
 void AFPSMultiplayerGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
-	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] InitGame: Initializing 128-tick tactical multiplayer match..."));
+
+	// Check URL Option "?Theater=Coastal" or "?Theater=Rust" (e.g. for dedicated server or map transitions)
+	const FString TheaterOption = UGameplayStatics::ParseOption(Options, TEXT("Theater"));
+	if (TheaterOption.Equals(TEXT("Coastal"), ESearchCase::IgnoreCase))
+	{
+		ActiveTheaterIndex = 1;
+	}
+	else if (TheaterOption.Equals(TEXT("Rust"), ESearchCase::IgnoreCase))
+	{
+		ActiveTheaterIndex = 0;
+	}
+	else
+	{
+		// Query persistent UFPSEconomySubsystem
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
+			{
+				ActiveTheaterIndex = Economy->GetSelectedTheaterIndex();
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] InitGame: Initializing 128-tick tactical multiplayer match in Theater %d (%s)..."),
+		ActiveTheaterIndex, ActiveTheaterIndex == 1 ? TEXT("Coastal Operations") : TEXT("Rust Tactical"));
+
 	EnsureCombatArenaExists();
 }
 
 void AFPSMultiplayerGameMode::EnsureCombatArenaExists()
 {
-	if (ActiveArena) return;
-
 	UWorld* World = GetWorld();
 	if (!World) return;
 
-	ActiveArena = Cast<AFPSCombatArenaMapActor>(UGameplayStatics::GetActorOfClass(this, AFPSCombatArenaMapActor::StaticClass()));
-	if (!ActiveArena)
+	if (ActiveTheaterIndex == 1)
 	{
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		ActiveArena = World->SpawnActor<AFPSCombatArenaMapActor>(FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
-		UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] EnsureCombatArenaExists: Procedurally spawned AFPSCombatArenaMapActor!"));
-	}
+		if (!ActiveCoastalArena)
+		{
+			ActiveCoastalArena = Cast<AFPSCoastalOperationsMapActor>(UGameplayStatics::GetActorOfClass(this, AFPSCoastalOperationsMapActor::StaticClass()));
+			if (!ActiveCoastalArena)
+			{
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				ActiveCoastalArena = World->SpawnActor<AFPSCoastalOperationsMapActor>(FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+				UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] EnsureCombatArenaExists: Procedurally spawned AFPSCoastalOperationsMapActor!"));
+			}
+		}
 
-	if (ActiveArena)
+		if (ActiveCoastalArena)
+		{
+			ActiveCoastalArena->SpawnTacticalPlayerStarts();
+		}
+	}
+	else
 	{
-		ActiveArena->SpawnTacticalPlayerStarts();
+		if (!ActiveArena)
+		{
+			ActiveArena = Cast<AFPSCombatArenaMapActor>(UGameplayStatics::GetActorOfClass(this, AFPSCombatArenaMapActor::StaticClass()));
+			if (!ActiveArena)
+			{
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				ActiveArena = World->SpawnActor<AFPSCombatArenaMapActor>(FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+				UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] EnsureCombatArenaExists: Procedurally spawned AFPSCombatArenaMapActor!"));
+			}
+		}
+
+		if (ActiveArena)
+		{
+			ActiveArena->SpawnTacticalPlayerStarts();
+		}
 	}
 }
 
 void AFPSMultiplayerGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Enforce baseline iGPU optimization on fresh match load if no user config exists yet
+	if (GConfig && GetWorld())
+	{
+		int32 SavedLumenMethod = 0;
+		if (!GConfig->GetInt(TEXT("SystemSettings"), TEXT("r.DynamicGlobalIlluminationMethod"), SavedLumenMethod, GEngineIni))
+		{
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.DynamicGlobalIlluminationMethod 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.Shadow.Virtual.Enable 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.Shadow.CSM.MaxCascades 2"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.VolumetricFog 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.VolumetricCloud 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.SkyLight.RealTimeReflectionCapture 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.ScreenPercentage 70"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("t.MaxFPS 60"));
+		}
+	}
 
 	FPSGameState = GetGameState<AFPSMultiplayerGameState>();
 	if (FPSGameState)
@@ -59,7 +128,9 @@ void AFPSMultiplayerGameMode::BeginPlay()
 
 	EnsureCombatArenaExists();
 	SpawnInitialTacticalBots();
-	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] BeginPlay: Match in progress on Rust Tactical. Arena: %s"), *GetNameSafe(ActiveArena));
+	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] BeginPlay: Match in progress on %s. Arena: %s"),
+		ActiveTheaterIndex == 1 ? TEXT("Coastal Operations") : TEXT("Rust Tactical"),
+		*GetNameSafe(ActiveTheaterIndex == 1 ? (AActor*)ActiveCoastalArena : (AActor*)ActiveArena));
 }
 
 void AFPSMultiplayerGameMode::SpawnInitialTacticalBots()
@@ -89,9 +160,17 @@ void AFPSMultiplayerGameMode::SpawnSingleTacticalBot(int32 BotIndex)
 		FVector(1500.0f, 920.0f, 115.0f)
 	};
 
+	static const FVector CoastalBravoSpawnPoints[4] = {
+		FVector(-2200.0f, -2300.0f, 115.0f),
+		FVector(-750.0f, -2450.0f, 115.0f),
+		FVector(750.0f, -2450.0f, 115.0f),
+		FVector(2200.0f, -2300.0f, 115.0f)
+	};
+
 	const int32 SafeIdx = FMath::Clamp(BotIndex, 0, 3);
-	const FVector SpawnLoc = BravoSpawnPoints[SafeIdx] + FVector(FMath::FRandRange(-80.0f, 80.0f), FMath::FRandRange(-80.0f, 80.0f), 0.0f);
-	const FRotator SpawnRot(0.0f, 180.0f, 0.0f);
+	const FVector BaseSpawnLoc = (ActiveTheaterIndex == 1) ? CoastalBravoSpawnPoints[SafeIdx] : BravoSpawnPoints[SafeIdx];
+	const FVector SpawnLoc = BaseSpawnLoc + FVector(FMath::FRandRange(-80.0f, 80.0f), FMath::FRandRange(-80.0f, 80.0f), 0.0f);
+	const FRotator SpawnRot = (ActiveTheaterIndex == 1) ? FRotator(0.0f, 90.0f, 0.0f) : FRotator(0.0f, 180.0f, 0.0f);
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;

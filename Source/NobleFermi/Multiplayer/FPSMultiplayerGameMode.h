@@ -7,11 +7,13 @@
 
 class AFPSMultiplayerGameState;
 class AFPSCombatArenaMapActor;
+class AFPSCoastalOperationsMapActor;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnKillfeedEventSignature, const FString&, KillerName, const FString&, VictimName, const FString&, WeaponName, bool, bIsHeadshot);
 
 /**
  * Classic MW2 Team Deathmatch GameMode on Rust Tactical (60m x 60m)
+ * and Coastal Operations (120m x 120m Dike, Dunes & Pier).
  * Manages procedural arena spawning, team player starts, kill scoring,
  * killstreak arbitration, respawn cycles, and match conclusion.
  */
@@ -46,7 +48,13 @@ public:
 	void TriggerTacticalNuke(AController* InstigatingPlayer);
 
 	UFUNCTION(BlueprintPure, Category = "FPS Map")
+	int32 GetActiveTheaterIndex() const { return ActiveTheaterIndex; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Map")
 	AFPSCombatArenaMapActor* GetActiveArena() const { return ActiveArena; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Map")
+	AFPSCoastalOperationsMapActor* GetActiveCoastalArena() const { return ActiveCoastalArena; }
 
 	UPROPERTY(EditDefaultsOnly, Category = "FPS Rules")
 	float RespawnDelaySeconds = 2.5f;
@@ -61,10 +69,16 @@ protected:
 
 private:
 	UPROPERTY()
+	int32 ActiveTheaterIndex = 0;
+
+	UPROPERTY()
 	TObjectPtr<AFPSMultiplayerGameState> FPSGameState;
 
 	UPROPERTY()
 	TObjectPtr<AFPSCombatArenaMapActor> ActiveArena;
+
+	UPROPERTY()
+	TObjectPtr<AFPSCoastalOperationsMapActor> ActiveCoastalArena;
 
 	UPROPERTY()
 	TArray<TObjectPtr<class AFPSCharacter>> ActiveTacticalBots;

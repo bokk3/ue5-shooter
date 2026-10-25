@@ -430,6 +430,18 @@
           <span id="motion-status-label">MOTION: FULL</span>
         </button>
 
+        <!-- Operator Cloud Account & Dossier Button -->
+        <button
+          id="btn-operator-account"
+          type="button"
+          onclick="openOperatorModal()"
+          class="btn-luxury inline-flex items-center space-x-2 px-3 sm:px-3.5 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-900/40 shadow-[0_0_15px_rgba(0,229,255,0.2)] transition-all"
+          title="Operator Account, Registration & Cloud Profile Sync"
+        >
+          <span id="nav-operator-dot" class="w-2 h-2 rounded-full bg-tacticalCyan animate-pulse"></span>
+          <span id="nav-operator-text">OPERATOR // ENLIST / SIGN IN</span>
+        </button>
+
         <a
           href="#card-deploy"
           class="btn-luxury px-3.5 sm:px-4 py-1.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-bold rounded-lg shadow-[0_0_20px_rgba(255,179,0,0.35)]"
@@ -1295,13 +1307,489 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
       setTimeout(() => { btnEl.innerText = orig; }, 1800);
     }
 
+    // =========================================================================
+    // NOBLE FERMI // OPERATOR ACCOUNT & CLOUDFLARE D1 AUTHENTICATION LOGIC
+    // =========================================================================
+    const API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
+      ? '/api'
+      : 'https://noble-fermi.pages.dev/api';
+
+    let currentOperatorSession = null;
+
+    function openOperatorModal() {
+      const modal = document.getElementById('operator-modal-backdrop');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        if (currentOperatorSession) {
+          showDossierView(currentOperatorSession);
+        } else {
+          showAuthFormsView();
+        }
+      }
+    }
+
+    function closeOperatorModal() {
+      const modal = document.getElementById('operator-modal-backdrop');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function setAuthTab(tab) {
+      const btnEnlist = document.getElementById('tab-btn-enlist');
+      const btnSignIn = document.getElementById('tab-btn-signin');
+      const formEnlist = document.getElementById('form-enlist');
+      const formSignIn = document.getElementById('form-signin');
+      const alertBox = document.getElementById('auth-alert-box');
+      if (alertBox) alertBox.classList.add('hidden');
+
+      if (tab === 'enlist') {
+        btnEnlist.className = 'py-2 text-xs font-mono font-bold tracking-wider rounded-lg transition-all bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 shadow-md';
+        btnSignIn.className = 'py-2 text-xs font-mono font-bold tracking-wider rounded-lg transition-all text-slate-400 hover:text-slate-200';
+        formEnlist.classList.remove('hidden');
+        formSignIn.classList.add('hidden');
+      } else {
+        btnSignIn.className = 'py-2 text-xs font-mono font-bold tracking-wider rounded-lg transition-all bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-950 shadow-md';
+        btnEnlist.className = 'py-2 text-xs font-mono font-bold tracking-wider rounded-lg transition-all text-slate-400 hover:text-slate-200';
+        formSignIn.classList.remove('hidden');
+        formEnlist.classList.add('hidden');
+      }
+    }
+
+    function showAuthAlert(message, isError = true) {
+      const alertBox = document.getElementById('auth-alert-box');
+      if (!alertBox) return;
+      alertBox.textContent = message;
+      alertBox.className = isError
+        ? 'mb-4 p-3 rounded-lg text-xs font-mono border bg-rose-950/70 border-rose-500/50 text-rose-200'
+        : 'mb-4 p-3 rounded-lg text-xs font-mono border bg-emerald-950/70 border-emerald-500/50 text-emerald-200';
+      alertBox.classList.remove('hidden');
+    }
+
+    function showAuthFormsView() {
+      const forms = document.getElementById('operator-auth-forms');
+      const dossier = document.getElementById('operator-dossier');
+      if (forms) forms.classList.remove('hidden');
+      if (dossier) dossier.classList.add('hidden');
+      const alertBox = document.getElementById('auth-alert-box');
+      if (alertBox) alertBox.classList.add('hidden');
+    }
+
+    function copyVerificationCode() {
+      const codeEl = document.getElementById('dossier-verification-code');
+      const btnEl = document.getElementById('btn-copy-verify-code');
+      if (!codeEl) return;
+      navigator.clipboard.writeText(codeEl.textContent.trim());
+      if (btnEl) {
+        const orig = btnEl.textContent;
+        btnEl.textContent = 'COPIED ✓';
+        setTimeout(() => { btnEl.textContent = orig; }, 1800);
+      }
+    }
+
+    function showDossierView(data) {
+      const forms = document.getElementById('operator-auth-forms');
+      const dossier = document.getElementById('operator-dossier');
+      if (forms) forms.classList.add('hidden');
+      if (dossier) dossier.classList.remove('hidden');
+
+      if (!data) return;
+      const user = data.user || {};
+      const profile = data.profile || {};
+
+      const callsignEl = document.getElementById('dossier-callsign');
+      const emailEl = document.getElementById('dossier-email');
+      const goldEl = document.getElementById('dossier-gold');
+      const opalsEl = document.getElementById('dossier-opals');
+      const unlockedEl = document.getElementById('dossier-unlocked-count');
+      const streakEl = document.getElementById('dossier-streak');
+      const verifyCodeEl = document.getElementById('dossier-verification-code');
+      const verifyBadgeEl = document.getElementById('dossier-verify-status-badge');
+
+      if (callsignEl) callsignEl.textContent = user.callsign || 'OPERATOR';
+      if (emailEl) emailEl.textContent = user.email || '';
+      if (goldEl) goldEl.textContent = (profile.gold_balance ?? 1500).toLocaleString();
+      if (opalsEl) opalsEl.textContent = (profile.opal_balance ?? 50).toLocaleString();
+      if (streakEl) streakEl.textContent = 'DAY ' + (profile.login_streak ?? 1);
+      if (verifyCodeEl) verifyCodeEl.textContent = user.verification_code || '------';
+
+      if (verifyBadgeEl) {
+        if (user.is_verified) {
+          verifyBadgeEl.textContent = 'CLIENT VERIFIED ✓';
+          verifyBadgeEl.className = 'px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 text-[10px] font-mono font-bold tracking-wider';
+        } else {
+          verifyBadgeEl.textContent = 'ENTER CODE IN GAME CLIENT';
+          verifyBadgeEl.className = 'px-2 py-0.5 rounded bg-amber-950/90 border border-amber-500/50 text-amber-300 text-[10px] font-mono font-bold tracking-wider animate-pulse';
+        }
+      }
+
+      let count = 4;
+      try {
+        if (profile.unlocked_items_json) {
+          const arr = JSON.parse(profile.unlocked_items_json);
+          if (Array.isArray(arr)) count = arr.length;
+        }
+      } catch (e) {}
+      if (unlockedEl) unlockedEl.textContent = count + ' ITEMS';
+
+      // Update Nav Button
+      const navText = document.getElementById('nav-operator-text');
+      const navDot = document.getElementById('nav-operator-dot');
+      if (navText) navText.textContent = `OPERATOR: ${user.callsign} [ONLINE]`;
+      if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-emeraldReady animate-pulse';
+    }
+
+    async function handleEnlistSubmit(e) {
+      e.preventDefault();
+      const callsign = document.getElementById('enlist-callsign').value.trim();
+      const email = document.getElementById('enlist-email').value.trim();
+      const password = document.getElementById('enlist-password').value;
+      const submitBtn = document.getElementById('btn-submit-enlist');
+
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'TRANSMITTING CREDENTIALS TO CLOUDFLARE D1...';
+
+        const res = await fetch(`${API_BASE}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callsign, email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'Enlistment failed.');
+        }
+
+        localStorage.setItem('nf_operator_token', data.token);
+        currentOperatorSession = data;
+        showDossierView(data);
+        emitManualWavePulse();
+      } catch (err) {
+        showAuthAlert(err.message || 'Network failure communicating with Cloudflare Edge API.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'ENLIST OPERATOR & DEPLOY (1,500 GOLD + 50 OPALS)';
+      }
+    }
+
+    async function handleSignInSubmit(e) {
+      e.preventDefault();
+      const identifier = document.getElementById('signin-identifier').value.trim();
+      const password = document.getElementById('signin-password').value;
+      const submitBtn = document.getElementById('btn-submit-signin');
+
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'VERIFYING TACTICAL PASSKEY...';
+
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'Sign in failed.');
+        }
+
+        localStorage.setItem('nf_operator_token', data.token);
+        currentOperatorSession = data;
+        showDossierView(data);
+        emitManualWavePulse();
+      } catch (err) {
+        showAuthAlert(err.message || 'Authentication error.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'AUTHENTICATE & ACCESS DOSSIER';
+      }
+    }
+
+    async function refreshOperatorDossier() {
+      const token = localStorage.getItem('nf_operator_token');
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          currentOperatorSession = data;
+          showDossierView(data);
+        }
+      } catch (e) {
+        console.warn('Telemetry refresh failed:', e);
+      }
+    }
+
+    function handleOperatorLogout() {
+      localStorage.removeItem('nf_operator_token');
+      currentOperatorSession = null;
+      const navText = document.getElementById('nav-operator-text');
+      const navDot = document.getElementById('nav-operator-dot');
+      if (navText) navText.textContent = 'OPERATOR // ENLIST / SIGN IN';
+      if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-tacticalCyan animate-pulse';
+      showAuthFormsView();
+    }
+
+    async function checkAutoLogin() {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('token');
+      const verifyCallsign = params.get('verify');
+
+      if (urlToken) {
+        localStorage.setItem('nf_operator_token', urlToken);
+        const cleanUrl = window.location.pathname + (verifyCallsign ? `?verify=${encodeURIComponent(verifyCallsign)}` : '');
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+
+      const token = localStorage.getItem('nf_operator_token');
+      if (!token) {
+        if (verifyCallsign) {
+          openOperatorModal();
+          setAuthTab('signin');
+          const idInput = document.getElementById('signin-identifier');
+          if (idInput) idInput.value = verifyCallsign;
+          showAuthAlert(`Sign in as '${verifyCallsign}' to retrieve your 6-digit Client Verification Code.`, false);
+        }
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          currentOperatorSession = data;
+          const user = data.user || {};
+          const navText = document.getElementById('nav-operator-text');
+          const navDot = document.getElementById('nav-operator-dot');
+          if (navText && user.callsign) {
+            navText.textContent = `OPERATOR: ${user.callsign} [ONLINE]`;
+          }
+          if (navDot) {
+            navDot.className = 'w-2 h-2 rounded-full bg-emeraldReady animate-pulse';
+          }
+          if (verifyCallsign || urlToken) {
+            openOperatorModal();
+            showDossierView(data);
+          }
+        } else {
+          localStorage.removeItem('nf_operator_token');
+          if (verifyCallsign) {
+            openOperatorModal();
+            setAuthTab('signin');
+            const idInput = document.getElementById('signin-identifier');
+            if (idInput) idInput.value = verifyCallsign;
+            showAuthAlert(`Sign in as '${verifyCallsign}' to retrieve your 6-digit Client Verification Code.`, false);
+          }
+        }
+      } catch (e) {
+        console.warn('Auto-login check skipped:', e);
+      }
+    }
+
     // Boot
     updateMotionUI();
     initScrollAnimations();
+    checkAutoLogin();
     const seaCanvas = document.getElementById('pixelSeaCanvas');
     if (window.WetGlass && seaCanvas) {
       window.WetGlass.init(seaCanvas, { reducedMotion: isReducedMotion });
     }
   </script>
+
+  <!-- =====================================================================
+       OPERATOR ACCOUNT & CLOUDFLARE D1 DOSSIER MODAL
+       ===================================================================== -->
+  <div id="operator-modal-backdrop" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
+    <div class="relative w-full max-w-lg bg-[#050B16] border border-cyan-500/40 rounded-2xl shadow-[0_0_50px_rgba(0,229,255,0.2)] p-6 sm:p-8 hud-card hud-corner text-slate-200">
+      
+      <!-- Top Tactical Header & Close Button -->
+      <div class="flex items-center justify-between border-b border-cyan-500/20 pb-4 mb-6">
+        <div class="flex items-center space-x-3">
+          <span class="w-2.5 h-2.5 rounded-full bg-tacticalCyan animate-ping"></span>
+          <div>
+            <h3 class="text-sm font-mono tracking-widest text-tacticalCyan font-bold uppercase">OPERATOR TERMINAL // D1 SYNC</h3>
+            <p class="text-[10px] font-mono text-slate-400">AUTHORITATIVE CLOUDFLARE EDGE AUTHENTICATION</p>
+          </div>
+        </div>
+        <button onclick="closeOperatorModal()" class="text-slate-400 hover:text-white font-mono text-xl leading-none px-2 py-1 rounded bg-slate-900 border border-slate-700/60 hover:border-cyan-400 transition-colors">
+          &times;
+        </button>
+      </div>
+
+      <!-- Auth State Container: Unauthenticated (Tabs: Enlist / Sign In) -->
+      <div id="operator-auth-forms">
+        <!-- Mode Tabs -->
+        <div class="grid grid-cols-2 gap-2 mb-6 p-1 bg-slate-950/80 rounded-xl border border-slate-800">
+          <button id="tab-btn-enlist" onclick="setAuthTab('enlist')" class="py-2 text-xs font-mono font-bold tracking-wider rounded-lg transition-all bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 shadow-md">
+            [ ENLIST OPERATOR ]
+          </button>
+          <button id="tab-btn-signin" onclick="setAuthTab('signin')" class="py-2 text-xs font-mono font-bold tracking-wider rounded-lg transition-all text-slate-400 hover:text-slate-200">
+            [ SIGN IN ]
+          </button>
+        </div>
+
+        <!-- Alert Notification Box -->
+        <div id="auth-alert-box" class="hidden mb-4 p-3 rounded-lg text-xs font-mono border"></div>
+
+        <!-- ENLIST TAB FORM -->
+        <form id="form-enlist" onsubmit="handleEnlistSubmit(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-mono text-slate-300 mb-1.5 uppercase tracking-wider">
+              OPERATOR CALLSIGN <span class="text-amber-400">*</span>
+            </label>
+            <input type="text" id="enlist-callsign" required minlength="3" maxlength="20" placeholder="e.g. GHOST_141"
+              class="w-full px-3.5 py-2.5 rounded-lg bg-slate-900/90 border border-slate-700 focus:border-cyan-400 text-slate-100 font-mono text-xs placeholder-slate-600 focus:outline-none transition-colors" />
+            <span class="text-[10px] font-mono text-slate-400">3-20 chars, alphanumeric/underscore. Case-insensitive unique.</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-mono text-slate-300 mb-1.5 uppercase tracking-wider">
+              TACTICAL EMAIL <span class="text-amber-400">*</span>
+            </label>
+            <input type="email" id="enlist-email" required placeholder="operator@taskforce.io"
+              class="w-full px-3.5 py-2.5 rounded-lg bg-slate-900/90 border border-slate-700 focus:border-cyan-400 text-slate-100 font-mono text-xs placeholder-slate-600 focus:outline-none transition-colors" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-mono text-slate-300 mb-1.5 uppercase tracking-wider">
+              PASSKEY <span class="text-amber-400">*</span>
+            </label>
+            <input type="password" id="enlist-password" required minlength="6" placeholder="••••••••"
+              class="w-full px-3.5 py-2.5 rounded-lg bg-slate-900/90 border border-slate-700 focus:border-cyan-400 text-slate-100 font-mono text-xs placeholder-slate-600 focus:outline-none transition-colors" />
+          </div>
+
+          <div class="pt-2">
+            <button type="submit" id="btn-submit-enlist"
+              class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold font-mono text-xs tracking-wider rounded-lg shadow-[0_0_25px_rgba(255,179,0,0.35)] transition-all">
+              ENLIST OPERATOR & DEPLOY (1,500 GOLD + 50 OPALS)
+            </button>
+          </div>
+        </form>
+
+        <!-- SIGN IN TAB FORM -->
+        <form id="form-signin" onsubmit="handleSignInSubmit(event)" class="space-y-4 hidden">
+          <div>
+            <label class="block text-xs font-mono text-slate-300 mb-1.5 uppercase tracking-wider">
+              CALLSIGN OR EMAIL <span class="text-cyan-400">*</span>
+            </label>
+            <input type="text" id="signin-identifier" required placeholder="GHOST_141 or operator@taskforce.io"
+              class="w-full px-3.5 py-2.5 rounded-lg bg-slate-900/90 border border-slate-700 focus:border-cyan-400 text-slate-100 font-mono text-xs placeholder-slate-600 focus:outline-none transition-colors" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-mono text-slate-300 mb-1.5 uppercase tracking-wider">
+              PASSKEY <span class="text-cyan-400">*</span>
+            </label>
+            <input type="password" id="signin-password" required minlength="6" placeholder="••••••••"
+              class="w-full px-3.5 py-2.5 rounded-lg bg-slate-900/90 border border-slate-700 focus:border-cyan-400 text-slate-100 font-mono text-xs placeholder-slate-600 focus:outline-none transition-colors" />
+          </div>
+
+          <div class="pt-2">
+            <button type="submit" id="btn-submit-signin"
+              class="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-slate-950 font-bold font-mono text-xs tracking-wider rounded-lg shadow-[0_0_25px_rgba(0,229,255,0.35)] transition-all">
+              AUTHENTICATE & ACCESS DOSSIER
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Auth State Container: Authenticated LIVE OPERATOR DOSSIER -->
+      <div id="operator-dossier" class="hidden space-y-6">
+        <!-- Callsign Banner -->
+        <div class="p-4 rounded-xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] font-mono tracking-wider text-cyan-400 uppercase">ACTIVE OPERATOR DOSSIER</div>
+            <div id="dossier-callsign" class="text-lg font-mono font-bold text-amber-300 tracking-wide">OPERATOR_UNKNOWN</div>
+            <div id="dossier-email" class="text-[11px] font-mono text-slate-400">email@taskforce.io</div>
+          </div>
+          <span class="px-2.5 py-1 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold tracking-wider">
+            CLOUD SYNCED
+          </span>
+        </div>
+
+        <!-- Balances Grid -->
+        <div class="grid grid-cols-2 gap-3 font-mono">
+          <div class="p-3.5 rounded-xl bg-slate-950 border border-amber-500/30">
+            <div class="text-[10px] text-slate-400 uppercase">GOLD RESERVE</div>
+            <div class="text-base font-bold text-amber-300 flex items-center gap-1.5 mt-0.5">
+              <span>🪙</span>
+              <span id="dossier-gold">1,500</span>
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950 border border-cyan-500/30">
+            <div class="text-[10px] text-slate-400 uppercase">OPAL VAULT</div>
+            <div class="text-base font-bold text-cyan-300 flex items-center gap-1.5 mt-0.5">
+              <span>💎</span>
+              <span id="dossier-opals">50</span>
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+            <div class="text-[10px] text-slate-400 uppercase">UNLOCKED ITEMS</div>
+            <div id="dossier-unlocked-count" class="text-sm font-bold text-slate-200 mt-0.5">4 ITEMS</div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+            <div class="text-[10px] text-slate-400 uppercase">LOGIN STREAK</div>
+            <div id="dossier-streak" class="text-sm font-bold text-slate-200 mt-0.5">DAY 1</div>
+          </div>
+        </div>
+
+        <!-- 6-Digit Client Verification Code Box -->
+        <div class="p-4 rounded-xl bg-amber-950/35 border-2 border-amber-400/60 shadow-[0_0_25px_rgba(255,179,0,0.18)] space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-mono font-bold text-amber-300 uppercase tracking-wider">
+              🔑 GAME CLIENT VERIFICATION CODE
+            </span>
+            <span id="dossier-verify-status-badge" class="px-2 py-0.5 rounded bg-amber-950/90 border border-amber-500/50 text-amber-300 text-[10px] font-mono font-bold tracking-wider">
+              ENTER CODE IN GAME CLIENT
+            </span>
+          </div>
+          <div class="flex items-center justify-between bg-black/80 border border-amber-500/40 rounded-lg px-4 py-3">
+            <span id="dossier-verification-code" class="text-2xl sm:text-3xl font-mono font-bold tracking-[0.35em] text-amber-400 glow-gold-text select-all">
+              ------
+            </span>
+            <button
+              type="button"
+              id="btn-copy-verify-code"
+              onclick="copyVerificationCode()"
+              class="btn-luxury px-3.5 py-1.5 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono text-xs font-bold tracking-wider"
+            >
+              COPY CODE
+            </button>
+          </div>
+          <p class="text-[11px] font-mono text-slate-300 leading-relaxed">
+            Enter this 6-digit verification code inside the <strong class="text-white">Noble Fermi Unreal Engine 5.8 Client</strong> when registering or logging in for the first time to link your account and sync stats.
+          </p>
+        </div>
+
+        <!-- Client Deployment Readiness Badge -->
+        <div class="p-4 rounded-xl bg-cyan-950/40 border border-cyan-500/50 flex items-start gap-3">
+          <span class="text-tacticalCyan text-lg mt-0.5">⚡</span>
+          <div>
+            <div class="text-xs font-mono font-bold text-cyan-200 tracking-wider">READY FOR DEPLOYMENT</div>
+            <p class="text-[11px] font-mono text-slate-300 mt-0.5 leading-relaxed">
+              Sign in with this Callsign or Email inside the Unreal Engine 5.8 Client (<code class="text-amber-300">Launch_Menu.bat</code>). Your cloud balance and loadout will sync instantly!
+            </p>
+          </div>
+        </div>
+
+        <!-- Dossier Actions -->
+        <div class="flex items-center justify-between pt-2">
+          <button onclick="refreshOperatorDossier()" class="text-xs font-mono text-cyan-400 hover:text-cyan-300 underline">
+            Refresh Telemetry
+          </button>
+          <button onclick="handleOperatorLogout()" class="px-3 py-1.5 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 hover:bg-rose-900/60 font-mono text-xs font-bold transition-colors">
+            LOGOUT / SWITCH
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
 </body>
 </html>

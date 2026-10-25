@@ -159,6 +159,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FPS Economy")
 	bool SpendOpals(int32 Amount) { return TrySpendOpals(Amount); }
 
+	UFUNCTION(BlueprintCallable, Category = "FPS Economy")
+	void SetBalances(int32 InGold, int32 InOpals);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Economy")
+	void UnlockItemDirectly(const FString& ItemID);
+
+	const TSet<FString>& GetUnlockedItemIDs() const { return UnlockedItemIDs; }
+
 	// === PERSISTENT EQUIPPED 3RD-PERSON LOADOUT ===
 	UFUNCTION(BlueprintPure, Category = "FPS Economy|Loadout")
 	int32 GetEquippedCamoIndex() const { return EquippedCamoIndex; }
@@ -189,6 +197,13 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "FPS Economy|Loadout")
 	void GetEquippedLoadout(int32& OutCamoIdx, int32& OutHeadgearIdx, int32& OutArmorIdx, int32& OutWeaponFinishIdx) const;
+
+	// === PERSISTENT COMBAT THEATER (MAP) SELECTION ===
+	UFUNCTION(BlueprintPure, Category = "FPS Economy|Theater")
+	int32 GetSelectedTheaterIndex() const { return SelectedTheaterIndex; }
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Economy|Theater")
+	void SetSelectedTheaterIndex(int32 NewIndex);
 
 	// === 3-SLOT DAILY TACTICAL CONTRACTS (BOUNTIES) ===
 	UFUNCTION(BlueprintCallable, Category = "FPS Economy|Bounties")
@@ -301,6 +316,10 @@ private:
 
 	UPROPERTY()
 	int32 EquippedWeaponFinishIndex = 0;
+
+	// Persistent Selected Combat Theater (0 = Rust Tactical [60x60m], 1 = Coastal Operations [120x120m])
+	UPROPERTY()
+	int32 SelectedTheaterIndex = 0;
 
 	UPROPERTY()
 	int32 BountyRerollSeed = 0;

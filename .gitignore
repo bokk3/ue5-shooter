@@ -18,3 +18,4 @@ Build/*
 ThirdParty/*
 
 .wrangler/*
+**/.wrangler/*

@@ -382,11 +382,25 @@ public:
 		DrawLine(CenterCompassX - 32.0f * HUDScale, TopY + TapeH - 1.0f * HUDScale, CenterCompassX + 28.0f * HUDScale, TopY + TapeH - 1.0f * HUDScale, 1.2f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
 		DrawGlowText(CenterCompassX - 24.0f * HUDScale, TopY + TapeH + 0.5f * HUDScale, BearingPillText, FontSmall, HudWhite, 0.8f);
 
-		// Objectives Definition (Flags A, B, C)
+		// Detect Active Theater (0 = Rust Tactical, 1 = Coastal Operations)
+		int32 ActiveTheaterIdx = 0;
+		if (UWorld* HudWorld = OwningHUD->GetWorld())
+		{
+			if (UGameInstance* GI = HudWorld->GetGameInstance())
+			{
+				if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
+				{
+					ActiveTheaterIdx = Economy->GetSelectedTheaterIndex();
+				}
+			}
+		}
+		const bool bIsCoastalOps = (ActiveTheaterIdx == 1);
+
+		// Objectives Definition (Flags A, B, C per Theater)
 		const struct { FVector Loc; const TCHAR* Name; FLinearColor Color; } Objectives[] = {
-			{ FVector(-1200.0f, -800.0f, 0.0f), TEXT("A"), FLinearColor(0.0f, 0.90f, 1.0f, 0.95f) },
-			{ FVector(0.0f, 0.0f, 0.0f),        TEXT("B"), FLinearColor(1.0f, 0.70f, 0.0f, 0.95f) },
-			{ FVector(1200.0f, 800.0f, 0.0f),   TEXT("C"), FLinearColor(0.0f, 0.95f, 0.78f, 0.95f) }
+			{ bIsCoastalOps ? FVector(0.0f, 4000.0f, 15.0f)   : FVector(-1400.0f, -1000.0f, 175.0f), TEXT("A"), FLinearColor(0.0f, 0.90f, 1.0f, 0.95f) },
+			{ bIsCoastalOps ? FVector(0.0f, -500.0f, 425.0f)  : FVector(0.0f, 0.0f, 200.0f),         TEXT("B"), FLinearColor(1.0f, 0.70f, 0.0f, 0.95f) },
+			{ bIsCoastalOps ? FVector(0.0f, -5800.0f, 265.0f) : FVector(1400.0f, 1000.0f, 175.0f),   TEXT("C"), FLinearColor(0.0f, 0.95f, 0.78f, 0.95f) }
 		};
 
 		for (const auto& Obj : Objectives)
@@ -576,7 +590,7 @@ public:
 			FLinearColor(0.0f, 0.16f, 0.22f, 0.30f), FLinearColor(0.0f, 0.08f, 0.12f, 0.0f), 0);
 		DrawLine(CalloutX - 6.0f * HUDScale, CalloutY - 2.0f * HUDScale, CalloutX - 11.0f * HUDScale, CalloutY + 18.0f * HUDScale, 2.2f * HUDScale, TealPrimary, 2);
 		DrawGlowText(CalloutX, CalloutY,
-			FString::Printf(TEXT("RUST TACTICAL // [%+03.0fm, %+03.0fm]"), OwningHUD->PlayerLocation.X / 100.0f, OwningHUD->PlayerLocation.Y / 100.0f),
+			FString::Printf(TEXT("%s // [%+03.0fm, %+03.0fm]"), bIsCoastalOps ? TEXT("COASTAL OPS") : TEXT("RUST TACTICAL"), OwningHUD->PlayerLocation.X / 100.0f, OwningHUD->PlayerLocation.Y / 100.0f),
 			FontMicro, FLinearColor(0.78f, 0.92f, 0.98f, 0.82f), 0.7f);
 
 		// =========================================================================

@@ -11,11 +11,12 @@ class UCameraComponent;
 class USpotLightComponent;
 class UPointLightComponent;
 class UMaterialInstanceDynamic;
+class UFPSOperatorGearComponent;
 
 UENUM(BlueprintType)
 enum class EOperatorCamo : uint8
 {
-	UrbanDigital UMETA(DisplayName = "Urban Digital"),
+	UrbanDigital UMETA(DisplayName = "Task Force Echo Slate"),
 	WoodlandTactical UMETA(DisplayName = "Woodland Tactical"),
 	DesertSpecOps UMETA(DisplayName = "Desert Spec Ops"),
 	StealthBlackout UMETA(DisplayName = "Stealth Blackout")
@@ -48,9 +49,10 @@ enum class EOperatorWeaponFinish : uint8
 };
 
 /**
- * 3D Rotating Operator Character Model for Menu Customisation.
- * Displays adult human male soldier (180cm, 82kg anthropometry) aiming down sights
- * with 360-degree turntable rotation, tactical studio lighting, and dynamic camo customization.
+ * 3D Rotating Task Force Echo Operator Model for Main Menu Hangar Diorama & Customisation.
+ * Displays adult human male soldier (180cm, 82kg anthropometry) equipped with the 7-Zone
+ * Socket-Driven Tactical Armor Rig (UFPSOperatorGearComponent) and Spec-Ops Carbine in an
+ * authoritative Low-Ready stance with 360-degree turntable rotation.
  */
 UCLASS()
 class NOBLEFERMI_API AFPSCharacterPreviewActor : public AActor
@@ -89,14 +91,18 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Turntable")
 	TObjectPtr<UStaticMeshComponent> PedestalMesh;
 
-	// Optional Skeletal Mesh (if external artist asset is assigned)
+	// Master Anatomical Skeletal Mesh (SK_BaseMale)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Skeletal")
 	TObjectPtr<USkeletalMeshComponent> BodyMesh;
+
+	// 7-Zone Socket-Driven 3D Tactical Gear & Carbine Rig Component
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Gear")
+	TObjectPtr<UFPSOperatorGearComponent> OperatorGearComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Skeletal")
 	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
 
-	// Anatomical Human Male Bone Structure Components (180 cm anthropometry)
+	// Anatomical Human Male Bone Structure Components (180 cm anthropometry fallback)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Anatomy")
 	TObjectPtr<UStaticMeshComponent> PelvisMesh;
 
@@ -130,7 +136,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Gear")
 	TObjectPtr<UStaticMeshComponent> VestMesh;
 
-	// Arms & Hands (Tactical ADS aiming posture)
+	// Arms & Hands
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Anatomy")
 	TObjectPtr<UStaticMeshComponent> RightClavicleMesh;
 
@@ -259,10 +265,10 @@ public:
 	float RotationSpeed = 18.0f; // degrees per second
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Operator|Turntable")
-	bool bIsRotating = true;
+	bool bIsRotating = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Operator|Stance")
-	bool bIsAiming = true;
+	bool bIsAiming = false;
 
 protected:
 	virtual void BeginPlay() override;
@@ -272,7 +278,7 @@ private:
 	EOperatorHeadgear CurrentHeadgear = EOperatorHeadgear::BallisticHelmet;
 	EOperatorArmorVest CurrentVest = EOperatorArmorVest::HeavyPlateCarrier;
 	EOperatorWeaponFinish CurrentWeaponFinish = EOperatorWeaponFinish::FactoryBluedSteel;
-	int32 CurrentStanceIndex = 0; // 0 = Aimed ADS, 1 = Low-Ready, 2 = Walk
+	int32 CurrentStanceIndex = 0; // 0 = Low-Ready Carbine (default), 1 = High-Ready ADS, 2 = Patrol Walk
 
 	void UpdateAimingPose(float DeltaTime);
 	void ApplyCamoColors();
@@ -293,4 +299,3 @@ private:
 	UPROPERTY()
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> WeaponMaterials;
 };
-

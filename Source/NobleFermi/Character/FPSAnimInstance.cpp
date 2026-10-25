@@ -1,5 +1,6 @@
 #include "Character/FPSAnimInstance.h"
 #include "Character/FPSCharacter.h"
+#include "Character/FPSCharacterPreviewActor.h"
 #include "Character/FPSCharacterMovementComponent.h"
 #include "BodyMechanics/FPSBodyMechanicsComponent.h"
 #include "Inventory/FPSInventoryComponent.h"
@@ -27,6 +28,13 @@ void UFPSAnimInstance::NativeInitializeAnimation()
 			OwningBodyMechanics = OwningCharacter->GetBodyMechanicsComponent();
 		}
 	}
+	else if (AActor* ActorOwner = GetOwningActor())
+	{
+		if (Cast<AFPSCharacterPreviewActor>(ActorOwner))
+		{
+			bIsMenuPreview = true;
+		}
+	}
 
 	CacheBoneIndices();
 }
@@ -39,16 +47,31 @@ void UFPSAnimInstance::CacheBoneIndices()
 		return;
 	}
 
-	UpperArmL_Index = SkelMesh->GetBoneIndex(FName(TEXT("upperarm_l")));
-	LowerArmL_Index = SkelMesh->GetBoneIndex(FName(TEXT("lowerarm_l")));
-	HandL_Index = SkelMesh->GetBoneIndex(FName(TEXT("hand_l")));
+	Pelvis_Index = SkelMesh->GetBoneIndex(FName(TEXT("pelvis")));
 	Spine01_Index = SkelMesh->GetBoneIndex(FName(TEXT("spine_01")));
 	Spine02_Index = SkelMesh->GetBoneIndex(FName(TEXT("spine_02")));
 	Spine03_Index = SkelMesh->GetBoneIndex(FName(TEXT("spine_03")));
 	Neck01_Index = SkelMesh->GetBoneIndex(FName(TEXT("neck_01")));
 	Head_Index = SkelMesh->GetBoneIndex(FName(TEXT("head")));
 
+	ClavicleL_Index = SkelMesh->GetBoneIndex(FName(TEXT("clavicle_l")));
+	ClavicleR_Index = SkelMesh->GetBoneIndex(FName(TEXT("clavicle_r")));
+	UpperArmL_Index = SkelMesh->GetBoneIndex(FName(TEXT("upperarm_l")));
+	UpperArmR_Index = SkelMesh->GetBoneIndex(FName(TEXT("upperarm_r")));
+	LowerArmL_Index = SkelMesh->GetBoneIndex(FName(TEXT("lowerarm_l")));
+	LowerArmR_Index = SkelMesh->GetBoneIndex(FName(TEXT("lowerarm_r")));
+	HandL_Index = SkelMesh->GetBoneIndex(FName(TEXT("hand_l")));
+	HandR_Index = SkelMesh->GetBoneIndex(FName(TEXT("hand_r")));
+
+	ThighL_Index = SkelMesh->GetBoneIndex(FName(TEXT("thigh_l")));
+	ThighR_Index = SkelMesh->GetBoneIndex(FName(TEXT("thigh_r")));
+	CalfL_Index = SkelMesh->GetBoneIndex(FName(TEXT("calf_l")));
+	CalfR_Index = SkelMesh->GetBoneIndex(FName(TEXT("calf_r")));
+	FootL_Index = SkelMesh->GetBoneIndex(FName(TEXT("foot_l")));
+	FootR_Index = SkelMesh->GetBoneIndex(FName(TEXT("foot_r")));
+
 	LeftFingerBoneIndices.Reset();
+	RightFingerBoneIndices.Reset();
 	const FReferenceSkeleton& RefSkeleton = SkelMesh->GetSkeletalMeshAsset()->GetRefSkeleton();
 	const int32 NumBones = RefSkeleton.GetNum();
 	for (int32 i = 0; i < NumBones; ++i)
@@ -58,6 +81,24 @@ void UFPSAnimInstance::CacheBoneIndices()
 		{
 			LeftFingerBoneIndices.Add(i);
 		}
+		if (ParentIdx == HandR_Index || (ParentIdx != INDEX_NONE && RightFingerBoneIndices.Contains(ParentIdx)))
+		{
+			RightFingerBoneIndices.Add(i);
+		}
+	}
+
+	RestCompBases.SetNum(NumBones);
+	for (int32 i = 0; i < NumBones; ++i)
+	{
+		const int32 ParentIdx = RefSkeleton.GetParentIndex(i);
+		if (ParentIdx == INDEX_NONE)
+		{
+			RestCompBases[i] = RefSkeleton.GetRefBonePose()[i];
+		}
+		else
+		{
+			RestCompBases[i] = RefSkeleton.GetRefBonePose()[i] * RestCompBases[ParentIdx];
+		}
 	}
 
 	bBoneIndicesCached = true;
@@ -66,6 +107,11 @@ void UFPSAnimInstance::CacheBoneIndices()
 void UFPSAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
+
+	if (!bBoneIndicesCached)
+	{
+		CacheBoneIndices();
+	}
 
 	if (!OwningCharacter)
 	{
@@ -81,14 +127,57 @@ void UFPSAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		}
 	}
 
+	// Menu Preview Actor Path (3D Hangar Diorama Turntable Operator)
 	if (!OwningCharacter)
 	{
-		return;
-	}
+		if (AFPSCharacterPreviewActor* PreviewOwner = Cast<AFPSCharacterPreviewActor>(GetOwningActor()))
+		{
+			bIsMenuPreview = true;
+			MenuPoseIndex = PreviewOwner->GetPreviewStance(); // 0 = Low-Ready Carbine, 1 = High-Ready ADS, 2 = Patrol Walk
 
-	if (!bBoneIndicesCached)
-	{
-		CacheBoneIndices();
+			// 0.25 Hz slow, authoritative chest respiration
+			BreathingPhase += DeltaSeconds * (0.25f * 2.0f * PI);
+			if (BreathingPhase > 2.0f * PI)
+			{
+				BreathingPhase -= 2.0f * PI;
+			}
+
+			if (MenuPoseIndex == 1) // High-Ready ADS
+			{
+				bIsAiming = true;
+				CurrentADSAlpha = FMath::FInterpTo(CurrentADSAlpha, 1.0f, DeltaSeconds, 8.0f);
+				bIsMoving = false;
+				GroundSpeed = 0.0f;
+				AimPitch = 0.0f;
+				AimYaw = 0.0f;
+				LocomotionPhase = FMath::FInterpTo(LocomotionPhase, 0.0f, DeltaSeconds, 6.0f);
+			}
+			else if (MenuPoseIndex == 2) // Combat Patrol Walk
+			{
+				bIsAiming = false;
+				CurrentADSAlpha = FMath::FInterpTo(CurrentADSAlpha, 0.0f, DeltaSeconds, 8.0f);
+				bIsMoving = true;
+				GroundSpeed = 240.0f;
+				AimPitch = -2.0f;
+				AimYaw = 0.0f;
+				LocomotionPhase += DeltaSeconds * 1.4f * 2.0f * PI;
+				if (LocomotionPhase > 2.0f * PI)
+				{
+					LocomotionPhase -= 2.0f * PI;
+				}
+			}
+			else // Default (0): Authoritative Tactical Low-Ready Carbine Stance (matching menu-prop.jpeg)
+			{
+				bIsAiming = false;
+				CurrentADSAlpha = FMath::FInterpTo(CurrentADSAlpha, 0.0f, DeltaSeconds, 8.0f);
+				bIsMoving = false;
+				GroundSpeed = 0.0f;
+				AimPitch = -3.0f; // Subtle -3 deg authoritative chin tuck
+				AimYaw = 0.0f;
+				LocomotionPhase = FMath::FInterpTo(LocomotionPhase, 0.0f, DeltaSeconds, 6.0f);
+			}
+		}
+		return;
 	}
 
 	// 1. Ground Locomotion Telemetry Aligned with UFPSCharacterMovementComponent
@@ -116,16 +205,52 @@ void UFPSAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		bIsBallisticDiving = OwningMovement->IsBallisticDiving();
 	}
 
-	// 3. Aiming & View Rotation
+	// 3. Gait & Breathing Phase Accumulation
+	float StrideFreq = 0.0f;
+	if (bIsSprinting)
+	{
+		StrideFreq = 3.6f;
+	}
+	else if (bIsSliding)
+	{
+		StrideFreq = 1.0f;
+	}
+	else if (bIsMoving)
+	{
+		StrideFreq = 2.4f * FMath::Clamp(GroundSpeed / 450.0f, 0.2f, 1.2f);
+	}
+
+	if (StrideFreq > 0.0f)
+	{
+		LocomotionPhase += DeltaSeconds * StrideFreq * 2.0f * PI;
+		if (LocomotionPhase > 2.0f * PI)
+		{
+			LocomotionPhase -= 2.0f * PI;
+		}
+	}
+	else
+	{
+		LocomotionPhase = FMath::FInterpTo(LocomotionPhase, 0.0f, DeltaSeconds, 6.0f);
+	}
+
+	BreathingPhase += DeltaSeconds * 1.5f;
+	if (BreathingPhase > 2.0f * PI)
+	{
+		BreathingPhase -= 2.0f * PI;
+	}
+
+	// 4. Aiming & View Rotation
 	AFPSWeaponBase* ActiveWeapon = nullptr;
 	if (OwningCharacter->GetInventoryComponent())
 	{
 		ActiveWeapon = OwningCharacter->GetInventoryComponent()->GetActiveWeapon();
 		bIsAiming = ActiveWeapon && ActiveWeapon->IsAimingDownSights();
+		CurrentADSAlpha = ActiveWeapon ? ActiveWeapon->GetADSAlpha() : 0.0f;
 	}
 	else
 	{
 		bIsAiming = false;
+		CurrentADSAlpha = 0.0f;
 	}
 
 	// Aim pitch normalized between -89 and +89 degrees
@@ -137,7 +262,7 @@ void UFPSAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	// In ADS, blend weight is 1.0 (tight upper-body lock)
 	UpperBodyBlendWeight = bIsAiming ? 1.0f : 0.85f;
 
-	// 4. Procedural Spine Lean & Aim Punch Flinch
+	// 5. Procedural Spine Lean & Aim Punch Flinch
 	if (OwningBodyMechanics)
 	{
 		ProceduralSpineLean = OwningBodyMechanics->GetProceduralSpineRotation();
@@ -147,18 +272,12 @@ void UFPSAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		PelvisIKOffset = OwningBodyMechanics->GetPelvisIKOffset();
 	}
 
-	// 5. Update Left-Hand IK Target from active weapon
+	// 6. Update Left-Hand IK Target from active weapon
 	UpdateIKTargetFromWeapon(ActiveWeapon);
 }
 
 void UFPSAnimInstance::UpdateIKTargetFromWeapon(AFPSWeaponBase* Weapon)
 {
-	if (!Weapon)
-	{
-		bLeftHandIKValid = false;
-		return;
-	}
-
 	USkeletalMeshComponent* SkelMesh = GetOwningComponent();
 	if (!SkelMesh)
 	{
@@ -166,59 +285,11 @@ void UFPSAnimInstance::UpdateIKTargetFromWeapon(AFPSWeaponBase* Weapon)
 		return;
 	}
 
-	FTransform GripWorldTransform = FTransform::Identity;
-	bool bFoundTarget = false;
-
-	// 1. Check if the weapon's AK47 static mesh has the dedicated socket
-	if (Weapon->AK47StaticMesh)
+	if (Weapon)
 	{
-		if (Weapon->AK47StaticMesh->DoesSocketExist(FName(TEXT("weapon_l_ik"))))
-		{
-			GripWorldTransform = Weapon->AK47StaticMesh->GetSocketTransform(FName(TEXT("weapon_l_ik")), RTS_World);
-			bFoundTarget = true;
-		}
-		else
-		{
-			// Transform handguard grip offset from AK47 local space to world space:
-			// (24cm forward along barrel, -2cm left towards receiver, +4cm up onto handguard)
-			const FTransform RelGrip(FRotator(10.0f, 0.0f, -15.0f), FVector(24.0f, -2.0f, 4.0f));
-			GripWorldTransform = RelGrip * Weapon->AK47StaticMesh->GetComponentTransform();
-			bFoundTarget = true;
-		}
-	}
-	else if (Weapon->WeaponMesh)
-	{
-		if (Weapon->WeaponMesh->DoesSocketExist(FName(TEXT("weapon_l_ik"))))
-		{
-			GripWorldTransform = Weapon->WeaponMesh->GetSocketTransform(FName(TEXT("weapon_l_ik")), RTS_World);
-			bFoundTarget = true;
-		}
-		else
-		{
-			const FTransform RelGrip(FRotator(10.0f, 0.0f, -15.0f), FVector(24.0f, -2.0f, 4.0f));
-			GripWorldTransform = RelGrip * Weapon->WeaponMesh->GetComponentTransform();
-			bFoundTarget = true;
-		}
-	}
-
-	if (bFoundTarget)
-	{
-		// Convert world transform to character component space
+		const FVector ForegripWorld = Weapon->GetForegripWorldLocation();
 		const FTransform MeshCompToWorld = SkelMesh->GetComponentTransform();
-		LeftHandIKLocation = MeshCompToWorld.InverseTransformPosition(GripWorldTransform.GetLocation());
-		LeftHandIKRotation = (MeshCompToWorld.InverseTransformRotation(GripWorldTransform.GetRotation())).Rotator();
-
-		// Elbow pole vector hint (below and left of left shoulder in component space)
-		if (UpperArmL_Index != INDEX_NONE && SkelMesh->GetComponentSpaceTransforms().IsValidIndex(UpperArmL_Index))
-		{
-			const FVector ShoulderLoc = SkelMesh->GetComponentSpaceTransforms()[UpperArmL_Index].GetLocation();
-			LeftElbowPoleVector = ShoulderLoc + FVector(-25.0f, -25.0f, -25.0f);
-		}
-		else
-		{
-			LeftElbowPoleVector = LeftHandIKLocation + FVector(-20.0f, -20.0f, -15.0f);
-		}
-
+		LeftHandIKLocation = MeshCompToWorld.InverseTransformPosition(ForegripWorld);
 		bLeftHandIKValid = true;
 	}
 	else
@@ -238,90 +309,453 @@ void UFPSAnimInstance::NativePostEvaluateAnimation()
 	}
 
 	TArray<FTransform>& SpaceBases = SkelMesh->GetEditableComponentSpaceTransforms();
-	if (SpaceBases.Num() == 0)
+	if (SpaceBases.Num() == 0 || RestCompBases.Num() == 0)
 	{
 		return;
 	}
 
-	// 1. Apply Thoracic Aim Pitch (+-89 deg distributed across spine_01..03, neck, head)
-	ApplySpineAimPitch(SpaceBases);
+	// 1. Full Lower-Body 21-Bone Locomotion (Walk, Run, Sprint, Crouch, Dive, Slide, Menu Grounded Stance)
+	ApplyLowerBodyLocomotion(SpaceBases);
 
-	// 2. Apply Closed-Form Two-Bone IK locking hand_l to AK-47 forend
+	// 2. Thoracic Spine Pitch, Torso Yaw & Breathing Oscillation
+	ApplySpineAimPitchAndTwist(SpaceBases);
+
+	// 3. Right Arm Rifle Shoulder-Ready / Low-Ready / ADS Solver
+	SolveRightArmRifleIK(SpaceBases);
+
+	// 4. Left Arm Foregrip Two-Bone IK Solver Locking to Carbine Handguard
 	SolveLeftHandTwoBoneIK(SpaceBases);
 }
 
-void UFPSAnimInstance::ApplySpineAimPitch(TArray<FTransform>& SpaceBases)
+void UFPSAnimInstance::ApplyLowerBodyLocomotion(TArray<FTransform>& SpaceBases)
 {
-	if (FMath::IsNearlyZero(AimPitch, 0.05f))
+	if (!SpaceBases.IsValidIndex(Pelvis_Index) || !SpaceBases.IsValidIndex(ThighL_Index) ||
+		!SpaceBases.IsValidIndex(ThighR_Index) || !SpaceBases.IsValidIndex(CalfL_Index) ||
+		!SpaceBases.IsValidIndex(CalfR_Index) || !SpaceBases.IsValidIndex(FootL_Index) ||
+		!SpaceBases.IsValidIndex(FootR_Index))
 	{
 		return;
 	}
 
-	// Fractional distribution: spine_01 (15%), spine_02 (30%), spine_03 (35%), neck_01 (10%), head (10%)
-	auto ApplyPitchToBone = [&](int32 BoneIndex, float Fraction)
+	const float sL = FMath::Sin(LocomotionPhase);
+	const float cL = FMath::Cos(LocomotionPhase);
+	const float sR = -sL;
+	const float cR = -cL;
+
+	const float MoveAlpha = FMath::Clamp(GroundSpeed / 450.0f, 0.0f, 1.0f);
+	const float SprintAlpha = bIsSprinting ? 1.0f : 0.0f;
+
+	// Pelvis Displacement and Angles
+	FVector PelvisDeltaLoc = FVector::ZeroVector;
+	FRotator PelvisDeltaRot = FRotator::ZeroRotator;
+
+	float ThighPitchL = 0.0f;
+	float ThighPitchR = 0.0f;
+	float KneeBendL = 0.0f;
+	float KneeBendR = 0.0f;
+	float FootPitchL = 0.0f;
+	float FootPitchR = 0.0f;
+
+	if (bIsBallisticDiving)
 	{
-		if (BoneIndex != INDEX_NONE && SpaceBases.IsValidIndex(BoneIndex))
+		// Ballistic Dive: Pelvis pitch forward ~70 deg, drop down
+		PelvisDeltaLoc = FVector(15.0f, 0.0f, -55.0f);
+		PelvisDeltaRot = FRotator(-70.0f, 0.0f, 0.0f);
+		ThighPitchL = 25.0f;
+		ThighPitchR = 25.0f;
+		KneeBendL = 10.0f;
+		KneeBendR = 10.0f;
+	}
+	else if (bIsSliding)
+	{
+		// Tactical Knee Slide: Reclined torso, lead leg forward, trail leg folded
+		PelvisDeltaLoc = FVector(-10.0f, 0.0f, -48.0f);
+		PelvisDeltaRot = FRotator(18.0f, -12.0f, 0.0f);
+		ThighPitchL = -75.0f;
+		KneeBendL = 16.0f;
+		FootPitchL = 14.0f;
+		ThighPitchR = 20.0f;
+		KneeBendR = 85.0f;
+		FootPitchR = -25.0f;
+	}
+	else if (bIsCrouching)
+	{
+		// Low Tactical Crouch Stance: Pelvis drop -38cm, legs folded in support
+		PelvisDeltaLoc = FVector(0.0f, 0.0f, -38.0f);
+		PelvisDeltaRot = FRotator(-8.0f, -10.0f, 0.0f);
+		if (bIsMoving)
 		{
-			const float SubPitch = AimPitch * Fraction;
-			const FQuat PitchDelta(FVector::RightVector, FMath::DegreesToRadians(-SubPitch));
-			FTransform& BoneTrans = SpaceBases[BoneIndex];
-			BoneTrans.SetRotation(PitchDelta * BoneTrans.GetRotation());
+			PelvisDeltaLoc.Z += -2.0f * FMath::Cos(2.0f * LocomotionPhase);
+			ThighPitchL = -50.0f - 14.0f * cL;
+			ThighPitchR = -50.0f - 14.0f * cR;
+			KneeBendL = 60.0f + ((sL > 0.0f) ? (22.0f * sL) : (8.0f * -sL));
+			KneeBendR = 60.0f + ((sR > 0.0f) ? (22.0f * sR) : (8.0f * -sR));
+			FootPitchL = -6.0f + 8.0f * cL;
+			FootPitchR = -6.0f + 8.0f * cR;
+		}
+		else
+		{
+			ThighPitchL = -68.0f;
+			KneeBendL = 78.0f;
+			FootPitchL = -10.0f;
+			ThighPitchR = 14.0f;
+			KneeBendR = 88.0f;
+			FootPitchR = -28.0f;
+		}
+	}
+	else if (bIsMoving)
+	{
+		// Walk / Athletic Run / Tactical Sprint
+		const float BobZ = -2.5f * MoveAlpha * (1.0f + 0.8f * SprintAlpha) * FMath::Cos(2.0f * LocomotionPhase);
+		const float SwayY = 1.8f * MoveAlpha * sL;
+		PelvisDeltaLoc = FVector(0.0f, SwayY, BobZ);
+		PelvisDeltaRot = FRotator(3.0f * MoveAlpha, -5.0f * MoveAlpha * cL, 2.0f * MoveAlpha * sL);
+
+		const float ThighAmp = FMath::Lerp(22.0f, 48.0f, SprintAlpha) * MoveAlpha;
+		const float KneeAmp = FMath::Lerp(35.0f, 65.0f, SprintAlpha) * MoveAlpha;
+
+		ThighPitchL = -ThighAmp * cL;
+		ThighPitchR = -ThighAmp * cR;
+		KneeBendL = (sL > 0.0f) ? (KneeAmp * sL) : (8.0f * MoveAlpha);
+		KneeBendR = (sR > 0.0f) ? (KneeAmp * sR) : (8.0f * MoveAlpha);
+		FootPitchL = 12.0f * cL * MoveAlpha;
+		FootPitchR = 12.0f * cR * MoveAlpha;
+	}
+	else if (bIsMenuPreview && MenuPoseIndex == 0)
+	{
+		// Grounded Authoritative Shoulder-Width Low-Ready Menu Stance (matching menu-prop.jpeg)
+		PelvisDeltaRot = FRotator(-0.8f, -4.0f, 0.0f);
+		ThighPitchL = -5.0f;
+		KneeBendL = 9.0f;
+		FootPitchL = -4.0f;
+		ThighPitchR = 4.0f;
+		KneeBendR = 8.0f;
+		FootPitchR = -8.0f;
+	}
+	else
+	{
+		// Idle Bladed Tactical Stance
+		PelvisDeltaRot = FRotator(-1.5f, -8.0f, 0.0f);
+		ThighPitchL = -10.0f;
+		KneeBendL = 15.0f;
+		FootPitchL = -5.0f;
+		ThighPitchR = 8.0f;
+		KneeBendR = 14.0f;
+		FootPitchR = -14.0f;
+	}
+
+	// Apply to Pelvis
+	FTransform& PelvisTrans = SpaceBases[Pelvis_Index];
+	const FQuat PelvisDeltaQ = PelvisDeltaRot.Quaternion();
+	PelvisTrans.SetLocation(RestCompBases[Pelvis_Index].GetLocation() + PelvisDeltaLoc);
+	PelvisTrans.SetRotation(PelvisDeltaQ * RestCompBases[Pelvis_Index].GetRotation());
+
+	// Forward Kinematics for Left Leg: Thigh -> Calf -> Foot
+	{
+		const FVector RestThighRelPelvis = RestCompBases[ThighL_Index].GetLocation() - RestCompBases[Pelvis_Index].GetLocation();
+		const FVector ThighPivot = PelvisTrans.GetLocation() + PelvisDeltaQ.RotateVector(RestThighRelPelvis);
+		const FQuat Q_Thigh = FQuat(FVector::RightVector, FMath::DegreesToRadians(ThighPitchL));
+		const FQuat ThighWorldRot = Q_Thigh * PelvisDeltaQ * RestCompBases[ThighL_Index].GetRotation();
+		SpaceBases[ThighL_Index].SetLocation(ThighPivot);
+		SpaceBases[ThighL_Index].SetRotation(ThighWorldRot);
+
+		const FVector RestCalfRelThigh = RestCompBases[CalfL_Index].GetLocation() - RestCompBases[ThighL_Index].GetLocation();
+		const FVector CalfPivot = ThighPivot + (Q_Thigh * PelvisDeltaQ).RotateVector(RestCalfRelThigh);
+		const FQuat Q_Knee = FQuat(FVector::RightVector, FMath::DegreesToRadians(KneeBendL));
+		const FQuat CalfWorldRot = Q_Knee * ThighWorldRot;
+		SpaceBases[CalfL_Index].SetLocation(CalfPivot);
+		SpaceBases[CalfL_Index].SetRotation(CalfWorldRot);
+
+		const FVector RestFootRelCalf = RestCompBases[FootL_Index].GetLocation() - RestCompBases[CalfL_Index].GetLocation();
+		const FVector FootPivot = CalfPivot + (Q_Knee * Q_Thigh * PelvisDeltaQ).RotateVector(RestFootRelCalf);
+		const FQuat Q_Foot = FQuat(FVector::RightVector, FMath::DegreesToRadians(FootPitchL));
+		SpaceBases[FootL_Index].SetLocation(FootPivot);
+		SpaceBases[FootL_Index].SetRotation(Q_Foot * CalfWorldRot);
+	}
+
+	// Forward Kinematics for Right Leg: Thigh -> Calf -> Foot
+	{
+		const FVector RestThighRelPelvis = RestCompBases[ThighR_Index].GetLocation() - RestCompBases[Pelvis_Index].GetLocation();
+		const FVector ThighPivot = PelvisTrans.GetLocation() + PelvisDeltaQ.RotateVector(RestThighRelPelvis);
+		const FQuat Q_Thigh = FQuat(FVector::RightVector, FMath::DegreesToRadians(ThighPitchR));
+		const FQuat ThighWorldRot = Q_Thigh * PelvisDeltaQ * RestCompBases[ThighR_Index].GetRotation();
+		SpaceBases[ThighR_Index].SetLocation(ThighPivot);
+		SpaceBases[ThighR_Index].SetRotation(ThighWorldRot);
+
+		const FVector RestCalfRelThigh = RestCompBases[CalfR_Index].GetLocation() - RestCompBases[ThighR_Index].GetLocation();
+		const FVector CalfPivot = ThighPivot + (Q_Thigh * PelvisDeltaQ).RotateVector(RestCalfRelThigh);
+		const FQuat Q_Knee = FQuat(FVector::RightVector, FMath::DegreesToRadians(KneeBendR));
+		const FQuat CalfWorldRot = Q_Knee * ThighWorldRot;
+		SpaceBases[CalfR_Index].SetLocation(CalfPivot);
+		SpaceBases[CalfR_Index].SetRotation(CalfWorldRot);
+
+		const FVector RestFootRelCalf = RestCompBases[FootR_Index].GetLocation() - RestCompBases[CalfR_Index].GetLocation();
+		const FVector FootPivot = CalfPivot + (Q_Knee * Q_Thigh * PelvisDeltaQ).RotateVector(RestFootRelCalf);
+		const FQuat Q_Foot = FQuat(FVector::RightVector, FMath::DegreesToRadians(FootPitchR));
+		SpaceBases[FootR_Index].SetLocation(FootPivot);
+		SpaceBases[FootR_Index].SetRotation(Q_Foot * CalfWorldRot);
+	}
+}
+
+void UFPSAnimInstance::ApplySpineAimPitchAndTwist(TArray<FTransform>& SpaceBases)
+{
+	if (!SpaceBases.IsValidIndex(Spine01_Index) || !SpaceBases.IsValidIndex(Spine02_Index) ||
+		!SpaceBases.IsValidIndex(Spine03_Index) || !SpaceBases.IsValidIndex(Neck01_Index) ||
+		!SpaceBases.IsValidIndex(Head_Index))
+	{
+		return;
+	}
+
+	const float Breath = FMath::Sin(BreathingPhase) * (bIsMenuPreview ? 0.65f : 0.5f);
+	const float EffectiveAimPitch = AimPitch + Breath;
+	const float BaseTorsoYaw = (bIsMenuPreview && MenuPoseIndex == 0) ? 4.0f : (bIsAiming ? 8.0f : 14.0f);
+
+	auto ApplyBoneDelta = [&](int32 BoneIdx, float PitchFraction, float YawFraction)
+	{
+		if (BoneIdx != INDEX_NONE && SpaceBases.IsValidIndex(BoneIdx))
+		{
+			const float SubPitch = EffectiveAimPitch * PitchFraction;
+			const float SubYaw = BaseTorsoYaw * YawFraction;
+			const FQuat DeltaQ = FQuat(FVector::UpVector, FMath::DegreesToRadians(SubYaw)) *
+			                     FQuat(FVector::RightVector, FMath::DegreesToRadians(-SubPitch));
+			FTransform& BoneTrans = SpaceBases[BoneIdx];
+			BoneTrans.SetRotation(DeltaQ * BoneTrans.GetRotation());
 		}
 	};
 
-	ApplyPitchToBone(Spine01_Index, 0.15f);
-	ApplyPitchToBone(Spine02_Index, 0.30f);
-	ApplyPitchToBone(Spine03_Index, 0.35f);
-	ApplyPitchToBone(Neck01_Index, 0.10f);
-	ApplyPitchToBone(Head_Index, 0.10f);
+	ApplyBoneDelta(Spine01_Index, 0.15f, 0.30f);
+	ApplyBoneDelta(Spine02_Index, 0.30f, 0.40f);
+	ApplyBoneDelta(Spine03_Index, 0.35f, 0.30f);
+	ApplyBoneDelta(Neck01_Index, 0.10f, 0.0f);
+	ApplyBoneDelta(Head_Index, 0.10f, 0.0f);
+
+	// Propagate Spine03 transform to Clavicles so shoulders follow thoracic pitch, breathing, and twist
+	if (SpaceBases.IsValidIndex(ClavicleR_Index) && SpaceBases.IsValidIndex(Spine03_Index))
+	{
+		const FVector Spine03Loc = SpaceBases[Spine03_Index].GetLocation();
+		const FVector RestClavRelSpine = RestCompBases[ClavicleR_Index].GetLocation() - RestCompBases[Spine03_Index].GetLocation();
+		const FQuat Spine03Rot = SpaceBases[Spine03_Index].GetRotation() * RestCompBases[Spine03_Index].GetRotation().Inverse();
+		SpaceBases[ClavicleR_Index].SetLocation(Spine03Loc + Spine03Rot.RotateVector(RestClavRelSpine));
+		SpaceBases[ClavicleR_Index].SetRotation(Spine03Rot * RestCompBases[ClavicleR_Index].GetRotation());
+	}
+	if (SpaceBases.IsValidIndex(ClavicleL_Index) && SpaceBases.IsValidIndex(Spine03_Index))
+	{
+		const FVector Spine03Loc = SpaceBases[Spine03_Index].GetLocation();
+		const FVector RestClavRelSpine = RestCompBases[ClavicleL_Index].GetLocation() - RestCompBases[Spine03_Index].GetLocation();
+		const FQuat Spine03Rot = SpaceBases[Spine03_Index].GetRotation() * RestCompBases[Spine03_Index].GetRotation().Inverse();
+		SpaceBases[ClavicleL_Index].SetLocation(Spine03Loc + Spine03Rot.RotateVector(RestClavRelSpine));
+		SpaceBases[ClavicleL_Index].SetRotation(Spine03Rot * RestCompBases[ClavicleL_Index].GetRotation());
+	}
+}
+
+void UFPSAnimInstance::SolveRightArmRifleIK(TArray<FTransform>& SpaceBases)
+{
+	USkeletalMeshComponent* SkelMesh = GetOwningComponent();
+	if (!SkelMesh || RestCompBases.Num() == 0 ||
+		!SpaceBases.IsValidIndex(UpperArmR_Index) || !SpaceBases.IsValidIndex(LowerArmR_Index) ||
+		!SpaceBases.IsValidIndex(HandR_Index) || !SpaceBases.IsValidIndex(Head_Index) ||
+		!SpaceBases.IsValidIndex(Pelvis_Index) || !SpaceBases.IsValidIndex(UpperArmL_Index))
+	{
+		return;
+	}
+
+	// 1. Authoritative Mesh Basis Vectors derived from Reference Pose
+	const FVector HeadRefCS = RestCompBases[Head_Index].GetLocation();
+	const FVector PelvisRefCS = RestCompBases[Pelvis_Index].GetLocation();
+	const FVector ShoulderR_RefCS = RestCompBases[UpperArmR_Index].GetLocation();
+	const FVector ShoulderL_RefCS = RestCompBases[UpperArmL_Index].GetLocation();
+
+	const FVector UpDir = (HeadRefCS - PelvisRefCS).GetSafeNormal();
+	FVector RightDir = (ShoulderR_RefCS - ShoulderL_RefCS).GetSafeNormal();
+	FVector ForwardDir = FVector::CrossProduct(RightDir, UpDir).GetSafeNormal();
+
+	if (AActor* OwnerActor = GetOwningActor())
+	{
+		const FVector WorldFwd = SkelMesh->GetComponentTransform().TransformVectorNoScale(ForwardDir);
+		if (FVector::DotProduct(WorldFwd, OwnerActor->GetActorForwardVector()) < 0.0f)
+		{
+			ForwardDir = -ForwardDir;
+		}
+	}
+	RightDir = FVector::CrossProduct(UpDir, ForwardDir).GetSafeNormal();
+	ForwardDir = FVector::CrossProduct(RightDir, UpDir).GetSafeNormal();
+
+	// 2. Anatomical Joint Lengths
+	const float ArmLenR = FVector::Distance(RestCompBases[LowerArmR_Index].GetLocation(), RestCompBases[UpperArmR_Index].GetLocation());
+	const float ForearmLenR = FVector::Distance(RestCompBases[HandR_Index].GetLocation(), RestCompBases[LowerArmR_Index].GetLocation());
+
+	const FVector ShoulderR_Pos = SpaceBases[UpperArmR_Index].GetLocation();
+	const float BreathOffsetZ = FMath::Sin(BreathingPhase) * 0.45f;
+
+	FVector ElbowR_Target;
+	FVector HandR_Target;
+
+	const bool bUseLowReadyPose = (bIsMenuPreview && MenuPoseIndex != 1) || (!bIsMenuPreview && !bIsAiming && CurrentADSAlpha < 0.05f);
+
+	if (bUseLowReadyPose)
+	{
+		// Authoritative Tactical Low-Ready Stance (matching menu-prop.jpeg):
+		// Right upper arm relaxed down alongside right ribs (no chicken-wing flare!),
+		// Right hand gripping rifle pistol grip in front of right pectoral / upper solar plexus
+		ElbowR_Target = ShoulderR_Pos + ForwardDir * 9.0f + RightDir * 7.5f - UpDir * 25.0f;
+		ElbowR_Target = ShoulderR_Pos + (ElbowR_Target - ShoulderR_Pos).GetSafeNormal() * ArmLenR;
+
+		HandR_Target = ShoulderR_Pos + ForwardDir * 24.0f - RightDir * 4.5f - UpDir * (14.5f - BreathOffsetZ);
+	}
+	else
+	{
+		// High-Ready / Aimed ADS Stance
+		ElbowR_Target = ShoulderR_Pos + ForwardDir * 14.0f + RightDir * 6.0f - UpDir * 24.0f;
+		ElbowR_Target = ShoulderR_Pos + (ElbowR_Target - ShoulderR_Pos).GetSafeNormal() * ArmLenR;
+
+		HandR_Target = ShoulderR_Pos + ForwardDir * 34.0f - RightDir * 6.0f - UpDir * 10.0f;
+		if (bIsAiming || CurrentADSAlpha > 0.01f)
+		{
+			const FVector HandR_ADS = ShoulderR_Pos + ForwardDir * 32.0f - RightDir * 16.0f + UpDir * 4.0f;
+			HandR_Target = FMath::Lerp(HandR_Target, HandR_ADS, CurrentADSAlpha);
+		}
+		HandR_Target += UpDir * (AimPitch * 0.25f);
+	}
+
+	const FVector DesiredLowerDirR = (HandR_Target - ElbowR_Target).GetSafeNormal();
+	const FVector HandR_Final = ElbowR_Target + DesiredLowerDirR * ForearmLenR;
+
+	// 4. Aim Upper Arm along Desired Direction
+	const FVector RefUpperDirR = (RestCompBases[LowerArmR_Index].GetLocation() - RestCompBases[UpperArmR_Index].GetLocation()).GetSafeNormal();
+	const FVector DesiredUpperDirR = (ElbowR_Target - ShoulderR_Pos).GetSafeNormal();
+	const FQuat DeltaUpperQ_R = FQuat::FindBetweenNormals(RefUpperDirR, DesiredUpperDirR);
+	SpaceBases[UpperArmR_Index].SetLocation(ShoulderR_Pos);
+	SpaceBases[UpperArmR_Index].SetRotation((DeltaUpperQ_R * RestCompBases[UpperArmR_Index].GetRotation()).GetNormalized());
+
+	// 5. Aim Forearm along Desired Direction
+	const FVector RefLowerDirR = (RestCompBases[HandR_Index].GetLocation() - RestCompBases[LowerArmR_Index].GetLocation()).GetSafeNormal();
+	const FQuat DeltaLowerQ_R = FQuat::FindBetweenNormals(RefLowerDirR, DesiredLowerDirR);
+	SpaceBases[LowerArmR_Index].SetLocation(ElbowR_Target);
+	SpaceBases[LowerArmR_Index].SetRotation((DeltaLowerQ_R * RestCompBases[LowerArmR_Index].GetRotation()).GetNormalized());
+
+	// 6. Orient Hand along Rifle Grip Axis
+	SpaceBases[HandR_Index].SetLocation(HandR_Final);
+	FVector HandAimDir;
+	if (bUseLowReadyPose)
+	{
+		// Diagonal Low-Ready barrel axis (~36 deg downward pitch toward left hip/thigh)
+		HandAimDir = (ForwardDir * 0.64f - RightDir * 0.48f - UpDir * 0.59f).GetSafeNormal();
+	}
+	else
+	{
+		const FQuat AimDeltaQ = FQuat(UpDir, FMath::DegreesToRadians(AimYaw)) * FQuat(RightDir, FMath::DegreesToRadians(-AimPitch));
+		HandAimDir = AimDeltaQ.RotateVector(ForwardDir);
+	}
+
+	const FQuat DeltaHandQ_R = FQuat::FindBetweenNormals(RefLowerDirR, HandAimDir);
+	SpaceBases[HandR_Index].SetRotation((DeltaHandQ_R * RestCompBases[HandR_Index].GetRotation()).GetNormalized());
+
+	RightHandIKLocation = HandR_Final;
+	RightHandIKRotation = HandAimDir.Rotation();
+
+	// 7. Propagate to fingers
+	for (int32 FingerIndex : RightFingerBoneIndices)
+	{
+		if (SpaceBases.IsValidIndex(FingerIndex))
+		{
+			const FTransform RelToHand = RestCompBases[FingerIndex].GetRelativeTransform(RestCompBases[HandR_Index]);
+			SpaceBases[FingerIndex] = RelToHand * SpaceBases[HandR_Index];
+		}
+	}
 }
 
 void UFPSAnimInstance::SolveLeftHandTwoBoneIK(TArray<FTransform>& SpaceBases)
 {
-	if (!bLeftHandIKValid || UpperArmL_Index == INDEX_NONE || LowerArmL_Index == INDEX_NONE || HandL_Index == INDEX_NONE)
+	USkeletalMeshComponent* SkelMesh = GetOwningComponent();
+	if (!SkelMesh || RestCompBases.Num() == 0 ||
+		!SpaceBases.IsValidIndex(UpperArmL_Index) || !SpaceBases.IsValidIndex(LowerArmL_Index) ||
+		!SpaceBases.IsValidIndex(HandL_Index) || !SpaceBases.IsValidIndex(Head_Index) ||
+		!SpaceBases.IsValidIndex(Pelvis_Index) || !SpaceBases.IsValidIndex(UpperArmR_Index))
 	{
 		return;
 	}
 
-	if (!SpaceBases.IsValidIndex(UpperArmL_Index) || !SpaceBases.IsValidIndex(LowerArmL_Index) || !SpaceBases.IsValidIndex(HandL_Index))
+	// 1. Authoritative Mesh Basis Vectors derived from Reference Pose
+	const FVector HeadRefCS = RestCompBases[Head_Index].GetLocation();
+	const FVector PelvisRefCS = RestCompBases[Pelvis_Index].GetLocation();
+	const FVector ShoulderR_RefCS = RestCompBases[UpperArmR_Index].GetLocation();
+	const FVector ShoulderL_RefCS = RestCompBases[UpperArmL_Index].GetLocation();
+
+	const FVector UpDir = (HeadRefCS - PelvisRefCS).GetSafeNormal();
+	FVector RightDir = (ShoulderR_RefCS - ShoulderL_RefCS).GetSafeNormal();
+	FVector ForwardDir = FVector::CrossProduct(RightDir, UpDir).GetSafeNormal();
+
+	if (AActor* OwnerActor = GetOwningActor())
 	{
-		return;
+		const FVector WorldFwd = SkelMesh->GetComponentTransform().TransformVectorNoScale(ForwardDir);
+		if (FVector::DotProduct(WorldFwd, OwnerActor->GetActorForwardVector()) < 0.0f)
+		{
+			ForwardDir = -ForwardDir;
+		}
+	}
+	RightDir = FVector::CrossProduct(UpDir, ForwardDir).GetSafeNormal();
+	ForwardDir = FVector::CrossProduct(RightDir, UpDir).GetSafeNormal();
+
+	// 2. Anatomical Joint Lengths
+	const float ArmLenL = FVector::Distance(RestCompBases[LowerArmL_Index].GetLocation(), RestCompBases[UpperArmL_Index].GetLocation());
+	const float ForearmLenL = FVector::Distance(RestCompBases[HandL_Index].GetLocation(), RestCompBases[LowerArmL_Index].GetLocation());
+
+	const FVector ShoulderL_Pos = SpaceBases[UpperArmL_Index].GetLocation();
+	const bool bUseLowReadyPose = (bIsMenuPreview && MenuPoseIndex != 1) || (!bIsMenuPreview && !bIsAiming && CurrentADSAlpha < 0.05f);
+
+	FVector ElbowL_Target;
+	FVector HandL_Target;
+
+	if (bUseLowReadyPose)
+	{
+		// Left elbow relaxed down and forward outside left ribs
+		ElbowL_Target = ShoulderL_Pos + ForwardDir * 15.0f - RightDir * 5.0f - UpDir * 24.0f;
+		ElbowL_Target = ShoulderL_Pos + (ElbowL_Target - ShoulderL_Pos).GetSafeNormal() * ArmLenL;
+
+		// Left hand wraps around the Carbine's M-LOK handguard 26.5 cm down-barrel along the diagonal Low-Ready axis!
+		const FVector DiagonalBarrelDir = (ForwardDir * 0.64f - RightDir * 0.48f - UpDir * 0.59f).GetSafeNormal();
+		HandL_Target = RightHandIKLocation + DiagonalBarrelDir * 26.5f;
+	}
+	else
+	{
+		// High-Ready / Aimed ADS Stance
+		ElbowL_Target = ShoulderL_Pos + ForwardDir * 22.0f + RightDir * 4.0f - UpDir * 22.0f;
+		ElbowL_Target = ShoulderL_Pos + (ElbowL_Target - ShoulderL_Pos).GetSafeNormal() * ArmLenL;
+
+		HandL_Target = RightHandIKLocation + ForwardDir * 26.5f - RightDir * 2.5f + UpDir * 2.0f;
 	}
 
-	FTransform& RootTransform = SpaceBases[UpperArmL_Index];
-	FTransform& JointTransform = SpaceBases[LowerArmL_Index];
-	FTransform& EndTransform = SpaceBases[HandL_Index];
+	const FVector DesiredLowerDirL = (HandL_Target - ElbowL_Target).GetSafeNormal();
+	const FVector HandL_Final = ElbowL_Target + DesiredLowerDirL * ForearmLenL;
 
-	const FTransform OldHandTransform = EndTransform;
+	// 4. Aim Upper Arm along Desired Direction
+	const FVector RefUpperDirL = (RestCompBases[LowerArmL_Index].GetLocation() - RestCompBases[UpperArmL_Index].GetLocation()).GetSafeNormal();
+	const FVector DesiredUpperDirL = (ElbowL_Target - ShoulderL_Pos).GetSafeNormal();
+	const FQuat DeltaUpperQ_L = FQuat::FindBetweenNormals(RefUpperDirL, DesiredUpperDirL);
+	SpaceBases[UpperArmL_Index].SetLocation(ShoulderL_Pos);
+	SpaceBases[UpperArmL_Index].SetRotation((DeltaUpperQ_L * RestCompBases[UpperArmL_Index].GetRotation()).GetNormalized());
 
-	// Calculate elbow hint / pole vector in component space
-	const FVector UpperArmLoc = RootTransform.GetLocation();
-	const FVector JointTarget = LeftElbowPoleVector.IsNearlyZero()
-		? (UpperArmLoc + FVector(-25.0f, -25.0f, -25.0f))
-		: LeftElbowPoleVector;
+	// 5. Aim Forearm along Desired Direction
+	const FVector RefLowerDirL = (RestCompBases[HandL_Index].GetLocation() - RestCompBases[LowerArmL_Index].GetLocation()).GetSafeNormal();
+	const FQuat DeltaLowerQ_L = FQuat::FindBetweenNormals(RefLowerDirL, DesiredLowerDirL);
+	SpaceBases[LowerArmL_Index].SetLocation(ElbowL_Target);
+	SpaceBases[LowerArmL_Index].SetRotation((DeltaLowerQ_L * RestCompBases[LowerArmL_Index].GetRotation()).GetNormalized());
 
-	// Closed-form analytical Two-Bone IK solve from AnimationCore
-	AnimationCore::SolveTwoBoneIK(
-		RootTransform,
-		JointTransform,
-		EndTransform,
-		JointTarget,
-		LeftHandIKLocation,
-		true,
-		1.0,
-		1.25
-	);
+	// 6. Orient Hand grasping handguard
+	SpaceBases[HandL_Index].SetLocation(HandL_Final);
+	const FVector HandAimDirL = (HandL_Final - RightHandIKLocation).GetSafeNormal();
+	const FQuat DeltaHandQ_L = FQuat::FindBetweenNormals(RefLowerDirL, HandAimDirL);
+	SpaceBases[HandL_Index].SetRotation((DeltaHandQ_L * RestCompBases[HandL_Index].GetRotation()).GetNormalized());
 
-	// Lock hand rotation to the weapon handguard orientation
-	EndTransform.SetRotation(LeftHandIKRotation.Quaternion());
+	LeftHandIKLocation = HandL_Final;
 
-	// Propagate delta transform to any finger child bones of hand_l
+	// 7. Propagate to fingers
 	for (int32 FingerIndex : LeftFingerBoneIndices)
 	{
 		if (SpaceBases.IsValidIndex(FingerIndex))
 		{
-			const FTransform RelToHand = SpaceBases[FingerIndex].GetRelativeTransform(OldHandTransform);
-			SpaceBases[FingerIndex] = RelToHand * EndTransform;
+			const FTransform RelToHand = RestCompBases[FingerIndex].GetRelativeTransform(RestCompBases[HandL_Index]);
+			SpaceBases[FingerIndex] = RelToHand * SpaceBases[HandL_Index];
 		}
 	}
 }

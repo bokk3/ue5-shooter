@@ -32,6 +32,7 @@ AFPSMenuDioramaActor::AFPSMenuDioramaActor()
 	WeaponKeyLight->SetRelativeLocation(FVector(-80.0f, 0.0f, 100.0f));
 	WeaponKeyLight->SetIntensity(5000.0f);
 	WeaponKeyLight->SetLightColor(FLinearColor(0.85f, 0.95f, 1.0f));
+	WeaponKeyLight->SetCastShadows(false);
 }
 
 void AFPSMenuDioramaActor::BeginPlay()

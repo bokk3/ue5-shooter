@@ -82,10 +82,19 @@ void UFPSCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float De
 				{
 					const FVector SlopeDir = FVector::VectorPlaneProject(BallisticDiveDirection, CurrentFloor.HitResult.ImpactNormal).GetSafeNormal();
 					const float DownhillDot = FVector::DotProduct(SlopeDir, FVector::DownVector);
+
+					UPrimitiveComponent* FloorComp = CurrentFloor.HitResult.Component.Get();
+					const bool bIsSlipFace = FloorComp && FloorComp->ComponentTags.Contains(FName("Dune_SlipFace"));
+					const bool bIsSandDune = FloorComp && FloorComp->ComponentTags.Contains(FName("Surface_Sand_Dune"));
+					const float SlopeAngleDeg = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(CurrentFloor.HitResult.ImpactNormal.Z, 0.0f, 1.0f)));
+					const bool bIsDuneSlip = bIsSlipFace || (bIsSandDune && SlopeAngleDeg >= 25.0f && SlopeAngleDeg <= 35.0f);
+
 					if (DownhillDot > 0.1f)
 					{
-						// Retain momentum when sliding down ramps
-						Velocity = FMath::VInterpTo(Velocity, SlopeDir * (DiveHorizontalLaunchSpeed * 0.60f), DeltaSeconds, 1.8f);
+						// Retain momentum when sliding down ramps / dune slip-faces (1.25x momentum + reduced friction)
+						const float MomentumScale = bIsDuneSlip ? 1.25f : 1.0f;
+						const float InterpSpeed = bIsDuneSlip ? 1.1f : 1.8f;
+						Velocity = FMath::VInterpTo(Velocity, SlopeDir * (DiveHorizontalLaunchSpeed * 0.60f * MomentumScale), DeltaSeconds, InterpSpeed);
 					}
 					else
 					{
@@ -115,28 +124,97 @@ void UFPSCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float De
 		}
 		else
 		{
-			// Apply sliding friction and directional momentum
-			Velocity += SlideDirection * (BrakingDecelerationWalking * 0.2f * DeltaSeconds);
+			// Check if sliding down a 32-degree dune slip-face
+			bool bIsDownhillSlipFace = false;
+			if (CurrentFloor.IsWalkableFloor() && CurrentFloor.HitResult.Component.IsValid())
+			{
+				UPrimitiveComponent* FloorComp = CurrentFloor.HitResult.Component.Get();
+				const bool bIsSlipFace = FloorComp->ComponentTags.Contains(FName("Dune_SlipFace"));
+				const bool bIsSandDune = FloorComp->ComponentTags.Contains(FName("Surface_Sand_Dune"));
+				const FVector FloorNormal = CurrentFloor.HitResult.ImpactNormal;
+				if (FloorNormal.Z > 0.05f && FloorNormal.Z < 0.999f)
+				{
+					const float SlopeAngleDeg = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FloorNormal.Z, 0.0f, 1.0f)));
+					if (bIsSlipFace || (bIsSandDune && SlopeAngleDeg >= 25.0f && SlopeAngleDeg <= 35.0f))
+					{
+						const FVector DownhillDir = FVector(-FloorNormal.X, -FloorNormal.Y, 0.0f).GetSafeNormal();
+						if (FVector::DotProduct(SlideDirection, DownhillDir) > 0.2f)
+						{
+							bIsDownhillSlipFace = true;
+						}
+					}
+				}
+			}
+
+			if (bIsDownhillSlipFace)
+			{
+				// Reduced slide friction on loose sand slip face: preserves momentum and accelerates
+				Velocity += SlideDirection * (BrakingDecelerationWalking * 0.04f * DeltaSeconds);
+			}
+			else
+			{
+				// Standard sliding friction and directional momentum
+				Velocity += SlideDirection * (BrakingDecelerationWalking * 0.2f * DeltaSeconds);
+			}
 		}
 	}
 }
 
 float UFPSCharacterMovementComponent::GetMaxSpeed() const
 {
+	float BaseSpeed = WalkSpeed;
 	switch (CurrentFPSMode)
 	{
 	case EFPSMovementMode::BallisticDiving:
-		return DiveHorizontalLaunchSpeed;
+		BaseSpeed = DiveHorizontalLaunchSpeed;
+		break;
 	case EFPSMovementMode::Sliding:
-		return SlideImpulse;
+		BaseSpeed = SlideImpulse;
+		break;
 	case EFPSMovementMode::Sprinting:
-		return SprintSpeed;
+		BaseSpeed = SprintSpeed;
+		break;
 	case EFPSMovementMode::Crouching:
-		return MaxWalkSpeedCrouched;
+		BaseSpeed = MaxWalkSpeedCrouched;
+		break;
 	case EFPSMovementMode::Walking:
 	default:
-		return WalkSpeed;
+		BaseSpeed = WalkSpeed;
+		break;
 	}
+
+	// 32-Degree Dune Slip-Face Acceleration & Uphill Sprint Modifier
+	if (CurrentFloor.IsWalkableFloor() && CurrentFloor.HitResult.Component.IsValid())
+	{
+		UPrimitiveComponent* FloorComp = CurrentFloor.HitResult.Component.Get();
+		const bool bIsSlipFace = FloorComp->ComponentTags.Contains(FName("Dune_SlipFace"));
+		const bool bIsSandDune = FloorComp->ComponentTags.Contains(FName("Surface_Sand_Dune"));
+
+		const FVector FloorNormal = CurrentFloor.HitResult.ImpactNormal;
+		if (FloorNormal.Z > 0.05f && FloorNormal.Z < 0.999f)
+		{
+			const float SlopeAngleDeg = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FloorNormal.Z, 0.0f, 1.0f)));
+			if (bIsSlipFace || (bIsSandDune && SlopeAngleDeg >= 25.0f && SlopeAngleDeg <= 35.0f))
+			{
+				const FVector DownhillDir = FVector(-FloorNormal.X, -FloorNormal.Y, 0.0f).GetSafeNormal();
+				const FVector MoveDir = Velocity.GetSafeNormal2D();
+				const float DownhillDot = FVector::DotProduct(MoveDir, DownhillDir);
+
+				if (CurrentFPSMode == EFPSMovementMode::Sliding && DownhillDot > 0.2f)
+				{
+					// Boost slide velocity by +25% (1.25x momentum)
+					BaseSpeed *= 1.25f;
+				}
+				else if (CurrentFPSMode == EFPSMovementMode::Sprinting && DownhillDot < -0.2f)
+				{
+					// Sprinting uphill on loose sand slip-face applies subtle 0.88x speed modifier
+					BaseSpeed *= 0.88f;
+				}
+			}
+		}
+	}
+
+	return BaseSpeed;
 }
 
 void UFPSCharacterMovementComponent::SetWantsToSprint(bool bSprint)
@@ -168,7 +246,31 @@ void UFPSCharacterMovementComponent::StartSlide()
 		bIsSliding = true;
 		CurrentFPSMode = EFPSMovementMode::Sliding;
 		SlideDirection = Velocity.GetSafeNormal2D();
-		Velocity = SlideDirection * SlideImpulse;
+
+		float AppliedSlideImpulse = SlideImpulse;
+
+		// Check 32-degree dune slip-face momentum boost
+		if (CurrentFloor.IsWalkableFloor() && CurrentFloor.HitResult.Component.IsValid())
+		{
+			UPrimitiveComponent* FloorComp = CurrentFloor.HitResult.Component.Get();
+			const bool bIsSlipFace = FloorComp->ComponentTags.Contains(FName("Dune_SlipFace"));
+			const bool bIsSandDune = FloorComp->ComponentTags.Contains(FName("Surface_Sand_Dune"));
+			const FVector FloorNormal = CurrentFloor.HitResult.ImpactNormal;
+			if (FloorNormal.Z > 0.05f && FloorNormal.Z < 0.999f)
+			{
+				const float SlopeAngleDeg = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FloorNormal.Z, 0.0f, 1.0f)));
+				if (bIsSlipFace || (bIsSandDune && SlopeAngleDeg >= 25.0f && SlopeAngleDeg <= 35.0f))
+				{
+					const FVector DownhillDir = FVector(-FloorNormal.X, -FloorNormal.Y, 0.0f).GetSafeNormal();
+					if (FVector::DotProduct(SlideDirection, DownhillDir) > 0.2f)
+					{
+						AppliedSlideImpulse *= 1.25f; // Boost slide velocity by +25% (1.25x momentum)
+					}
+				}
+			}
+		}
+
+		Velocity = SlideDirection * AppliedSlideImpulse;
 
 		ACharacter* CharOwner = GetCharacterOwner();
 		if (CharOwner)

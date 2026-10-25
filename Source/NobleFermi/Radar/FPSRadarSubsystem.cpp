@@ -73,6 +73,26 @@ void UFPSRadarSubsystem::ReportGunfire(AActor* ShooterActor, FVector Location, E
 	OnRadarPingAdded.Broadcast(NewPing);
 }
 
+void UFPSRadarSubsystem::ReportAcousticPing(AActor* InSourceActor, FVector Location, EFPSPlayerTeam InSourceTeam, float PingRadius, float Duration)
+{
+	FFPSRadarPing NewPing;
+	NewPing.WorldLocation = Location;
+	NewPing.SourceTeam = InSourceTeam;
+	NewPing.LifetimeRemaining = Duration;
+	NewPing.InitialLifetime = Duration;
+	NewPing.bIsGunfire = false;
+	NewPing.SourceActor = InSourceActor;
+	NewPing.AcousticRadius = PingRadius;
+
+	ActivePings.Add(NewPing);
+	OnRadarPingAdded.Broadcast(NewPing);
+}
+
+void UFPSRadarSubsystem::ReportAcousticFootstep(AActor* InSourceActor, FVector Location, EFPSPlayerTeam InSourceTeam, float PingRadius)
+{
+	ReportAcousticPing(InSourceActor, Location, InSourceTeam, PingRadius, 1.8f);
+}
+
 void UFPSRadarSubsystem::ActivateUAV(EFPSPlayerTeam Team, float Duration)
 {
 	if (Team == EFPSPlayerTeam::Alpha)

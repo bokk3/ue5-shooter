@@ -10,6 +10,7 @@ class USceneComponent;
 class USoundBase;
 class UParticleSystem;
 class UCurveFloat;
+class UProceduralMeshComponent;
 
 UENUM(BlueprintType)
 enum class EFPSFireMode : uint8
@@ -47,6 +48,13 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Components")
 	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
+
+	/** Authoritative 3D Procedural NF-98 Carbine Geometry Component (Guaranteed visibility in packaged builds) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Procedural")
+	TObjectPtr<UProceduralMeshComponent> CarbineProcMesh;
+
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Procedural")
+	void BuildProceduralCarbineGeometry();
 
 	// Procedural 3D Weapon Model Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Model")
@@ -177,6 +185,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
 	FRotator GetThirdPersonRotation() const { return ThirdPersonRelativeRotation; }
 
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FVector GetForegripWorldLocation() const;
+
 	// Weapon Transforms
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
 	FVector HipfireRelativeLocation = FVector(26.0f, 14.0f, -13.0f);
@@ -190,12 +201,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
 	FRotator ADSRelativeRotation = FRotator(0.0f, 0.0f, 0.0f);
 
-	// 3rd Person Tactical Mesh Attachment Transforms (relative to weapon_r socket)
+	// 3rd Person Tactical Mesh Attachment Transforms (relative to hand_r / weapon_r)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
-	FVector ThirdPersonRelativeLocation = FVector::ZeroVector;
+	FVector ThirdPersonRelativeLocation = FVector(-4.0f, -2.0f, -6.0f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
-	FRotator ThirdPersonRelativeRotation = FRotator::ZeroRotator;
+	FRotator ThirdPersonRelativeRotation = FRotator(0.0f, 0.0f, 0.0f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
 	float ADSSpeed = 16.0f;

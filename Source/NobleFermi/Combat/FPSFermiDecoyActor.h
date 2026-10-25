@@ -85,6 +85,7 @@ private:
 	EFPSPlayerTeam SourceTeam = EFPSPlayerTeam::Bravo; // Broadcasts on opposite team if solo so local player also sees decoy radar test blips, or owner's team in MP
 	float ElapsedTime = 0.0f;
 	float FireBurstTimer = 0.0f;
+	float DecoyFootstepTimer = 0.0f;
 	bool bHasShattered = false;
 
 	UPROPERTY()

@@ -25,7 +25,9 @@ public class NobleFermi : ModuleRules
 			"AnimationCore",
 			"AnimGraphRuntime",
 			"Json",
-			"JsonUtilities"
+			"JsonUtilities",
+			"HTTP",
+			"ProceduralMeshComponent"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {

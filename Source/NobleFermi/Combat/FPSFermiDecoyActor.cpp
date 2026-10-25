@@ -55,7 +55,7 @@ AFPSFermiDecoyActor::AFPSFermiDecoyActor()
 	}
 
 	HologramAK47Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("HologramAK47Mesh"));
-	HologramAK47Mesh->SetupAttachment(HologramMesh, TEXT("weapon_r"));
+	HologramAK47Mesh->SetupAttachment(HologramMesh, TEXT("hand_r"));
 	HologramAK47Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HologramAK47Mesh->SetCastShadow(false);
 	HologramAK47Mesh->SetRelativeLocation(FVector::ZeroVector);
@@ -148,7 +148,8 @@ void AFPSFermiDecoyActor::BeginPlay()
 				HologramAK47Mesh->SetStaticMesh(LoadedAK);
 			}
 		}
-		HologramAK47Mesh->AttachToComponent(HologramMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("weapon_r"));
+		const FName DecoyAttach = (HologramMesh && HologramMesh->DoesSocketExist(TEXT("weapon_r"))) ? FName(TEXT("weapon_r")) : FName(TEXT("hand_r"));
+		HologramAK47Mesh->AttachToComponent(HologramMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, DecoyAttach);
 		HologramAK47Mesh->SetRelativeLocation(FVector::ZeroVector);
 		HologramAK47Mesh->SetRelativeRotation(FRotator::ZeroRotator);
 	}
@@ -236,6 +237,34 @@ void AFPSFermiDecoyActor::Tick(float DeltaTime)
 	if (World->LineTraceSingleByChannel(GroundHit, NextLoc + FVector(0.0f, 0.0f, 80.0f), NextLoc - FVector(0.0f, 0.0f, 220.0f), ECC_Visibility, QueryParams))
 	{
 		NextLoc.Z = GroundHit.ImpactPoint.Z + 96.0f;
+
+		// Surface-aware acoustic footstep radar pings (wooden pier or shallow water)
+		if (GroundHit.Component.IsValid())
+		{
+			const bool bIsPierWood = GroundHit.Component->ComponentTags.Contains(FName("Surface_Pier_Wood")) ||
+			                         GroundHit.Component->ComponentTags.Contains(FName("Pier_Deck")) ||
+			                         GroundHit.Component->ComponentTags.Contains(FName("Pier_THead"));
+			const bool bIsShallowWater = GroundHit.Component->ComponentTags.Contains(FName("Surface_Shallow_Water"));
+			const bool bIsSandDune = GroundHit.Component->ComponentTags.Contains(FName("Surface_Sand_Dune")) ||
+			                         GroundHit.Component->ComponentTags.Contains(FName("Dune_SlipFace"));
+
+			if (!bIsSandDune && (bIsPierWood || bIsShallowWater))
+			{
+				DecoyFootstepTimer += DeltaTime;
+				if (DecoyFootstepTimer >= 0.32f)
+				{
+					DecoyFootstepTimer = 0.0f;
+					if (UFPSRadarSubsystem* Radar = World->GetSubsystem<UFPSRadarSubsystem>())
+					{
+						Radar->ReportAcousticPing(this, GroundHit.ImpactPoint, SourceTeam, 1500.0f, 1.8f);
+					}
+				}
+			}
+			else
+			{
+				DecoyFootstepTimer = 0.0f;
+			}
+		}
 	}
 
 	SetActorLocation(NextLoc);

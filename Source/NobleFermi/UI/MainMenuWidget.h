@@ -74,11 +74,33 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FPS Menu")
 	void RequestQuit();
 
+	UFUNCTION(BlueprintPure, Category = "FPS Menu|Theater")
+	int32 GetSelectedTheaterIndex() const { return SelectedTheaterIndex; }
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Menu|Theater")
+	void SelectTheater(int32 TheaterIndex);
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "FPS Menu")
 	void OnMatchmakingTriggered();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "FPS Menu")
 	void OnShowQuitConfirmation();
+
+	// Real-Time Graphics Presets & Tuning (Lobby Settings)
+	UFUNCTION(BlueprintCallable, Category = "FPS Graphics")
+	void ApplyMenuGraphicsPreset(int32 PresetIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Graphics")
+	void ToggleMenuLumen();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Graphics")
+	void ToggleMenuVSM();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Graphics")
+	void CycleMenuResolutionScale();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Graphics")
+	void CycleMenuFrameRateLimit();
 
 protected:
 	virtual void NativeConstruct() override;
@@ -88,6 +110,7 @@ protected:
 private:
 	EFPSMenuSection CurrentSection = EFPSMenuSection::Play;
 	int32 SelectedModeIndex = 0; // 0 = Rust Tactical CQB, 1 = Fermi Time Lab, 2 = Bot Skirmish
+	int32 SelectedTheaterIndex = 0; // 0 = Operation: Rust Tactical [60x60m], 1 = Operation: Coastal Operations [120x120m]
 
 	UPROPERTY()
 	TObjectPtr<AFPSCharacterPreviewActor> PreviewActor;
@@ -106,6 +129,11 @@ private:
 	TSharedPtr<STextBlock> RotationSpeedText;
 	TSharedPtr<STextBlock> CenterPillText;
 	TSharedPtr<STextBlock> BountyStatusText;
+
+	// Theater Selection Card Pointers & Environmental Telemetry
+	TSharedPtr<SBorder> TheaterCardBorder0;
+	TSharedPtr<SBorder> TheaterCardBorder1;
+	TSharedPtr<STextBlock> TheaterTelemetryText;
 
 	// Mode Card Border Pointers for interactive glowing borders
 	TSharedPtr<SBorder> ModeCardBorder0;
@@ -130,6 +158,22 @@ private:
 	TSharedPtr<STextBlock> DartTokensText;
 	TSharedPtr<STextBlock> StreakStatusText;
 	TSharedPtr<STextBlock> StreakDaysDisplay;
+
+	// Operator Authentication Terminal Modal Pointers
+	TSharedPtr<SBorder> AuthOverlayModal;
+	TSharedPtr<SWidgetSwitcher> AuthModeSwitcher;
+	TSharedPtr<SEditableTextBox> LoginIdentifierInput;
+	TSharedPtr<SEditableTextBox> LoginPasswordInput;
+	TSharedPtr<SEditableTextBox> RegisterCallsignInput;
+	TSharedPtr<SEditableTextBox> RegisterEmailInput;
+	TSharedPtr<SEditableTextBox> RegisterPasswordInput;
+	TSharedPtr<STextBlock> AuthAlertText;
+	TSharedPtr<SBorder> AuthAlertBorder;
+	TSharedPtr<SBorder> AuthTabSignInIndicator;
+	TSharedPtr<SBorder> AuthTabRegisterIndicator;
+	TSharedPtr<STextBlock> HeaderOperatorCallsignText;
+	TSharedPtr<STextBlock> HeaderOperatorStatusBadge;
+	TSharedPtr<STextBlock> HeaderAuthActionText;
 
 	// Fortune Wheel Physics State
 	float WheelCurrentAngle = 0.0f;
@@ -161,15 +205,30 @@ private:
 	TSharedRef<SWidget> BuildServerBrowserView();
 	TSharedRef<SWidget> BuildSettingsView();
 	TSharedRef<SWidget> BuildFooter();
+	TSharedRef<SWidget> BuildAuthModal();
 
 	// Interaction handlers
 	FReply HandleTabClicked(EFPSMenuSection Section);
+	FReply HandleTheaterCardClicked(int32 TheaterIndex);
 	FReply HandleModeCardClicked(int32 ModeIndex);
 	FReply HandleQuickplayClicked();
 	FReply HandleHostListenClicked();
 	FReply HandleDirectConnectClicked();
 	FReply HandleQuitClicked();
 	FReply HandleSelectArchetype(int32 ArchetypeIndex);
+
+	// Operator Authentication Handlers
+	FReply HandleAuthTabSwitch(int32 TabIndex);
+	FReply HandleSubmitLogin();
+	FReply HandleSubmitRegister();
+	FReply HandleQuickGuestLogin();
+	FReply HandleLogoutOrSwitchClicked();
+
+	UFUNCTION()
+	void HandleAuthStateChanged(bool bIsAuthenticated, const FString& Callsign, bool bIsOfflineMode);
+
+	UFUNCTION()
+	void HandleAuthError(const FString& ErrorMessage);
 
 	// Customization handlers
 	FReply HandleCamoSelected(uint8 CamoIdx);
@@ -192,8 +251,36 @@ private:
 	FReply HandleRerollBountiesClicked();
 	FReply HandleSimulateBountyProgressClicked(int32 BountyIdx);
 
+	void UpdateTheaterCardVisuals();
 	void UpdateModeCardVisuals();
 	void UpdateTabVisuals();
 	void UpdateCurrencyHeader();
 	void RefreshDailyRewardsUI();
+	void UpdateAuthUI();
+
+	// Graphics Settings Handlers & State
+	FReply HandleMenuGraphicsPresetClicked(int32 PresetIndex);
+	FReply HandleMenuToggleLumenClicked();
+	FReply HandleMenuToggleVSMClicked();
+	FReply HandleMenuCycleResolutionClicked();
+	FReply HandleMenuCycleFpsLimitClicked();
+	void UpdateMenuGraphicsUI();
+	void ReadMenuHardwareSettings();
+
+	TSharedPtr<STextBlock> MenuPresetBadge;
+	TSharedPtr<STextBlock> MenuLumenLabel;
+	TSharedPtr<STextBlock> MenuVSMLabel;
+	TSharedPtr<STextBlock> MenuResolutionLabel;
+	TSharedPtr<STextBlock> MenuFrameRateLimitLabel;
+
+	TSharedPtr<SBorder> PresetCardBorder0;
+	TSharedPtr<SBorder> PresetCardBorder1;
+	TSharedPtr<SBorder> PresetCardBorder2;
+	TSharedPtr<SBorder> PresetCardBorder3;
+
+	int32 MenuGraphicsPresetIndex = 0;
+	bool bMenuLumenActive = false;
+	bool bMenuVSMActive = false;
+	float MenuScreenPercentage = 75.0f;
+	int32 MenuFpsLimit = 144;
 };

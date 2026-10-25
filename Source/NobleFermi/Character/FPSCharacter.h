@@ -9,6 +9,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class USkeletalMeshComponent;
 class UStaticMeshComponent;
+class UProceduralMeshComponent;
 class UFPSCharacterMovementComponent;
 class UFPSHealthComponent;
 class UFPSInventoryComponent;
@@ -49,6 +50,21 @@ public:
 	/** First-Person Mesh (Hidden in 3rd person mode) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	TObjectPtr<USkeletalMeshComponent> Mesh1P;
+
+	/** 7-Zone Socket-Driven 3D Tactical Gear & Armor Rig Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
+	TObjectPtr<class UFPSOperatorGearComponent> OperatorGearComponent;
+
+	/** 3rd-Person Level IV Ceramic Plate Carrier Procedural Mesh attached to spine_03 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
+	TObjectPtr<UProceduralMeshComponent> PlateCarrierProcMesh;
+
+	/** 3rd-Person Tactical Ballistic Helmet Procedural Mesh attached to head */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
+	TObjectPtr<UProceduralMeshComponent> BallisticHelmetProcMesh;
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Gear")
+	void BuildProceduralTacticalGear();
 
 	/** 3rd-Person Level IV Ceramic Plate Carrier attached to spine_03 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")

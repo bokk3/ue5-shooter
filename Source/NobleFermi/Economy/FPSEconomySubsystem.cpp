@@ -64,7 +64,10 @@ void UFPSEconomySubsystem::InitializeDailyBounties()
 {
 	ActiveBounties.Empty();
 
-	// Contract 1: ChronoDiveKill -> +1,200 GOLD
+	const bool bUseCoastalPool = (SelectedTheaterIndex == 1) || ((BountyRerollSeed % 2) == 1);
+
+	// Contract 1: ChronoDiveKill or CoastalKill -> +1,200 / +1,400 GOLD
+	if (!bUseCoastalPool)
 	{
 		FFPSTacticalBounty B1;
 		B1.BountyID = TEXT("ChronoDiveKill");
@@ -79,8 +82,24 @@ void UFPSEconomySubsystem::InitializeDailyBounties()
 		B1.bCompleted = false;
 		ActiveBounties.Add(B1);
 	}
+	else
+	{
+		FFPSTacticalBounty B1;
+		B1.BountyID = TEXT("CoastalBreacher");
+		B1.EventTag = FName(TEXT("CoastalKill"));
+		B1.SecondaryEventTag = FName(TEXT("ChronoDiveKill"));
+		B1.Title = FText::FromString(TEXT("COASTAL BREACHER"));
+		B1.Description = FText::FromString(TEXT("Eliminate 3 hostiles while sliding on sand dunes or breaching the seawall dike"));
+		B1.CurrentProgress = 0;
+		B1.TargetProgress = 3;
+		B1.GoldReward = 1400;
+		B1.OpalReward = 4;
+		B1.bCompleted = false;
+		ActiveBounties.Add(B1);
+	}
 
-	// Contract 2: FermiSwapKill -> +1,500 GOLD + 5 OPALS
+	// Contract 2: FermiSwapKill or PierKill -> +1,500 / +1,600 GOLD + 5/6 OPALS
+	if (!bUseCoastalPool)
 	{
 		FFPSTacticalBounty B2;
 		B2.BountyID = TEXT("FermiSwapKill");
@@ -92,6 +111,21 @@ void UFPSEconomySubsystem::InitializeDailyBounties()
 		B2.TargetProgress = 3;
 		B2.GoldReward = 1500;
 		B2.OpalReward = 5;
+		B2.bCompleted = false;
+		ActiveBounties.Add(B2);
+	}
+	else
+	{
+		FFPSTacticalBounty B2;
+		B2.BountyID = TEXT("PierPhantom");
+		B2.EventTag = FName(TEXT("PierKill"));
+		B2.SecondaryEventTag = FName(TEXT("FermiSwapKill"));
+		B2.Title = FText::FromString(TEXT("PIER PHANTOM"));
+		B2.Description = FText::FromString(TEXT("Eliminate 2 hostiles on the maritime pier or score long-range dike hits"));
+		B2.CurrentProgress = 0;
+		B2.TargetProgress = 2;
+		B2.GoldReward = 1600;
+		B2.OpalReward = 6;
 		B2.bCompleted = false;
 		ActiveBounties.Add(B2);
 	}
@@ -150,6 +184,24 @@ void UFPSEconomySubsystem::InitializeWheelSlices()
 FString UFPSEconomySubsystem::GetProfileSaveFilePath() const
 {
 	return FPaths::ProjectSavedDir() / TEXT("NobleFermiProfile.json");
+}
+
+void UFPSEconomySubsystem::SetBalances(int32 InGold, int32 InOpals)
+{
+	GoldBalance = FMath::Max(0, InGold);
+	OpalBalance = FMath::Max(0, InOpals);
+	SaveProfile();
+	OnCurrencyChanged.Broadcast(GoldBalance, OpalBalance);
+}
+
+void UFPSEconomySubsystem::UnlockItemDirectly(const FString& ItemID)
+{
+	if (!ItemID.IsEmpty() && !UnlockedItemIDs.Contains(ItemID))
+	{
+		UnlockedItemIDs.Add(ItemID);
+		SaveProfile();
+		OnItemUnlocked.Broadcast(ItemID);
+	}
 }
 
 void UFPSEconomySubsystem::AddGold(int32 Amount, const FString& Reason)
@@ -230,6 +282,12 @@ void UFPSEconomySubsystem::GetEquippedLoadout(int32& OutCamoIdx, int32& OutHeadg
 	OutHeadgearIdx = EquippedHeadgearIndex;
 	OutArmorIdx = EquippedArmorIndex;
 	OutWeaponFinishIdx = EquippedWeaponFinishIndex;
+}
+
+void UFPSEconomySubsystem::SetSelectedTheaterIndex(int32 NewIndex)
+{
+	SelectedTheaterIndex = FMath::Clamp(NewIndex, 0, 1);
+	SaveProfile();
 }
 
 void UFPSEconomySubsystem::RecordBountyProgress(FName EventTag, int32 Delta)
@@ -545,6 +603,7 @@ void UFPSEconomySubsystem::SaveProfile()
 	JsonOut += FString::Printf(TEXT("\t\"EquippedHeadgearIndex\": %d,\n"), EquippedHeadgearIndex);
 	JsonOut += FString::Printf(TEXT("\t\"EquippedArmorIndex\": %d,\n"), EquippedArmorIndex);
 	JsonOut += FString::Printf(TEXT("\t\"EquippedWeaponFinishIndex\": %d,\n"), EquippedWeaponFinishIndex);
+	JsonOut += FString::Printf(TEXT("\t\"SelectedTheaterIndex\": %d,\n"), SelectedTheaterIndex);
 
 	// Daily Tactical Bounty State
 	for (int32 i = 0; i < ActiveBounties.Num(); ++i)
@@ -598,6 +657,7 @@ void UFPSEconomySubsystem::LoadProfile()
 		EquippedHeadgearIndex = 0;
 		EquippedArmorIndex = 0;
 		EquippedWeaponFinishIndex = 0;
+		SelectedTheaterIndex = 0;
 		InitializeDailyBounties();
 		SaveProfile();
 		return;
@@ -651,6 +711,7 @@ void UFPSEconomySubsystem::LoadProfile()
 	EquippedHeadgearIndex = FMath::Clamp(ExtractInt(TEXT("EquippedHeadgearIndex"), 0), 0, 3);
 	EquippedArmorIndex = FMath::Clamp(ExtractInt(TEXT("EquippedArmorIndex"), 0), 0, 2);
 	EquippedWeaponFinishIndex = FMath::Clamp(ExtractInt(TEXT("EquippedWeaponFinishIndex"), 0), 0, 3);
+	SelectedTheaterIndex = FMath::Clamp(ExtractInt(TEXT("SelectedTheaterIndex"), 0), 0, 1);
 
 	// Load Daily Bounties
 	if (ActiveBounties.Num() != 3)

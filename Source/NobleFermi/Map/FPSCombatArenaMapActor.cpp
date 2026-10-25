@@ -27,7 +27,7 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 	SunLight->SetIntensity(10.0f); // Calibrated tactical sun lux for locked exposure
 	SunLight->SetLightColor(FLinearColor(1.0f, 0.94f, 0.84f)); // Warm tactical desert sun
 	SunLight->bAtmosphereSunLight = true;
-	SunLight->bCastVolumetricShadow = true;
+	SunLight->bCastVolumetricShadow = false;
 	SunLight->CastShadows = 1;
 
 	SkyLight = CreateDefaultSubobject<USkyLightComponent>(TEXT("SkyLight"));
@@ -35,7 +35,7 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 	SkyLight->SetMobility(EComponentMobility::Movable);
 	SkyLight->SetIntensity(1.5f);
 	SkyLight->SetLightColor(FLinearColor(0.85f, 0.92f, 1.0f));
-	SkyLight->bRealTimeCapture = true;
+	SkyLight->bRealTimeCapture = false;
 
 	SkyAtmosphere = CreateDefaultSubobject<USkyAtmosphereComponent>(TEXT("SkyAtmosphere"));
 	SkyAtmosphere->SetupAttachment(RootComponent);
@@ -52,6 +52,7 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 	TowerBeaconLight->SetIntensity(30.0f);
 	TowerBeaconLight->SetLightColor(FLinearColor(1.0f, 0.1f, 0.05f)); // Red hazard beacon
 	TowerBeaconLight->SetAttenuationRadius(1500.0f);
+	TowerBeaconLight->SetCastShadows(false);
 
 	// Post Process: Lock Exposure to prevent white screen / eye adaptation blowout
 	PostProcess = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcess"));
@@ -158,9 +159,9 @@ void AFPSCombatArenaMapActor::ConstructCentralDerrick(UStaticMesh* CubeMesh, USt
 	AddPart(TEXT("Derrick_Rail_N"), CubeMesh, FVector(450.0f, 0.0f, 385.0f), FRotator::ZeroRotator, FVector(0.2f, 9.0f, 0.7f));
 	AddPart(TEXT("Derrick_Rail_S"), CubeMesh, FVector(-450.0f, 0.0f, 385.0f), FRotator::ZeroRotator, FVector(0.2f, 9.0f, 0.7f));
 
-	// Access Ramps (West & East)
-	AddPart(TEXT("Derrick_Ramp_West"), CubeMesh, FVector(0.0f, -750.0f, 175.0f), FRotator(21.0f, 90.0f, 0.0f), FVector(2.0f, 8.0f, 0.2f));
-	AddPart(TEXT("Derrick_Ramp_East"), CubeMesh, FVector(0.0f, 750.0f, 175.0f), FRotator(-21.0f, 90.0f, 0.0f), FVector(2.0f, 8.0f, 0.2f));
+	// Access Ramps (West & East): Scale.X is length along slope (8.2m), Scale.Y is ramp width (2.2m)
+	AddPart(TEXT("Derrick_Ramp_West"), CubeMesh, FVector(0.0f, -800.0f, 175.0f), FRotator(25.5f, 90.0f, 0.0f), FVector(8.2f, 2.2f, 0.25f));
+	AddPart(TEXT("Derrick_Ramp_East"), CubeMesh, FVector(0.0f, 800.0f, 175.0f), FRotator(-25.5f, 90.0f, 0.0f), FVector(8.2f, 2.2f, 0.25f));
 
 	// Top Sniper Platform (Z = 720)
 	AddPart(TEXT("Derrick_Top_Platform"), CubeMesh, FVector(0.0f, 0.0f, 720.0f), FRotator::ZeroRotator, FVector(4.0f, 4.0f, 0.2f));
@@ -213,10 +214,10 @@ void AFPSCombatArenaMapActor::ConstructPipelineAndBunker(UStaticMesh* CubeMesh, 
 		PipelineComponents.Add(Comp);
 	};
 
-	// Heavy Oil Pipeline along East Flank (Y = 1800)
-	AddPipe(TEXT("Pipe_Seg_1"), CylinderMesh, FVector(-1200.0f, 1800.0f, 90.0f), FRotator(0.0f, 0.0f, 90.0f), FVector(1.2f, 1.2f, 12.0f));
-	AddPipe(TEXT("Pipe_Seg_2"), CylinderMesh, FVector(0.0f, 1800.0f, 90.0f), FRotator(0.0f, 0.0f, 90.0f), FVector(1.2f, 1.2f, 12.0f));
-	AddPipe(TEXT("Pipe_Seg_3"), CylinderMesh, FVector(1200.0f, 1800.0f, 90.0f), FRotator(0.0f, 0.0f, 90.0f), FVector(1.2f, 1.2f, 12.0f));
+	// Heavy Oil Pipeline along East Flank (Y = 1800, Pitch = 90 aligns 12m cylinders along X axis)
+	AddPipe(TEXT("Pipe_Seg_1"), CylinderMesh, FVector(-1200.0f, 1800.0f, 110.0f), FRotator(90.0f, 0.0f, 0.0f), FVector(1.1f, 1.1f, 12.0f));
+	AddPipe(TEXT("Pipe_Seg_2"), CylinderMesh, FVector(0.0f, 1800.0f, 110.0f), FRotator(90.0f, 0.0f, 0.0f), FVector(1.1f, 1.1f, 12.0f));
+	AddPipe(TEXT("Pipe_Seg_3"), CylinderMesh, FVector(1200.0f, 1800.0f, 110.0f), FRotator(90.0f, 0.0f, 0.0f), FVector(1.1f, 1.1f, 12.0f));
 
 	// Concrete Cradles
 	AddPipe(TEXT("Pipe_Cradle_1"), CubeMesh, FVector(-600.0f, 1800.0f, 40.0f), FRotator::ZeroRotator, FVector(1.0f, 1.8f, 0.8f));
@@ -284,6 +285,11 @@ void AFPSCombatArenaMapActor::ConstructObjectives(UStaticMesh* CylinderMesh, UMa
 void AFPSCombatArenaMapActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (SkyLight)
+	{
+		SkyLight->RecaptureSky();
+	}
 
 	// Color Dynamic Materials with Tactical Military Palette
 	auto SetColor = [](UStaticMeshComponent* Comp, const FLinearColor& Color)
@@ -403,17 +409,17 @@ void AFPSCombatArenaMapActor::SpawnTacticalPlayerStarts()
 		}
 	};
 
-	// 4 Team Alpha Spawns (Task Force 141 - South Safe Revetments)
-	CreateStart(FVector(-2400.0f, -600.0f, 20.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
-	CreateStart(FVector(-2400.0f, -200.0f, 20.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
-	CreateStart(FVector(-2400.0f, 200.0f, 20.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
-	CreateStart(FVector(-2400.0f, 600.0f, 20.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
+	// 4 Team Alpha Spawns (Task Force 141 - South Safe Revetments, Z=115cm for 96cm capsule clearance)
+	CreateStart(FVector(-2400.0f, -600.0f, 115.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(-2400.0f, -200.0f, 115.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(-2400.0f, 200.0f, 115.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(-2400.0f, 600.0f, 115.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
 
-	// 4 Team Bravo Spawns (OpFor - North Loading Docks)
-	CreateStart(FVector(2400.0f, -600.0f, 20.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
-	CreateStart(FVector(2400.0f, -200.0f, 20.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
-	CreateStart(FVector(2400.0f, 200.0f, 20.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
-	CreateStart(FVector(2400.0f, 600.0f, 20.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
+	// 4 Team Bravo Spawns (OpFor - North Loading Docks, Z=115cm for 96cm capsule clearance)
+	CreateStart(FVector(2400.0f, -600.0f, 115.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
+	CreateStart(FVector(2400.0f, -200.0f, 115.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
+	CreateStart(FVector(2400.0f, 200.0f, 115.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
+	CreateStart(FVector(2400.0f, 600.0f, 115.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
 
 	UE_LOG(LogTemp, Warning, TEXT("[CombatArena] Rust Tactical: Successfully spawned 8 PlayerStarts (4 TeamAlpha, 4 TeamBravo)."));
 }

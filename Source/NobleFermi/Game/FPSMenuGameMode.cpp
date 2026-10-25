@@ -1,9 +1,12 @@
 #include "Game/FPSMenuGameMode.h"
 #include "Game/FPSMenuPlayerController.h"
+#include "Game/FPSMenuHangarStage.h"
 #include "Character/FPSCharacterPreviewActor.h"
 #include "UI/MainMenuWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Misc/CommandLine.h"
 #include "TimerManager.h"
 #include "Engine/Engine.h"
@@ -14,11 +17,29 @@ AFPSMenuGameMode::AFPSMenuGameMode()
 	DefaultPawnClass = nullptr;
 	MainMenuWidgetClass = UMainMenuWidget::StaticClass();
 	PreviewActorClass = AFPSCharacterPreviewActor::StaticClass();
+	HangarStageClass = AFPSMenuHangarStage::StaticClass();
 }
 
 void AFPSMenuGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Enforce baseline iGPU optimization on fresh startup if no user config exists yet
+	if (GConfig && GetWorld())
+	{
+		int32 SavedLumenMethod = 0;
+		if (!GConfig->GetInt(TEXT("SystemSettings"), TEXT("r.DynamicGlobalIlluminationMethod"), SavedLumenMethod, GEngineIni))
+		{
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.DynamicGlobalIlluminationMethod 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.Shadow.Virtual.Enable 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.Shadow.CSM.MaxCascades 2"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.VolumetricFog 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.VolumetricCloud 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.SkyLight.RealTimeReflectionCapture 0"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("r.ScreenPercentage 70"));
+			UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("t.MaxFPS 60"));
+		}
+	}
 
 	UWorld* World = GetWorld();
 	if (!World)
@@ -37,6 +58,19 @@ void AFPSMenuGameMode::BeginPlay()
 		FRotator::ZeroRotator,
 		SpawnParams
 	);
+
+	// 1.5. Spawn 3D Industrial Hangar Diorama & Rain-Glass Optics Stage around the Operator Turntable
+	UClass* HangarToSpawn = HangarStageClass ? HangarStageClass.Get() : AFPSMenuHangarStage::StaticClass();
+	ActiveHangarStage = World->SpawnActor<AFPSMenuHangarStage>(
+		HangarToSpawn,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		SpawnParams
+	);
+	if (ActiveHangarStage && ActivePreviewActor)
+	{
+		ActiveHangarStage->ConfigurePreviewActorAndCamera(ActivePreviewActor);
+	}
 
 	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
 	if (PC)

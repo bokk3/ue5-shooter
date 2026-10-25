@@ -68,18 +68,28 @@ void UFPSInventoryComponent::EquipSlot(int32 SlotIndex)
 	ActiveWeapon = TargetWeapon;
 	ActiveWeapon->SetActorHiddenInGame(false);
 
-	// Primary 3rd-person tactical weapon attachment: socket to character mesh weapon_r bone socket
+	// Primary 3rd-person tactical weapon attachment: attach authoritatively to hand_r / weapon_r
 	ACharacter* Char = Cast<ACharacter>(GetOwner());
 	if (Char && Char->GetMesh())
 	{
-		FName SocketName = FName(TEXT("weapon_r"));
-		if (Char->GetMesh()->GetSkeletalMeshAsset() && !Char->GetMesh()->DoesSocketExist(TEXT("weapon_r")))
+		USkeletalMeshComponent* MeshComp = Char->GetMesh();
+		FName SocketName = FName(TEXT("hand_r"));
+
+		// If a calibrated weapon_r socket exists and is properly co-located near the hand (not at origin 0,0,0)
+		if (MeshComp->DoesSocketExist(TEXT("weapon_r")))
 		{
-			SocketName = Char->GetMesh()->DoesSocketExist(TEXT("GripPoint")) ? FName(TEXT("GripPoint")) : FName(TEXT("hand_r"));
+			const FVector WeaponRSocketLoc = MeshComp->GetSocketLocation(TEXT("weapon_r"));
+			const FVector HandRLoc = MeshComp->GetSocketLocation(TEXT("hand_r"));
+			if (FVector::DistSquared(WeaponRSocketLoc, HandRLoc) < 1225.0f) // within 35cm
+			{
+				SocketName = FName(TEXT("weapon_r"));
+			}
 		}
-		ActiveWeapon->AttachToComponent(Char->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+
+		ActiveWeapon->AttachToComponent(MeshComp, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
 		ActiveWeapon->SetActorRelativeLocation(ActiveWeapon->GetThirdPersonLocation());
 		ActiveWeapon->SetActorRelativeRotation(ActiveWeapon->GetThirdPersonRotation());
+		ActiveWeapon->SetActorHiddenInGame(false);
 	}
 	else
 	{

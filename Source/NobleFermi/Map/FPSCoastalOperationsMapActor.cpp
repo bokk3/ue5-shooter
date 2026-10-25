@@ -1,5 +1,6 @@
 #include "Map/FPSCoastalOperationsMapActor.h"
 #include "Map/FPSCoastalSplineActor.h"
+#include "Map/FPSCoastalMaterialLibrary.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Components/SkyAtmosphereComponent.h"
@@ -30,7 +31,7 @@ AFPSCoastalOperationsMapActor::AFPSCoastalOperationsMapActor()
 	SunLight->SetIntensity(8.5f); // Calibrated maritime sun lux for locked manual exposure
 	SunLight->SetLightColor(FLinearColor(1.0f, 0.95f, 0.88f)); // Golden maritime sun through light sea spray
 	SunLight->bAtmosphereSunLight = true;
-	SunLight->bCastVolumetricShadow = true;
+	SunLight->bCastVolumetricShadow = false;
 	SunLight->CastShadows = 1;
 
 	SkyLight = CreateDefaultSubobject<USkyLightComponent>(TEXT("SkyLight"));
@@ -38,7 +39,7 @@ AFPSCoastalOperationsMapActor::AFPSCoastalOperationsMapActor()
 	SkyLight->SetMobility(EComponentMobility::Movable);
 	SkyLight->SetIntensity(1.8f);
 	SkyLight->SetLightColor(FLinearColor(0.80f, 0.90f, 1.0f)); // Cold ocean sky ambient
-	SkyLight->bRealTimeCapture = true;
+	SkyLight->bRealTimeCapture = false;
 
 	SkyAtmosphere = CreateDefaultSubobject<USkyAtmosphereComponent>(TEXT("SkyAtmosphere"));
 	SkyAtmosphere->SetupAttachment(RootComponent);
@@ -55,6 +56,7 @@ AFPSCoastalOperationsMapActor::AFPSCoastalOperationsMapActor()
 	PierHeadNavBeacon->SetIntensity(25.0f);
 	PierHeadNavBeacon->SetLightColor(FLinearColor(0.0f, 0.90f, 1.0f)); // Tactical cyan navigational beacon
 	PierHeadNavBeacon->SetAttenuationRadius(2400.0f);
+	PierHeadNavBeacon->SetCastShadows(false);
 
 	DikeHazardBeacon = CreateDefaultSubobject<UPointLightComponent>(TEXT("DikeHazardBeacon"));
 	DikeHazardBeacon->SetupAttachment(RootComponent);
@@ -63,6 +65,7 @@ AFPSCoastalOperationsMapActor::AFPSCoastalOperationsMapActor()
 	DikeHazardBeacon->SetIntensity(30.0f);
 	DikeHazardBeacon->SetLightColor(FLinearColor(1.0f, 0.25f, 0.05f)); // Amber hazard beacon on Dike Flag B
 	DikeHazardBeacon->SetAttenuationRadius(2000.0f);
+	DikeHazardBeacon->SetCastShadows(false);
 
 	// Post Process: Lock Exposure to prevent high-albedo sand blowout (AEM_Manual)
 	PostProcess = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcess"));
@@ -108,6 +111,11 @@ void AFPSCoastalOperationsMapActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (SkyLight)
+	{
+		SkyLight->RecaptureSky();
+	}
+
 	auto ApplyTint = [](UStaticMeshComponent* Comp, const FLinearColor& Color, float Roughness = 0.85f)
 	{
 		if (!Comp) return;
@@ -125,25 +133,29 @@ void AFPSCoastalOperationsMapActor::BeginPlay()
 	};
 
 	// 1. Beach sand & ocean water
-	ApplyTint(BeachFloorMesh, FLinearColor(0.82f, 0.76f, 0.62f), 0.95f);
+	UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(BeachFloorMesh, ECoastalSurfaceType::FineBeachSand);
+	if (BeachFloorMesh) BeachFloorMesh->ComponentTags.AddUnique(FName("Surface_Sand_Dune"));
 	ApplyTint(WaterPlaneMesh, FLinearColor(0.04f, 0.16f, 0.22f), 0.08f);
 
 	// 2. Weathered maritime pier planks
 	for (UStaticMeshComponent* Plank : PierVisualPlanks)
 	{
-		ApplyTint(Plank, FLinearColor(0.28f, 0.29f, 0.30f), 0.90f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Plank, ECoastalSurfaceType::WeatheredPierTimber);
+		if (Plank) Plank->ComponentTags.AddUnique(FName("Surface_Pier_Wood"));
 	}
 
 	// 3. Pilings (weathered timber + concrete)
 	for (UStaticMeshComponent* Piling : PierPilings)
 	{
-		ApplyTint(Piling, FLinearColor(0.22f, 0.23f, 0.24f), 0.85f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Piling, ECoastalSurfaceType::WeatheredPierTimber);
+		if (Piling) Piling->ComponentTags.AddUnique(FName("Surface_Pier_Wood"));
 	}
 
 	// 4. Transverse cross-beams
 	for (UStaticMeshComponent* Beam : PierCrossBeams)
 	{
-		ApplyTint(Beam, FLinearColor(0.20f, 0.21f, 0.22f), 0.90f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Beam, ECoastalSurfaceType::WeatheredPierTimber);
+		if (Beam) Beam->ComponentTags.AddUnique(FName("Surface_Pier_Wood"));
 	}
 
 	// 5. Cast-iron mooring bollards
@@ -167,20 +179,17 @@ void AFPSCoastalOperationsMapActor::BeginPlay()
 	// 8. Coastal dunes (stoss vs slip face)
 	for (UStaticMeshComponent* Dune : DuneComponents)
 	{
-		if (Dune->ComponentTags.Contains(FName("Dune_SlipFace")))
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Dune, ECoastalSurfaceType::FineBeachSand);
+		if (Dune)
 		{
-			ApplyTint(Dune, FLinearColor(0.78f, 0.70f, 0.56f), 0.95f); // Deeper shadow on slip face
-		}
-		else
-		{
-			ApplyTint(Dune, FLinearColor(0.86f, 0.79f, 0.64f), 0.92f); // Sunlit stoss sand
+			Dune->ComponentTags.AddUnique(FName("Surface_Sand_Dune"));
 		}
 	}
 
 	// 9. Perimeter boundaries
 	for (UStaticMeshComponent* Wall : PerimeterWalls)
 	{
-		ApplyTint(Wall, FLinearColor(0.32f, 0.34f, 0.36f), 0.85f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Wall, ECoastalSurfaceType::MarineCastConcrete);
 	}
 
 	// 10. Domination Objectives (A, B, C)
@@ -494,36 +503,35 @@ void AFPSCoastalOperationsMapActor::ConstructCoastalDunes(UStaticMesh* CubeMesh,
 		DuneComponents.Add(Dune);
 	};
 
-	// 1. Primary Fore-Dune Ridge (Y = +1800, Height 450cm)
-	// Stoss slope (12 deg facing seaward):
-	AddDune(TEXT("Dune_Fore_Stoss_W"), FVector(-2800.0f, 1550.0f, 210.0f), FRotator(12.0f, 0.0f, 0.0f), FVector(52.0f, 14.0f, 1.2f), false);
-	AddDune(TEXT("Dune_Fore_Stoss_E"), FVector(2800.0f, 1550.0f, 210.0f), FRotator(12.0f, 0.0f, 0.0f), FVector(52.0f, 14.0f, 1.2f), false);
+	// IMPORTANT: Yaw = 90.0f orients Local +X along World +Y (Sea-to-Land), so Pitch tilts the slope along Y
+	// while the 46m ridge width (Scale.Y) stays 100% horizontal along X!
+	// 1. Primary Fore-Dune Ridge (Y = +1400 to +3000, Crest Height = 260cm, Central Breach at X = -500..+500)
+	AddDune(TEXT("Dune_Fore_Stoss_W"), FVector(-2900.0f, 1750.0f, 100.0f), FRotator(12.0f, 90.0f, 0.0f), FVector(13.5f, 46.0f, 0.8f), false);
+	AddDune(TEXT("Dune_Fore_Stoss_E"), FVector(2900.0f, 1750.0f, 100.0f), FRotator(12.0f, 90.0f, 0.0f), FVector(13.5f, 46.0f, 0.8f), false);
 
-	// Crest Ridge:
-	AddDune(TEXT("Dune_Fore_Crest_W"), FVector(-2800.0f, 1850.0f, 430.0f), FRotator::ZeroRotator, FVector(52.0f, 3.0f, 0.8f), false);
-	AddDune(TEXT("Dune_Fore_Crest_E"), FVector(2800.0f, 1850.0f, 430.0f), FRotator::ZeroRotator, FVector(52.0f, 3.0f, 0.8f), false);
+	AddDune(TEXT("Dune_Fore_Crest_W"), FVector(-2900.0f, 2420.0f, 125.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.2f, 46.0f, 2.5f), false);
+	AddDune(TEXT("Dune_Fore_Crest_E"), FVector(2900.0f, 2420.0f, 125.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.2f, 46.0f, 2.5f), false);
 
-	// Slip face (32 deg angle of repose facing inland):
-	AddDune(TEXT("Dune_Fore_Slip_W"), FVector(-2800.0f, 2100.0f, 220.0f), FRotator(-32.0f, 0.0f, 0.0f), FVector(52.0f, 7.5f, 1.1f), true);
-	AddDune(TEXT("Dune_Fore_Slip_E"), FVector(2800.0f, 2100.0f, 220.0f), FRotator(-32.0f, 0.0f, 0.0f), FVector(52.0f, 7.5f, 1.1f), true);
+	AddDune(TEXT("Dune_Fore_Slip_W"), FVector(-2900.0f, 2760.0f, 100.0f), FRotator(-26.0f, 90.0f, 0.0f), FVector(6.2f, 46.0f, 0.8f), true);
+	AddDune(TEXT("Dune_Fore_Slip_E"), FVector(2900.0f, 2760.0f, 100.0f), FRotator(-26.0f, 90.0f, 0.0f), FVector(6.2f, 46.0f, 0.8f), true);
 
-	// 2. Secondary Transverse Dune Ridge (Y = +3400, Height 520cm)
-	AddDune(TEXT("Dune_Trans_Stoss_W"), FVector(-2500.0f, 3100.0f, 240.0f), FRotator(13.5f, 0.0f, 0.0f), FVector(48.0f, 15.0f, 1.4f), false);
-	AddDune(TEXT("Dune_Trans_Stoss_E"), FVector(2500.0f, 3100.0f, 240.0f), FRotator(13.5f, 0.0f, 0.0f), FVector(48.0f, 15.0f, 1.4f), false);
+	// 2. Secondary Transverse Dune Ridge (Inland Backdrop behind Flag A & Alpha Spawns, Y = +4600 to +5800)
+	AddDune(TEXT("Dune_Trans_Stoss_W"), FVector(-2700.0f, 4950.0f, 120.0f), FRotator(13.5f, 90.0f, 0.0f), FVector(12.0f, 44.0f, 0.9f), false);
+	AddDune(TEXT("Dune_Trans_Stoss_E"), FVector(2700.0f, 4950.0f, 120.0f), FRotator(13.5f, 90.0f, 0.0f), FVector(12.0f, 44.0f, 0.9f), false);
 
-	AddDune(TEXT("Dune_Trans_Crest_W"), FVector(-2500.0f, 3450.0f, 500.0f), FRotator::ZeroRotator, FVector(48.0f, 3.5f, 0.9f), false);
-	AddDune(TEXT("Dune_Trans_Crest_E"), FVector(2500.0f, 3450.0f, 500.0f), FRotator::ZeroRotator, FVector(48.0f, 3.5f, 0.9f), false);
+	AddDune(TEXT("Dune_Trans_Crest_W"), FVector(-2700.0f, 5520.0f, 145.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.4f, 44.0f, 2.9f), false);
+	AddDune(TEXT("Dune_Trans_Crest_E"), FVector(2700.0f, 5520.0f, 145.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.4f, 44.0f, 2.9f), false);
 
-	AddDune(TEXT("Dune_Trans_Slip_W"), FVector(-2500.0f, 3720.0f, 260.0f), FRotator(-32.0f, 0.0f, 0.0f), FVector(48.0f, 8.5f, 1.2f), true);
-	AddDune(TEXT("Dune_Trans_Slip_E"), FVector(2500.0f, 3720.0f, 260.0f), FRotator(-32.0f, 0.0f, 0.0f), FVector(48.0f, 8.5f, 1.2f), true);
+	AddDune(TEXT("Dune_Trans_Slip_W"), FVector(-2700.0f, 5760.0f, 115.0f), FRotator(-28.0f, 90.0f, 0.0f), FVector(5.5f, 44.0f, 0.8f), true);
+	AddDune(TEXT("Dune_Trans_Slip_E"), FVector(2700.0f, 5760.0f, 115.0f), FRotator(-28.0f, 90.0f, 0.0f), FVector(5.5f, 44.0f, 0.8f), true);
 
-	// 3. Central Interdune Basin & Flag A Defilade Dunes
-	AddDune(TEXT("Dune_Basin_Cover_W"), FVector(-800.0f, 3950.0f, 180.0f), FRotator(0.0f, 35.0f, 0.0f), FVector(12.0f, 10.0f, 3.5f), false);
-	AddDune(TEXT("Dune_Basin_Cover_E"), FVector(800.0f, 3950.0f, 180.0f), FRotator(0.0f, -35.0f, 0.0f), FVector(12.0f, 10.0f, 3.5f), false);
+	// 3. Central Interdune Basin & Flag A Waist/Chest Defilade Berms
+	AddDune(TEXT("Dune_Basin_Cover_W"), FVector(-750.0f, 3650.0f, 75.0f), FRotator(0.0f, 25.0f, 0.0f), FVector(8.5f, 3.2f, 1.6f), false);
+	AddDune(TEXT("Dune_Basin_Cover_E"), FVector(750.0f, 3650.0f, 75.0f), FRotator(0.0f, -25.0f, 0.0f), FVector(8.5f, 3.2f, 1.6f), false);
 
-	// 4. Barchanoid Parabolic Dunes (West & East High Flank Sniping Bluffs)
-	AddDune(TEXT("Dune_Peak_West"), FVector(-4800.0f, 4400.0f, 280.0f), FRotator(0.0f, 25.0f, 0.0f), FVector(18.0f, 18.0f, 5.5f), false);
-	AddDune(TEXT("Dune_Peak_East"), FVector(4800.0f, 4400.0f, 280.0f), FRotator(0.0f, -25.0f, 0.0f), FVector(18.0f, 18.0f, 5.5f), false);
+	// 4. Barchanoid Parabolic Dunes (West & East Flank Overwatches)
+	AddDune(TEXT("Dune_Peak_West"), FVector(-4600.0f, 3800.0f, 110.0f), FRotator(10.0f, 65.0f, 0.0f), FVector(14.0f, 12.0f, 2.4f), false);
+	AddDune(TEXT("Dune_Peak_East"), FVector(4600.0f, 3800.0f, 110.0f), FRotator(10.0f, 115.0f, 0.0f), FVector(14.0f, 12.0f, 2.4f), false);
 }
 
 void AFPSCoastalOperationsMapActor::ConstructPerimeterBoundaries(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat)
@@ -599,22 +607,20 @@ void AFPSCoastalOperationsMapActor::SpawnTacticalPlayerStarts()
 	};
 
 	// -------------------------------------------------------------------------
-	// 4 Task Force Alpha Spawns (Backcountry Dunes near Flag A)
-	// Sheltered behind 5-meter sand crests in natural defilade troughs
+	// 4 Task Force Alpha Spawns (Interdune Basin near Flag A, Z = 115cm for 96cm capsule clearance)
 	// -------------------------------------------------------------------------
-	CreateStart(FVector(-1200.0f, 4800.0f, 30.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
-	CreateStart(FVector(-400.0f, 5200.0f, 30.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
-	CreateStart(FVector(400.0f, 5200.0f, 30.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
-	CreateStart(FVector(1200.0f, 4800.0f, 30.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(-1200.0f, 4100.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(-400.0f, 4250.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(400.0f, 4250.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(1200.0f, 4100.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
 
 	// -------------------------------------------------------------------------
-	// 4 OpFor Bravo Spawns (Maritime Pier / Seawall Abutment near Flag C)
-	// Shielded behind concrete revetment abutments and timber pier pilings
+	// 4 OpFor Bravo Spawns (Maritime Pier / Seawall Abutment near Flag C, Z = 115cm)
 	// -------------------------------------------------------------------------
-	CreateStart(FVector(-1800.0f, -2200.0f, 20.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
-	CreateStart(FVector(-800.0f, -2400.0f, 20.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
-	CreateStart(FVector(800.0f, -2400.0f, 20.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
-	CreateStart(FVector(1800.0f, -2200.0f, 20.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
+	CreateStart(FVector(-1800.0f, -2300.0f, 115.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
+	CreateStart(FVector(-800.0f, -2450.0f, 115.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
+	CreateStart(FVector(800.0f, -2450.0f, 115.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
+	CreateStart(FVector(1800.0f, -2300.0f, 115.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
 
 	UE_LOG(LogTemp, Warning, TEXT("[CoastalOps] Coastal Operations: Successfully spawned 8 PlayerStarts (4 TeamAlpha, 4 TeamBravo)."));
 }

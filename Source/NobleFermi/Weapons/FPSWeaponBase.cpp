@@ -22,6 +22,75 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/StaticMeshSocket.h"
+#include "ProceduralMeshComponent.h"
+
+namespace
+{
+static void AddBoxToProcMeshBuffers(
+	TArray<FVector>& Vertices,
+	TArray<int32>& Triangles,
+	TArray<FVector>& Normals,
+	TArray<FVector2D>& UVs,
+	TArray<FColor>& Colors,
+	const FVector& Center,
+	const FVector& HalfExtent,
+	const FRotator& Rotation,
+	const FColor& Color)
+{
+	const FQuat Q = Rotation.Quaternion();
+
+	const FVector C[8] = {
+		Q.RotateVector(FVector( HalfExtent.X, -HalfExtent.Y, -HalfExtent.Z)) + Center, // 0: Front Bottom Left
+		Q.RotateVector(FVector( HalfExtent.X,  HalfExtent.Y, -HalfExtent.Z)) + Center, // 1: Front Bottom Right
+		Q.RotateVector(FVector( HalfExtent.X,  HalfExtent.Y,  HalfExtent.Z)) + Center, // 2: Front Top Right
+		Q.RotateVector(FVector( HalfExtent.X, -HalfExtent.Y,  HalfExtent.Z)) + Center, // 3: Front Top Left
+		Q.RotateVector(FVector(-HalfExtent.X, -HalfExtent.Y, -HalfExtent.Z)) + Center, // 4: Back Bottom Left
+		Q.RotateVector(FVector(-HalfExtent.X,  HalfExtent.Y, -HalfExtent.Z)) + Center, // 5: Back Bottom Right
+		Q.RotateVector(FVector(-HalfExtent.X,  HalfExtent.Y,  HalfExtent.Z)) + Center, // 6: Back Top Right
+		Q.RotateVector(FVector(-HalfExtent.X, -HalfExtent.Y,  HalfExtent.Z)) + Center  // 7: Back Top Left
+	};
+
+	auto AddQuad = [&](int32 i0, int32 i1, int32 i2, int32 i3, const FVector& Normal)
+	{
+		const int32 StartIdx = Vertices.Num();
+
+		Vertices.Add(C[i0]);
+		Vertices.Add(C[i1]);
+		Vertices.Add(C[i2]);
+		Vertices.Add(C[i3]);
+
+		Normals.Add(Normal);
+		Normals.Add(Normal);
+		Normals.Add(Normal);
+		Normals.Add(Normal);
+
+		UVs.Add(FVector2D(0.0f, 0.0f));
+		UVs.Add(FVector2D(1.0f, 0.0f));
+		UVs.Add(FVector2D(1.0f, 1.0f));
+		UVs.Add(FVector2D(0.0f, 1.0f));
+
+		Colors.Add(Color);
+		Colors.Add(Color);
+		Colors.Add(Color);
+		Colors.Add(Color);
+
+		Triangles.Add(StartIdx + 0);
+		Triangles.Add(StartIdx + 1);
+		Triangles.Add(StartIdx + 2);
+
+		Triangles.Add(StartIdx + 0);
+		Triangles.Add(StartIdx + 2);
+		Triangles.Add(StartIdx + 3);
+	};
+
+	AddQuad(0, 1, 2, 3, Q.RotateVector(FVector( 1.0f,  0.0f,  0.0f))); // Front (+X)
+	AddQuad(5, 4, 7, 6, Q.RotateVector(FVector(-1.0f,  0.0f,  0.0f))); // Back (-X)
+	AddQuad(1, 5, 6, 2, Q.RotateVector(FVector( 0.0f,  1.0f,  0.0f))); // Right (+Y)
+	AddQuad(4, 0, 3, 7, Q.RotateVector(FVector( 0.0f, -1.0f,  0.0f))); // Left (-Y)
+	AddQuad(3, 2, 6, 7, Q.RotateVector(FVector( 0.0f,  0.0f,  1.0f))); // Top (+Z)
+	AddQuad(4, 5, 1, 0, Q.RotateVector(FVector( 0.0f,  0.0f, -1.0f))); // Bottom (-Z)
+}
+} // namespace
 
 AFPSWeaponBase::AFPSWeaponBase()
 {
@@ -30,6 +99,18 @@ AFPSWeaponBase::AFPSWeaponBase()
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	RootComponent = WeaponMesh;
 	WeaponMesh->SetCollisionProfileName(TEXT("NoCollision"));
+
+	// Guaranteed 3D Procedural Carbine Geometry (100% immune to missing uncooked uasset meshes in packaged builds)
+	CarbineProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CarbineProcMesh"));
+	CarbineProcMesh->SetupAttachment(WeaponMesh);
+	CarbineProcMesh->SetMobility(EComponentMobility::Movable);
+	CarbineProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CarbineProcMesh->SetCastShadow(true);
+	CarbineProcMesh->bCastDynamicShadow = true;
+	CarbineProcMesh->SetOwnerNoSee(false);
+	CarbineProcMesh->SetOnlyOwnerSee(false);
+	CarbineProcMesh->SetHiddenInGame(false);
+	CarbineProcMesh->SetVisibility(true, true);
 
 	GunsmithComponent = CreateDefaultSubobject<UFPSGunsmithComponent>(TEXT("GunsmithComponent"));
 
@@ -132,6 +213,9 @@ void AFPSWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Construct guaranteed procedural 3D NF-98 carbine geometry
+	BuildProceduralCarbineGeometry();
+
 	if (AK47StaticMesh && !AK47StaticMesh->GetStaticMesh())
 	{
 		UStaticMesh* LoadedAK47 = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Characters/BaseMale/SM_AK47.SM_AK47"));
@@ -141,7 +225,8 @@ void AFPSWeaponBase::BeginPlay()
 		}
 	}
 
-	if (AK47StaticMesh && AK47StaticMesh->GetStaticMesh())
+	const bool bIsAK47 = (WeaponID == FName(TEXT("AK47")));
+	if (bIsAK47 && AK47StaticMesh && AK47StaticMesh->GetStaticMesh())
 	{
 		UMaterialInterface* SteelMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
 		UMaterialInterface* WoodMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"));
@@ -163,6 +248,8 @@ void AFPSWeaponBase::BeginPlay()
 						NewSocket->SocketName = SocketName;
 						NewSocket->RelativeLocation = Loc;
 						NewSocket->RelativeRotation = Rot;
+						NewSocket->SetFlags(RF_Public | RF_Standalone);
+						NewSocket->AddToRoot();
 						SM->AddSocket(NewSocket);
 					}
 				}
@@ -173,16 +260,34 @@ void AFPSWeaponBase::BeginPlay()
 			EnsureStaticSocket(FName(TEXT("Ejection_Port_Socket")), FVector(2.2f, -4.0f, 2.5f), FRotator::ZeroRotator);
 		}
 
-		// Hide legacy procedural box/cylinder weapon shapes when 3D AK-47 mesh is active
-		TArray<UStaticMeshComponent*> LegacyParts = {
-			ReceiverMesh, TopRailMesh, HandguardMesh, BarrelMesh, MuzzleCompMesh,
-			GripMesh, BufferTubeMesh, StockMesh, MagazineMesh, SightBaseMesh,
-			SightHoodMesh, ReticleDotMesh, FrontSightPostMesh, FrontSightDotMesh
-		};
-		for (UStaticMeshComponent* Comp : LegacyParts)
+		AK47StaticMesh->SetVisibility(true);
+		if (CarbineProcMesh) CarbineProcMesh->SetVisibility(false);
+	}
+	else
+	{
+		if (AK47StaticMesh)
 		{
-			if (Comp) Comp->SetVisibility(false);
+			AK47StaticMesh->SetVisibility(false);
 		}
+		if (CarbineProcMesh)
+		{
+			CarbineProcMesh->SetVisibility(true, true);
+			CarbineProcMesh->SetHiddenInGame(false);
+			CarbineProcMesh->SetOnlyOwnerSee(false);
+			CarbineProcMesh->SetOwnerNoSee(false);
+			CarbineProcMesh->SetCastShadow(true);
+		}
+	}
+
+	// Hide legacy basic shape static mesh components to avoid rendering duplicate or empty shapes
+	TArray<UStaticMeshComponent*> LegacyBasicParts = {
+		ReceiverMesh, TopRailMesh, HandguardMesh, BarrelMesh, MuzzleCompMesh,
+		GripMesh, BufferTubeMesh, StockMesh, MagazineMesh, SightBaseMesh,
+		SightHoodMesh, ReticleDotMesh, FrontSightPostMesh, FrontSightDotMesh
+	};
+	for (UStaticMeshComponent* Comp : LegacyBasicParts)
+	{
+		if (Comp) Comp->SetVisibility(false);
 	}
 
 	// Initialize tactical dynamic material finishes
@@ -256,6 +361,120 @@ void AFPSWeaponBase::BeginPlay()
 	if (PawnOwner)
 	{
 		LastControlRot = PawnOwner->GetControlRotation();
+	}
+}
+
+void AFPSWeaponBase::BuildProceduralCarbineGeometry()
+{
+	if (!CarbineProcMesh) return;
+
+	CarbineProcMesh->ClearAllMeshSections();
+
+	// Section 0: Main Carbine Metal & Polymer Components
+	TArray<FVector> Vertices0;
+	TArray<int32> Triangles0;
+	TArray<FVector> Normals0;
+	TArray<FVector2D> UVs0;
+	TArray<FColor> Colors0;
+	TArray<FProcMeshTangent> Tangents0;
+
+	// 1. Lower & Upper Receiver (22cm x 3.8cm x 5.6cm)
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(4.0f, 0.0f, 0.0f), FVector(11.0f, 1.9f, 2.8f), FRotator::ZeroRotator, FColor(45, 48, 52, 255));
+
+	// 2. Picatinny Top Rail (36cm x 2.4cm x 0.8cm)
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(10.0f, 0.0f, 3.2f), FVector(18.0f, 1.2f, 0.4f), FRotator::ZeroRotator, FColor(28, 28, 30, 255));
+
+	// 3. M-LOK Handguard (20cm x 4.2cm x 4.6cm)
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(25.0f, 0.0f, 0.2f), FVector(10.0f, 2.1f, 2.3f), FRotator::ZeroRotator, FColor(38, 40, 42, 255));
+
+	// 4. Barrel (38cm long x 1.6cm diameter)
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(28.0f, 0.0f, 0.3f), FVector(19.0f, 0.8f, 0.8f), FRotator::ZeroRotator, FColor(32, 34, 38, 255));
+
+	// 5. Muzzle Brake / Compensator (4cm x 2.4cm x 2.4cm)
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(48.5f, 0.0f, 0.3f), FVector(2.0f, 1.2f, 1.2f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
+
+	// 6. Ergonomic Pistol Grip (angled -18 deg)
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(-1.5f, 0.0f, -6.5f), FVector(2.1f, 1.6f, 6.0f), FRotator(-18.0f, 0.0f, 0.0f), FColor(30, 32, 34, 255));
+
+	// 7. Buffer Tube & Buttstock
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(-15.0f, 0.0f, 0.8f), FVector(8.0f, 1.3f, 1.3f), FRotator::ZeroRotator, FColor(28, 28, 30, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(-20.0f, 0.0f, -1.0f), FVector(6.0f, 1.8f, 6.5f), FRotator(-4.0f, 0.0f, 0.0f), FColor(32, 32, 35, 255));
+
+	// 8. Curved 30-round Banana Magazine
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(8.0f, 0.0f, -6.0f), FVector(3.2f, 1.25f, 4.0f), FRotator(4.0f, 0.0f, 0.0f), FColor(30, 30, 32, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(8.6f, 0.0f, -13.0f), FVector(3.2f, 1.2f, 4.5f), FRotator(12.0f, 0.0f, 0.0f), FColor(26, 26, 28, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(9.8f, 0.0f, -17.5f), FVector(3.6f, 1.35f, 0.5f), FRotator(12.0f, 0.0f, 0.0f), FColor(18, 18, 20, 255));
+
+	// 9. Reflex Sight Mount & Hood
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(5.0f, 0.0f, 4.2f), FVector(3.5f, 1.3f, 0.6f), FRotator::ZeroRotator, FColor(24, 24, 26, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(5.0f, -1.5f, 6.8f), FVector(2.5f, 0.3f, 2.0f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(5.0f, 1.5f, 6.8f), FVector(2.5f, 0.3f, 2.0f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(5.0f, 0.0f, 8.8f), FVector(2.5f, 1.8f, 0.4f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
+
+	// 10. Front Iron Sight Post
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(33.0f, 0.0f, 4.6f), FVector(0.8f, 0.6f, 1.5f), FRotator::ZeroRotator, FColor(24, 24, 26, 255));
+
+	CarbineProcMesh->CreateMeshSection(0, Vertices0, Triangles0, Normals0, UVs0, Colors0, Tangents0, false);
+
+	// Section 1: Emissive Optics (Red Dot & Tritium Night-Sight)
+	TArray<FVector> Vertices1;
+	TArray<int32> Triangles1;
+	TArray<FVector> Normals1;
+	TArray<FVector2D> UVs1;
+	TArray<FColor> Colors1;
+	TArray<FProcMeshTangent> Tangents1;
+
+	// Reflex Red Dot (Center of hood at Z = 6.8cm)
+	AddBoxToProcMeshBuffers(Vertices1, Triangles1, Normals1, UVs1, Colors1,
+		FVector(5.0f, 0.0f, 6.8f), FVector(0.4f, 0.4f, 0.4f), FRotator::ZeroRotator, FColor(255, 30, 30, 255));
+
+	// Tritium Pip on front sight (Z = 6.2cm)
+	AddBoxToProcMeshBuffers(Vertices1, Triangles1, Normals1, UVs1, Colors1,
+		FVector(33.0f, 0.0f, 6.2f), FVector(0.3f, 0.3f, 0.3f), FRotator::ZeroRotator, FColor(50, 255, 50, 255));
+
+	CarbineProcMesh->CreateMeshSection(1, Vertices1, Triangles1, Normals1, UVs1, Colors1, Tangents1, false);
+
+	// Apply Materials
+	UMaterialInterface* BaseMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (!BaseMat)
+	{
+		BaseMat = UMaterial::GetDefaultMaterial(MD_Surface);
+	}
+	if (BaseMat)
+	{
+		UMaterialInstanceDynamic* BodyMID = CarbineProcMesh->CreateDynamicMaterialInstance(0, BaseMat);
+		if (BodyMID)
+		{
+			BodyMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.06f, 0.065f, 0.075f, 1.0f));
+			BodyMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.06f, 0.065f, 0.075f, 1.0f));
+			BodyMID->SetScalarParameterValue(TEXT("Roughness"), 0.45f);
+			BodyMID->SetScalarParameterValue(TEXT("Metallic"), 0.75f);
+		}
+
+		UMaterialInstanceDynamic* DotMID = CarbineProcMesh->CreateDynamicMaterialInstance(1, BaseMat);
+		if (DotMID)
+		{
+			DotMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(15.0f, 0.05f, 0.05f, 1.0f));
+			DotMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(15.0f, 0.05f, 0.05f, 1.0f));
+			DotMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(15.0f, 0.05f, 0.05f, 1.0f));
+			DotMID->SetScalarParameterValue(TEXT("Emissive"), 10.0f);
+		}
 	}
 }
 
@@ -793,6 +1012,17 @@ void AFPSWeaponBase::ApplyLoadoutCosmetics(int32 CamoIndex, int32 HeadgearIndex,
 		ApplyTintToMesh(AK47StaticMesh, 2, MagColor);
 	}
 
+	if (CarbineProcMesh)
+	{
+		if (UMaterialInstanceDynamic* MID = CarbineProcMesh->CreateDynamicMaterialInstance(0))
+		{
+			MID->SetVectorParameterValue(TEXT("Color"), SteelColor);
+			MID->SetVectorParameterValue(TEXT("BaseColor"), SteelColor);
+			MID->SetScalarParameterValue(TEXT("Metallic"), MetallicVal);
+			MID->SetScalarParameterValue(TEXT("Roughness"), RoughnessVal);
+		}
+	}
+
 	ApplyTintToMesh(ReceiverMesh, 0, SteelColor);
 	ApplyTintToMesh(BarrelMesh, 0, SteelColor);
 	ApplyTintToMesh(HandguardMesh, 0, WoodOrGuardColor);
@@ -835,4 +1065,21 @@ void AFPSWeaponBase::PlayDelayedShellDrop(FVector DropLocation)
 		FMath::RandRange(0.94f, 1.06f),
 		EFPSAudioChannel::SFX
 	);
+}
+
+FVector AFPSWeaponBase::GetForegripWorldLocation() const
+{
+	if (CarbineProcMesh && CarbineProcMesh->IsVisible())
+	{
+		return CarbineProcMesh->GetComponentTransform().TransformPosition(FVector(25.0f, 0.0f, 0.2f));
+	}
+	if (HandguardMesh && HandguardMesh->IsVisible())
+	{
+		return HandguardMesh->GetComponentLocation();
+	}
+	if (ReceiverMesh)
+	{
+		return ReceiverMesh->GetComponentTransform().TransformPosition(FVector(25.0f, 0.0f, 0.2f));
+	}
+	return GetActorLocation() + GetActorForwardVector() * 30.0f;
 }

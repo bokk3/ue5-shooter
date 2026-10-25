@@ -1,4 +1,5 @@
 #include "Character/FPSCharacter.h"
+#include "Character/FPSOperatorGearComponent.h"
 #include "Character/FPSAnimInstance.h"
 #include "Character/FPSCharacterMovementComponent.h"
 #include "Combat/FPSHealthComponent.h"
@@ -10,6 +11,8 @@
 #include "Weapons/FPSWeaponBase.h"
 #include "Multiplayer/FPSPlayerState.h"
 #include "Economy/FPSEconomySubsystem.h"
+#include "Radar/FPSRadarSubsystem.h"
+#include "Map/FPSCoastalSplineActor.h"
 #include "UI/FPSHUDWidget.h"
 #include "UI/FPSEscapeMenuWidget.h"
 #include "Camera/CameraComponent.h"
@@ -17,6 +20,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "BodyMechanics/FPSHumanBones.h"
 #include "Multiplayer/FPSMultiplayerGameMode.h"
 #include "Combat/FPSBallisticTracer.h"
@@ -36,6 +40,74 @@
 #include "Misc/Paths.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
 #include "TimerManager.h"
+
+namespace
+{
+static void AddBoxToProcMeshBuffers(
+	TArray<FVector>& Vertices,
+	TArray<int32>& Triangles,
+	TArray<FVector>& Normals,
+	TArray<FVector2D>& UVs,
+	TArray<FColor>& Colors,
+	const FVector& Center,
+	const FVector& HalfExtent,
+	const FRotator& Rotation,
+	const FColor& Color)
+{
+	const FQuat Q = Rotation.Quaternion();
+
+	const FVector C[8] = {
+		Q.RotateVector(FVector( HalfExtent.X, -HalfExtent.Y, -HalfExtent.Z)) + Center, // 0: Front Bottom Left
+		Q.RotateVector(FVector( HalfExtent.X,  HalfExtent.Y, -HalfExtent.Z)) + Center, // 1: Front Bottom Right
+		Q.RotateVector(FVector( HalfExtent.X,  HalfExtent.Y,  HalfExtent.Z)) + Center, // 2: Front Top Right
+		Q.RotateVector(FVector( HalfExtent.X, -HalfExtent.Y,  HalfExtent.Z)) + Center, // 3: Front Top Left
+		Q.RotateVector(FVector(-HalfExtent.X, -HalfExtent.Y, -HalfExtent.Z)) + Center, // 4: Back Bottom Left
+		Q.RotateVector(FVector(-HalfExtent.X,  HalfExtent.Y, -HalfExtent.Z)) + Center, // 5: Back Bottom Right
+		Q.RotateVector(FVector(-HalfExtent.X,  HalfExtent.Y,  HalfExtent.Z)) + Center, // 6: Back Top Right
+		Q.RotateVector(FVector(-HalfExtent.X, -HalfExtent.Y,  HalfExtent.Z)) + Center  // 7: Back Top Left
+	};
+
+	auto AddQuad = [&](int32 i0, int32 i1, int32 i2, int32 i3, const FVector& Normal)
+	{
+		const int32 StartIdx = Vertices.Num();
+
+		Vertices.Add(C[i0]);
+		Vertices.Add(C[i1]);
+		Vertices.Add(C[i2]);
+		Vertices.Add(C[i3]);
+
+		Normals.Add(Normal);
+		Normals.Add(Normal);
+		Normals.Add(Normal);
+		Normals.Add(Normal);
+
+		UVs.Add(FVector2D(0.0f, 0.0f));
+		UVs.Add(FVector2D(1.0f, 0.0f));
+		UVs.Add(FVector2D(1.0f, 1.0f));
+		UVs.Add(FVector2D(0.0f, 1.0f));
+
+		Colors.Add(Color);
+		Colors.Add(Color);
+		Colors.Add(Color);
+		Colors.Add(Color);
+
+		Triangles.Add(StartIdx + 0);
+		Triangles.Add(StartIdx + 1);
+		Triangles.Add(StartIdx + 2);
+
+		Triangles.Add(StartIdx + 0);
+		Triangles.Add(StartIdx + 2);
+		Triangles.Add(StartIdx + 3);
+	};
+
+	AddQuad(0, 1, 2, 3, Q.RotateVector(FVector( 1.0f,  0.0f,  0.0f))); // Front (+X)
+	AddQuad(5, 4, 7, 6, Q.RotateVector(FVector(-1.0f,  0.0f,  0.0f))); // Back (-X)
+	AddQuad(1, 5, 6, 2, Q.RotateVector(FVector( 0.0f,  1.0f,  0.0f))); // Right (+Y)
+	AddQuad(4, 0, 3, 7, Q.RotateVector(FVector( 0.0f, -1.0f,  0.0f))); // Left (-Y)
+	AddQuad(3, 2, 6, 7, Q.RotateVector(FVector( 0.0f,  0.0f,  1.0f))); // Top (+Z)
+	AddQuad(4, 5, 1, 0, Q.RotateVector(FVector( 0.0f,  0.0f, -1.0f))); // Bottom (-Z)
+}
+} // namespace
 
 AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UFPSCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -174,65 +246,73 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 		AnimSprint = SprintAnimFinder.Object;
 	}
 
-	// Tactical Locomotion Animation Blueprint (ABP_BaseMale parenting UFPSAnimInstance)
+	// Tactical Locomotion Animation Blueprint / Native C++ AnimInstance
 	static ConstructorHelpers::FClassFinder<UAnimInstance> AnimBPFinder(TEXT("/Game/Characters/BaseMale/ABP_BaseMale.ABP_BaseMale_C"));
-	if (AnimBPFinder.Succeeded())
+	if (AnimBPFinder.Succeeded() && AnimBPFinder.Class)
 	{
 		AnimBlueprintClass = AnimBPFinder.Class;
 		GetMesh()->SetAnimInstanceClass(AnimBlueprintClass);
-		GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 	}
-	else if (AnimIdleADS)
+	else
 	{
-		GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		GetMesh()->SetAnimation(AnimIdleADS);
-		CurrentLocomotionAnim = AnimIdleADS;
-		GetMesh()->Play(true);
+		GetMesh()->SetAnimInstanceClass(UFPSAnimInstance::StaticClass());
 	}
+	GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 
 	HealthComponent = CreateDefaultSubobject<UFPSHealthComponent>(TEXT("HealthComponent"));
 	InventoryComponent = CreateDefaultSubobject<UFPSInventoryComponent>(TEXT("InventoryComponent"));
 	InventoryComponent->DefaultPrimaryClass = AFPSWeaponBase::StaticClass();
 	EquipmentComponent = CreateDefaultSubobject<UFPSEquipmentComponent>(TEXT("EquipmentComponent"));
 	BodyMechanicsComponent = CreateDefaultSubobject<UFPSBodyMechanicsComponent>(TEXT("BodyMechanicsComponent"));
+	OperatorGearComponent = CreateDefaultSubobject<UFPSOperatorGearComponent>(TEXT("OperatorGearComponent"));
 	HUDWidgetClass = UFPSHUDWidget::StaticClass();
 
-	// 3rd-Person Level IV Ceramic Plate Carrier & Ballistic Helmet Attachments
+	// Authoritative 3D Procedural Level IV Ceramic Plate Carrier (Attached to Capsule so it NEVER inherits 100x FBX bone scale!)
+	PlateCarrierProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("PlateCarrierProcMesh"));
+	PlateCarrierProcMesh->SetupAttachment(GetCapsuleComponent());
+	PlateCarrierProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 28.0f));
+	PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	PlateCarrierProcMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+	PlateCarrierProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PlateCarrierProcMesh->SetCastShadow(true);
+	PlateCarrierProcMesh->bCastDynamicShadow = true;
+	PlateCarrierProcMesh->SetOwnerNoSee(false);
+	PlateCarrierProcMesh->SetOnlyOwnerSee(false);
+	PlateCarrierProcMesh->SetHiddenInGame(false);
+	PlateCarrierProcMesh->SetVisibility(true, true);
+
+	// Authoritative 3D Procedural Tactical FAST Ballistic Helmet (Attached to Capsule so it NEVER inherits 100x FBX bone scale!)
+	BallisticHelmetProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("BallisticHelmetProcMesh"));
+	BallisticHelmetProcMesh->SetupAttachment(GetCapsuleComponent());
+	BallisticHelmetProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
+	BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	BallisticHelmetProcMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+	BallisticHelmetProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BallisticHelmetProcMesh->SetCastShadow(true);
+	BallisticHelmetProcMesh->bCastDynamicShadow = true;
+	BallisticHelmetProcMesh->SetOwnerNoSee(false);
+	BallisticHelmetProcMesh->SetOnlyOwnerSee(false);
+	BallisticHelmetProcMesh->SetHiddenInGame(false);
+	BallisticHelmetProcMesh->SetVisibility(true, true);
+
+	// Legacy basic shape static meshes (Kept hidden; ProceduralMesh is authoritative)
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMeshFinder(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BasicMatFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 
 	ChestCarrierMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ChestCarrierMesh"));
-	ChestCarrierMesh->SetupAttachment(GetMesh(), FName(TEXT("spine_03")));
+	ChestCarrierMesh->SetupAttachment(GetCapsuleComponent());
 	ChestCarrierMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ChestCarrierMesh->SetCastShadow(false);
-	if (CubeMeshFinder.Succeeded())
-	{
-		ChestCarrierMesh->SetStaticMesh(CubeMeshFinder.Object);
-	}
-	if (BasicMatFinder.Succeeded())
-	{
-		ChestCarrierMesh->SetMaterial(0, BasicMatFinder.Object);
-	}
-	ChestCarrierMesh->SetRelativeLocation(FVector(0.0f, 11.5f, 2.0f));
-	ChestCarrierMesh->SetRelativeRotation(FRotator::ZeroRotator);
-	ChestCarrierMesh->SetRelativeScale3D(FVector(0.26f, 0.09f, 0.30f));
+	ChestCarrierMesh->SetHiddenInGame(true);
+	ChestCarrierMesh->SetVisibility(false, true);
 
 	BallisticHelmetMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BallisticHelmetMesh"));
-	BallisticHelmetMesh->SetupAttachment(GetMesh(), FName(TEXT("head")));
+	BallisticHelmetMesh->SetupAttachment(GetCapsuleComponent());
 	BallisticHelmetMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BallisticHelmetMesh->SetCastShadow(false);
-	if (SphereMeshFinder.Succeeded())
-	{
-		BallisticHelmetMesh->SetStaticMesh(SphereMeshFinder.Object);
-	}
-	if (BasicMatFinder.Succeeded())
-	{
-		BallisticHelmetMesh->SetMaterial(0, BasicMatFinder.Object);
-	}
-	BallisticHelmetMesh->SetRelativeLocation(FVector(0.0f, 1.5f, 7.5f));
-	BallisticHelmetMesh->SetRelativeRotation(FRotator::ZeroRotator);
-	BallisticHelmetMesh->SetRelativeScale3D(FVector(0.24f, 0.26f, 0.21f));
+	BallisticHelmetMesh->SetHiddenInGame(true);
+	BallisticHelmetMesh->SetVisibility(false, true);
 
 	EjectedPlateShardMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EjectedPlateShardMesh"));
 	EjectedPlateShardMesh->SetupAttachment(GetRootComponent());
@@ -343,28 +423,22 @@ void AFPSCharacter::BeginPlay()
 			AnimWalkBackwards = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk_Backwards.Anim_BaseMale_Walk_Backwards"));
 		}
 
-		// Runtime fallback for Animation Blueprint mode
+		// Runtime fallback for Animation Blueprint mode / Authoritative C++ AnimInstance
 		if (!AnimBlueprintClass)
 		{
 			AnimBlueprintClass = LoadClass<UAnimInstance>(nullptr, TEXT("/Game/Characters/BaseMale/ABP_BaseMale.ABP_BaseMale_C"));
 		}
 
+		GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 		if (AnimBlueprintClass)
 		{
-			GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 			GetMesh()->SetAnimInstanceClass(AnimBlueprintClass);
 		}
 		else
 		{
-			UAnimSequence* InitialAnim = AnimLowReady ? AnimLowReady : AnimIdleADS;
-			if (InitialAnim && !CurrentLocomotionAnim)
-			{
-				GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-				GetMesh()->SetAnimation(InitialAnim);
-				CurrentLocomotionAnim = InitialAnim;
-				GetMesh()->Play(true);
-			}
+			GetMesh()->SetAnimInstanceClass(UFPSAnimInstance::StaticClass());
 		}
+		GetMesh()->InitAnim(true);
 
 		UMaterialInterface* CurrentMat = GetMesh()->GetMaterial(0);
 		if (!CurrentMat || !CurrentMat->GetName().Contains(TEXT("M_Operator_BaseBody")))
@@ -408,58 +482,39 @@ void AFPSCharacter::BeginPlay()
 			BodyMID->SetScalarParameterValue(TEXT("RipstopTiling"), 24.0f);
 		}
 
-		// Ensure weapon_r socket exists on right hand for weapon rigging
-		if (USkeletalMesh* SkelMesh = Cast<USkeletalMesh>(GetMesh()->GetSkeletalMeshAsset()))
+		// Build and attach Authoritative 3D Procedural Level IV Ceramic Plate Carrier & FAST Helmet
+		BuildProceduralTacticalGear();
+
+		if (OperatorGearComponent)
 		{
-			bool bSocketFound = false;
-			for (const USkeletalMeshSocket* S : SkelMesh->GetMeshOnlySocketList())
-			{
-				if (S && S->SocketName == FName(TEXT("weapon_r")))
-				{
-					bSocketFound = true;
-					break;
-				}
-			}
-			if (!bSocketFound)
-			{
-				USkeletalMeshSocket* WeaponRSocket = NewObject<USkeletalMeshSocket>(SkelMesh);
-				if (WeaponRSocket)
-				{
-					WeaponRSocket->SocketName = FName(TEXT("weapon_r"));
-					WeaponRSocket->BoneName = FName(TEXT("hand_r"));
-					WeaponRSocket->RelativeLocation = FVector::ZeroVector;
-					WeaponRSocket->RelativeRotation = FRotator::ZeroRotator;
-					SkelMesh->GetMeshOnlySocketList().Add(WeaponRSocket);
-				}
-			}
+			OperatorGearComponent->InitializeGearRig(GetMesh(), GetCapsuleComponent(), false);
 		}
 
-		// Attach 3rd-Person Level IV Ceramic Plate Carrier (spine_03) & Ballistic Helmet (head)
-		if (ChestCarrierMesh)
+		if (PlateCarrierProcMesh)
 		{
-			ChestCarrierMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName(TEXT("spine_03")));
-			ChestCarrierMesh->SetRelativeLocation(FVector(0.0f, 11.5f, 2.0f));
-			ChestCarrierMesh->SetRelativeRotation(FRotator::ZeroRotator);
-			ChestCarrierMesh->SetRelativeScale3D(FVector(0.26f, 0.09f, 0.30f));
-			if (UMaterialInstanceDynamic* PlateMID = ChestCarrierMesh->CreateDynamicMaterialInstance(0))
-			{
-				PlateMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.08f, 0.14f, 0.22f, 1.0f));
-				PlateMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.08f, 0.14f, 0.22f, 1.0f));
-			}
+			PlateCarrierProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+			PlateCarrierProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 28.0f));
+			PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+			PlateCarrierProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
+			PlateCarrierProcMesh->SetCastShadow(false);
+			PlateCarrierProcMesh->SetHiddenInGame(true);
+			PlateCarrierProcMesh->SetVisibility(false, true);
 		}
 
-		if (BallisticHelmetMesh)
+		if (BallisticHelmetProcMesh)
 		{
-			BallisticHelmetMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName(TEXT("head")));
-			BallisticHelmetMesh->SetRelativeLocation(FVector(0.0f, 1.5f, 7.5f));
-			BallisticHelmetMesh->SetRelativeRotation(FRotator::ZeroRotator);
-			BallisticHelmetMesh->SetRelativeScale3D(FVector(0.24f, 0.26f, 0.21f));
-			if (UMaterialInstanceDynamic* HelmetMID = BallisticHelmetMesh->CreateDynamicMaterialInstance(0))
-			{
-				HelmetMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.10f, 0.12f, 0.15f, 1.0f));
-				HelmetMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.10f, 0.12f, 0.15f, 1.0f));
-			}
+			BallisticHelmetProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+			BallisticHelmetProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
+			BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+			BallisticHelmetProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
+			BallisticHelmetProcMesh->SetCastShadow(false);
+			BallisticHelmetProcMesh->SetHiddenInGame(true);
+			BallisticHelmetProcMesh->SetVisibility(false, true);
 		}
+
+		// Hide legacy basic shape static meshes permanently
+		if (ChestCarrierMesh) { ChestCarrierMesh->SetVisibility(false); ChestCarrierMesh->SetHiddenInGame(true); }
+		if (BallisticHelmetMesh) { BallisticHelmetMesh->SetVisibility(false); BallisticHelmetMesh->SetHiddenInGame(true); }
 
 		if (EjectedPlateShardMesh)
 		{
@@ -704,6 +759,40 @@ void AFPSCharacter::Tick(float DeltaTime)
 			ActiveHUDWidget->UpdateCrosshairSpread(Spread);
 		}
 	}
+
+	// Authoritative 3D Weapon & Tactical Gear Pinning (100% visible & protected from 100x FBX bone scale!)
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		if (InventoryComponent)
+		{
+			if (AFPSWeaponBase* Weapon = InventoryComponent->GetActiveWeapon())
+			{
+				Weapon->SetActorHiddenInGame(false);
+				const FTransform HandWorldTrans = MeshComp->GetSocketTransform(FName(TEXT("hand_r")), RTS_World);
+				Weapon->SetActorScale3D(FVector(1.0f, 1.0f, 1.0f));
+				Weapon->SetActorLocationAndRotation(HandWorldTrans.GetLocation(), GetControlRotation());
+			}
+		}
+
+		if (OperatorGearComponent && !bIsDead)
+		{
+			OperatorGearComponent->UpdateGearTransforms();
+		}
+
+		const FQuat GearWorldQuat = MeshComp->GetComponentQuat();
+		if (PlateCarrierProcMesh && !bIsDead)
+		{
+			const FVector SpineWorldLoc = MeshComp->GetBoneLocation(FName(TEXT("spine_03")), EBoneSpaces::WorldSpace);
+			PlateCarrierProcMesh->SetWorldLocationAndRotation(SpineWorldLoc, GearWorldQuat);
+			PlateCarrierProcMesh->SetWorldScale3D(bIsArmorPlateShattered ? FVector(0.92f, 0.80f, 0.92f) : FVector(1.0f, 1.0f, 1.0f));
+		}
+		if (BallisticHelmetProcMesh && !bIsHelmetPopped && !bIsDead)
+		{
+			const FVector HeadWorldLoc = MeshComp->GetBoneLocation(FName(TEXT("head")), EBoneSpaces::WorldSpace);
+			BallisticHelmetProcMesh->SetWorldLocationAndRotation(HeadWorldLoc, GearWorldQuat);
+			BallisticHelmetProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
+		}
+	}
 }
 
 void AFPSCharacter::UpdateThirdPersonCamera(float DeltaTime)
@@ -761,6 +850,32 @@ void AFPSCharacter::UpdateThirdPersonCamera(float DeltaTime)
 		const float PunchAlpha = FOVPunchTimer / 0.18f;
 		const float MicroPunch = 8.0f * FMath::Sin(PunchAlpha * PI);
 		TargetFOV += MicroPunch;
+	}
+
+	// CQB Culvert Sluice Camera Framing: Short upward trace (+270.0f cm) above the character
+	bool bInCulvertSluice = false;
+	FHitResult OverheadHit;
+	FCollisionQueryParams OverheadParams(TEXT("CulvertOverheadTrace"), false, this);
+	const FVector TraceStart = GetActorLocation();
+	const FVector TraceEnd = TraceStart + FVector(0.0f, 0.0f, 270.0f);
+	if (GetWorld() && GetWorld()->LineTraceSingleByChannel(OverheadHit, TraceStart, TraceEnd, ECC_Visibility, OverheadParams))
+	{
+		UPrimitiveComponent* HitComp = OverheadHit.GetComponent();
+		AActor* HitActor = OverheadHit.GetActor();
+		if ((HitComp && (HitComp->ComponentTags.Contains(FName("Culvert_Ceiling")) ||
+		                 HitComp->ComponentTags.Contains(FName("Culvert_Sluice")) ||
+		                 HitComp->ComponentTags.Contains(FName("Sluice_Steel")) ||
+		                 HitComp->ComponentTags.Contains(FName("Culvert_Wall"))))
+			|| (HitActor && (HitActor->IsA(AFPSCoastalSplineActor::StaticClass()) || HitActor->GetName().Contains(TEXT("CoastalSpline")))))
+		{
+			bInCulvertSluice = true;
+		}
+	}
+
+	if (bInCulvertSluice && !bIsAiming && !IsBallisticDiving())
+	{
+		// Smoothly tighten TargetArmLength to 115.0f so OTS camera never clips the culvert roof
+		TargetArmLength = 115.0f;
 	}
 
 	// Prevent camera probe clipping hitch when transitioning near 0.0f arm length (1st person optic)
@@ -1834,6 +1949,45 @@ void AFPSCharacter::TriggerSurfaceFootstep(float VolumeScale)
 				}
 			}
 		}
+
+		// Surface-Aware Acoustic Radar Footstep Detection
+		if (GroundHit.Component.IsValid())
+		{
+			const bool bIsPierWood = GroundHit.Component->ComponentTags.Contains(FName("Surface_Pier_Wood")) ||
+			                         GroundHit.Component->ComponentTags.Contains(FName("Pier_Deck")) ||
+			                         GroundHit.Component->ComponentTags.Contains(FName("Pier_THead"));
+			const bool bIsShallowWater = GroundHit.Component->ComponentTags.Contains(FName("Surface_Shallow_Water"));
+			const bool bIsSandDune = GroundHit.Component->ComponentTags.Contains(FName("Surface_Sand_Dune")) ||
+			                         GroundHit.Component->ComponentTags.Contains(FName("Dune_SlipFace"));
+
+			const bool bIsSprinting = FPSMovementComponent && FPSMovementComponent->IsTacticalSprinting();
+
+			if (bIsSandDune)
+			{
+				// Sand dunes completely suppress footstep radar pings (0% acoustic footprint)
+				// Backcountry stealth flanking route - no acoustic radar blip emitted!
+			}
+			else if (bIsSprinting && (bIsPierWood || bIsShallowWater))
+			{
+				// Sprinting across wooden pier planks or shallow water emits low-radius (1,500cm) acoustic radar ping
+				if (UWorld* World = GetWorld())
+				{
+					if (UFPSRadarSubsystem* Radar = World->GetSubsystem<UFPSRadarSubsystem>())
+					{
+						EFPSPlayerTeam SourceTeam = EFPSPlayerTeam::Alpha;
+						if (AFPSPlayerState* PS = GetPlayerState<AFPSPlayerState>())
+						{
+							SourceTeam = PS->GetPlayerTeam();
+						}
+						else if (IsTacticalBot())
+						{
+							SourceTeam = EFPSPlayerTeam::Bravo;
+						}
+						Radar->ReportAcousticPing(this, FootstepLocation, SourceTeam, 1500.0f, 1.8f);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -1995,7 +2149,29 @@ void AFPSCharacter::ApplyLoadoutCosmetics(int32 CamoIndex, int32 HeadgearIndex, 
 {
 	SetOperatorCamo(static_cast<uint8>(FMath::Clamp(CamoIndex, 0, 3)));
 
+	if (OperatorGearComponent)
+	{
+		OperatorGearComponent->ApplyCamoPreset(CamoIndex);
+		OperatorGearComponent->ApplyHeadgearVariant(HeadgearIndex);
+		OperatorGearComponent->ApplyVestVariant(ArmorIndex);
+		OperatorGearComponent->ApplyWeaponFinishVariant(WeaponFinishIndex);
+	}
+
 	// Headgear cosmetic styling (0: Matte Olive, 1: Spec-Ops Night Vision Slate, 2: Desert Tan, 3: Gold Command Trim)
+	FLinearColor HelmetColor(0.09f, 0.11f, 0.13f, 1.0f);
+	if (HeadgearIndex == 1) HelmetColor = FLinearColor(0.03f, 0.05f, 0.07f, 1.0f);
+	else if (HeadgearIndex == 2) HelmetColor = FLinearColor(0.42f, 0.36f, 0.26f, 1.0f);
+	else if (HeadgearIndex == 3) HelmetColor = FLinearColor(0.65f, 0.48f, 0.12f, 1.0f);
+
+	if (BallisticHelmetProcMesh && !bIsHelmetPopped)
+	{
+		if (UMaterialInstanceDynamic* HelmetMID = Cast<UMaterialInstanceDynamic>(BallisticHelmetProcMesh->GetMaterial(0)))
+		{
+			HelmetMID->SetVectorParameterValue(TEXT("BaseColor"), HelmetColor);
+			HelmetMID->SetVectorParameterValue(TEXT("Color"), HelmetColor);
+		}
+	}
+
 	if (BallisticHelmetMesh && !bIsHelmetPopped)
 	{
 		UMaterialInstanceDynamic* HelmetMID = Cast<UMaterialInstanceDynamic>(BallisticHelmetMesh->GetMaterial(0));
@@ -2005,17 +2181,26 @@ void AFPSCharacter::ApplyLoadoutCosmetics(int32 CamoIndex, int32 HeadgearIndex, 
 		}
 		if (HelmetMID)
 		{
-			FLinearColor HelmetColor(0.09f, 0.11f, 0.13f, 1.0f);
-			if (HeadgearIndex == 1) HelmetColor = FLinearColor(0.03f, 0.05f, 0.07f, 1.0f);
-			else if (HeadgearIndex == 2) HelmetColor = FLinearColor(0.42f, 0.36f, 0.26f, 1.0f);
-			else if (HeadgearIndex == 3) HelmetColor = FLinearColor(0.65f, 0.48f, 0.12f, 1.0f);
-
 			HelmetMID->SetVectorParameterValue(TEXT("BaseColor"), HelmetColor);
 			HelmetMID->SetVectorParameterValue(TEXT("Color"), HelmetColor);
 		}
 	}
 
 	// Armor Carrier cosmetic styling (0: Tactical Slate, 1: Heavy Olive, 2: Coyote Tan, 3: Crimson Spec-Ops)
+	FLinearColor CarrierColor(0.12f, 0.15f, 0.18f, 1.0f);
+	if (ArmorIndex == 1) CarrierColor = FLinearColor(0.14f, 0.19f, 0.12f, 1.0f);
+	else if (ArmorIndex == 2) CarrierColor = FLinearColor(0.44f, 0.37f, 0.26f, 1.0f);
+	else if (ArmorIndex == 3) CarrierColor = FLinearColor(0.32f, 0.06f, 0.09f, 1.0f);
+
+	if (PlateCarrierProcMesh && !bIsArmorPlateShattered)
+	{
+		if (UMaterialInstanceDynamic* CarrierMID = Cast<UMaterialInstanceDynamic>(PlateCarrierProcMesh->GetMaterial(0)))
+		{
+			CarrierMID->SetVectorParameterValue(TEXT("BaseColor"), CarrierColor);
+			CarrierMID->SetVectorParameterValue(TEXT("Color"), CarrierColor);
+		}
+	}
+
 	if (ChestCarrierMesh && !bIsArmorPlateShattered)
 	{
 		UMaterialInstanceDynamic* CarrierMID = Cast<UMaterialInstanceDynamic>(ChestCarrierMesh->GetMaterial(0));
@@ -2025,11 +2210,6 @@ void AFPSCharacter::ApplyLoadoutCosmetics(int32 CamoIndex, int32 HeadgearIndex, 
 		}
 		if (CarrierMID)
 		{
-			FLinearColor CarrierColor(0.12f, 0.15f, 0.18f, 1.0f);
-			if (ArmorIndex == 1) CarrierColor = FLinearColor(0.14f, 0.19f, 0.12f, 1.0f);
-			else if (ArmorIndex == 2) CarrierColor = FLinearColor(0.44f, 0.37f, 0.26f, 1.0f);
-			else if (ArmorIndex == 3) CarrierColor = FLinearColor(0.32f, 0.06f, 0.09f, 1.0f);
-
 			CarrierMID->SetVectorParameterValue(TEXT("BaseColor"), CarrierColor);
 			CarrierMID->SetVectorParameterValue(TEXT("Color"), CarrierColor);
 		}
@@ -2054,7 +2234,16 @@ void AFPSCharacter::MulticastTriggerArmorPlateShatter_Implementation(FVector Sho
 	if (bIsArmorPlateShattered) return;
 	bIsArmorPlateShattered = true;
 
+	if (OperatorGearComponent)
+	{
+		OperatorGearComponent->SetPlateCarrierShattered(true);
+	}
+
 	// 1. Update 3rd-person Chest Carrier Mesh to battle-damaged / shredded state
+	if (PlateCarrierProcMesh)
+	{
+		PlateCarrierProcMesh->SetWorldScale3D(FVector(0.92f, 0.80f, 0.92f));
+	}
 	if (ChestCarrierMesh)
 	{
 		ChestCarrierMesh->SetRelativeScale3D(FVector(0.09f, 0.25f, 0.24f));
@@ -2106,10 +2295,23 @@ void AFPSCharacter::MulticastTriggerArmorPlateShatter_Implementation(FVector Sho
 
 void AFPSCharacter::MulticastPopBallisticHelmet_Implementation(FVector ShotDirection)
 {
-	if (bIsHelmetPopped || !BallisticHelmetMesh) return;
+	if (bIsHelmetPopped) return;
 	bIsHelmetPopped = true;
 
-	BallisticHelmetMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	if (OperatorGearComponent)
+	{
+		OperatorGearComponent->SetHelmetVisible(false);
+	}
+	if (BallisticHelmetProcMesh)
+	{
+		BallisticHelmetProcMesh->SetHiddenInGame(false);
+		BallisticHelmetProcMesh->SetVisibility(true, true);
+		BallisticHelmetProcMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	}
+	if (BallisticHelmetMesh)
+	{
+		BallisticHelmetMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	}
 	const FVector LaunchDir = (ShotDirection.GetSafeNormal() * 0.45f + FVector(FMath::FRandRange(-0.2f, 0.2f), FMath::FRandRange(-0.2f, 0.2f), 1.15f)).GetSafeNormal();
 	HelmetVelocity = LaunchDir * 580.0f;
 	HelmetAngularVelocity = FRotator(FMath::FRandRange(-820.0f, 820.0f), FMath::FRandRange(-640.0f, 640.0f), FMath::FRandRange(-720.0f, 720.0f));
@@ -2146,11 +2348,13 @@ void AFPSCharacter::UpdatePhysicalArmorAndHelmetDebris(float DeltaTime)
 	}
 
 	// Simulate popped ballistic helmet trajectory & bounce
-	if (HelmetFlightTimer > 0.0f && BallisticHelmetMesh)
+	if (HelmetFlightTimer > 0.0f)
 	{
 		HelmetFlightTimer -= DeltaTime;
 		HelmetVelocity.Z -= 1380.0f * DeltaTime;
-		FVector NewLoc = BallisticHelmetMesh->GetComponentLocation() + HelmetVelocity * DeltaTime;
+
+		FVector BaseLoc = BallisticHelmetProcMesh ? BallisticHelmetProcMesh->GetComponentLocation() : (BallisticHelmetMesh ? BallisticHelmetMesh->GetComponentLocation() : FVector::ZeroVector);
+		FVector NewLoc = BaseLoc + HelmetVelocity * DeltaTime;
 		if (NewLoc.Z < 12.0f)
 		{
 			NewLoc.Z = 12.0f;
@@ -2158,8 +2362,16 @@ void AFPSCharacter::UpdatePhysicalArmorAndHelmetDebris(float DeltaTime)
 			HelmetVelocity.X *= 0.70f;
 			HelmetVelocity.Y *= 0.70f;
 		}
-		BallisticHelmetMesh->SetWorldLocation(NewLoc);
-		BallisticHelmetMesh->AddWorldRotation(HelmetAngularVelocity * DeltaTime);
+		if (BallisticHelmetProcMesh)
+		{
+			BallisticHelmetProcMesh->SetWorldLocation(NewLoc);
+			BallisticHelmetProcMesh->AddWorldRotation(HelmetAngularVelocity * DeltaTime);
+		}
+		if (BallisticHelmetMesh)
+		{
+			BallisticHelmetMesh->SetWorldLocation(NewLoc);
+			BallisticHelmetMesh->AddWorldRotation(HelmetAngularVelocity * DeltaTime);
+		}
 	}
 }
 
@@ -2224,11 +2436,27 @@ void AFPSCharacter::TickTacticalBotAI(float DeltaTime)
 	}
 
 	// Rust Tactical 3-Lane Waypoints (Flag A Container Yard, Flag B Center Derrick, Flag C Pipeline Bunker)
-	static const FVector LaneWaypoints[3][3] = {
+	static const FVector RustLaneWaypoints[3][3] = {
 		{ FVector(-1400.0f, -1000.0f, 110.0f), FVector(-520.0f, -750.0f, 110.0f), FVector(650.0f, -850.0f, 110.0f) },
 		{ FVector(950.0f, -320.0f, 110.0f),   FVector(360.0f, -260.0f, 110.0f), FVector(-360.0f, 260.0f, 110.0f) },
 		{ FVector(1400.0f, 1000.0f, 110.0f),  FVector(480.0f, 820.0f, 110.0f),  FVector(-680.0f, 880.0f, 110.0f) }
 	};
+
+	// Coastal Operations 3-Lane Waypoints (West Stair Flank, Central Sluice Culvert / Dike Crest Flag B, East Stair / Dune Basin Flag A)
+	static const FVector CoastalLaneWaypoints[3][3] = {
+		{ FVector(-3600.0f, -1900.0f, 110.0f), FVector(-3600.0f, 950.0f, 110.0f), FVector(-1400.0f, 3400.0f, 110.0f) },
+		{ FVector(0.0f, -1900.0f, 110.0f),     FVector(0.0f, 1450.0f, 110.0f),    FVector(0.0f, 3600.0f, 110.0f) },
+		{ FVector(2400.0f, -1900.0f, 110.0f),  FVector(1200.0f, -500.0f, 430.0f), FVector(1400.0f, 3400.0f, 110.0f) }
+	};
+
+	bool bIsCoastalTheater = (FMath::Abs(GetActorLocation().Y) > 1950.0f);
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
+		{
+			bIsCoastalTheater = (Economy->GetSelectedTheaterIndex() == 1);
+		}
+	}
 
 	const FVector MyLoc = GetActorLocation();
 	const FVector MyEye = GetBotEyeLocation();
@@ -2289,7 +2517,7 @@ void AFPSCharacter::TickTacticalBotAI(float DeltaTime)
 	// 2. Movement: Patrol between Rust Tactical lanes & strafe into cover during firefights
 	const int32 SafeLane = FMath::Clamp(BotLaneIndex, 0, 2);
 	const int32 SafeWP = FMath::Clamp(BotWaypointIndex, 0, 2);
-	const FVector GoalPoint = LaneWaypoints[SafeLane][SafeWP];
+	const FVector GoalPoint = bIsCoastalTheater ? CoastalLaneWaypoints[SafeLane][SafeWP] : RustLaneWaypoints[SafeLane][SafeWP];
 
 	FVector ToGoal = GoalPoint - MyLoc;
 	ToGoal.Z = 0.0f;
@@ -2452,25 +2680,146 @@ void AFPSCharacter::RedeployOperator()
 	ShardFlightTimer = 0.0f;
 	HelmetFlightTimer = 0.0f;
 
-	if (ChestCarrierMesh && GetMesh())
+	if (OperatorGearComponent)
 	{
-		ChestCarrierMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName(TEXT("spine_03")));
-		ChestCarrierMesh->SetRelativeLocation(FVector(10.0f, 0.0f, 4.0f));
-		ChestCarrierMesh->SetRelativeRotation(FRotator::ZeroRotator);
-		ChestCarrierMesh->SetRelativeScale3D(FVector(0.14f, 0.30f, 0.34f));
+		OperatorGearComponent->SetPlateCarrierShattered(false);
+		OperatorGearComponent->SetHelmetVisible(true);
 	}
-	if (BallisticHelmetMesh && GetMesh())
+
+	if (PlateCarrierProcMesh && GetCapsuleComponent())
 	{
-		BallisticHelmetMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName(TEXT("head")));
-		BallisticHelmetMesh->SetRelativeLocation(FVector(2.0f, 0.0f, 8.0f));
-		BallisticHelmetMesh->SetRelativeRotation(FRotator::ZeroRotator);
-		BallisticHelmetMesh->SetRelativeScale3D(FVector(0.25f, 0.25f, 0.22f));
+		PlateCarrierProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+		PlateCarrierProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 28.0f));
+		PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		PlateCarrierProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
+		PlateCarrierProcMesh->SetVisibility(true, true);
 	}
+	if (BallisticHelmetProcMesh && GetCapsuleComponent())
+	{
+		BallisticHelmetProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+		BallisticHelmetProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
+		BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		BallisticHelmetProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
+		BallisticHelmetProcMesh->SetVisibility(true, true);
+	}
+	if (ChestCarrierMesh) { ChestCarrierMesh->SetVisibility(false); ChestCarrierMesh->SetHiddenInGame(true); }
+	if (BallisticHelmetMesh) { BallisticHelmetMesh->SetVisibility(false); BallisticHelmetMesh->SetHiddenInGame(true); }
 	if (EjectedPlateShardMesh)
 	{
 		EjectedPlateShardMesh->SetVisibility(false);
 	}
 
 	SetActorLocation(FVector(0.0f, 0.0f, 120.0f), false, nullptr, ETeleportType::ResetPhysics);
+}
+
+void AFPSCharacter::BuildProceduralTacticalGear()
+{
+	UMaterialInterface* BaseMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (!BaseMat)
+	{
+		BaseMat = UMaterial::GetDefaultMaterial(MD_Surface);
+	}
+
+	// 1. Build Level IV Ceramic Plate Carrier
+	if (PlateCarrierProcMesh)
+	{
+		PlateCarrierProcMesh->ClearAllMeshSections();
+
+		TArray<FVector> Vertices;
+		TArray<int32> Triangles;
+		TArray<FVector> Normals;
+		TArray<FVector2D> UVs;
+		TArray<FColor> Colors;
+		TArray<FProcMeshTangent> Tangents;
+
+		// Front Plate Bag (15 x 5 x 16)
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(0.0f, 9.0f, 0.0f), FVector(15.0f, 5.0f, 16.0f), FRotator::ZeroRotator, FColor(24, 26, 28, 255));
+
+		// Back Plate Bag (14 x 4.5 x 15)
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(0.0f, -8.5f, 0.0f), FVector(14.0f, 4.5f, 15.0f), FRotator::ZeroRotator, FColor(22, 24, 26, 255));
+
+		// Left & Right Shoulder Straps (3 x 9 x 1.5)
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(-9.0f, 0.0f, 16.5f), FVector(3.0f, 9.0f, 1.5f), FRotator::ZeroRotator, FColor(18, 20, 22, 255));
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(9.0f, 0.0f, 16.5f), FVector(3.0f, 9.0f, 1.5f), FRotator::ZeroRotator, FColor(18, 20, 22, 255));
+
+		// Left & Right Cummerbund Flanks (2 x 9 x 6)
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(-14.0f, 0.0f, -2.0f), FVector(2.0f, 9.0f, 6.0f), FRotator::ZeroRotator, FColor(20, 22, 24, 255));
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(14.0f, 0.0f, -2.0f), FVector(2.0f, 9.0f, 6.0f), FRotator::ZeroRotator, FColor(20, 22, 24, 255));
+
+		// 3 Kangaroo Mag Pouches on Front Chest
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(-8.0f, 15.0f, -4.0f), FVector(3.8f, 2.5f, 7.5f), FRotator::ZeroRotator, FColor(26, 28, 30, 255));
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(0.0f, 15.0f, -4.0f), FVector(3.8f, 2.5f, 7.5f), FRotator::ZeroRotator, FColor(26, 28, 30, 255));
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(8.0f, 15.0f, -4.0f), FVector(3.8f, 2.5f, 7.5f), FRotator::ZeroRotator, FColor(26, 28, 30, 255));
+
+		PlateCarrierProcMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
+
+		if (BaseMat)
+		{
+			if (UMaterialInstanceDynamic* CarrierMID = PlateCarrierProcMesh->CreateDynamicMaterialInstance(0, BaseMat))
+			{
+				CarrierMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.08f, 0.09f, 0.11f, 1.0f));
+				CarrierMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.08f, 0.09f, 0.11f, 1.0f));
+				CarrierMID->SetScalarParameterValue(TEXT("Roughness"), 0.70f);
+				CarrierMID->SetScalarParameterValue(TEXT("Metallic"), 0.10f);
+			}
+		}
+	}
+
+	// 2. Build FAST Ballistic Helmet
+	if (BallisticHelmetProcMesh)
+	{
+		BallisticHelmetProcMesh->ClearAllMeshSections();
+
+		TArray<FVector> Vertices;
+		TArray<int32> Triangles;
+		TArray<FVector> Normals;
+		TArray<FVector2D> UVs;
+		TArray<FColor> Colors;
+		TArray<FProcMeshTangent> Tangents;
+
+		// High-Cut FAST Helmet Shell (11.5 x 12.5 x 9)
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(0.0f, 1.0f, 8.5f), FVector(11.5f, 12.5f, 9.0f), FRotator::ZeroRotator, FColor(22, 22, 24, 255));
+
+		// Crown Ridge (4 x 11 x 1.5)
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(0.0f, 0.5f, 18.0f), FVector(4.0f, 11.0f, 1.5f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
+
+		// Forehead NVG Shroud (2.5 x 1 x 2.5)
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(0.0f, 13.0f, 8.0f), FVector(2.5f, 1.0f, 2.5f), FRotator::ZeroRotator, FColor(45, 45, 48, 255));
+
+		// Left & Right ARC Accessory Rails (1.2 x 7 x 1.8)
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(-12.5f, 1.0f, 7.0f), FVector(1.2f, 7.0f, 1.8f), FRotator::ZeroRotator, FColor(18, 18, 20, 255));
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(12.5f, 1.0f, 7.0f), FVector(1.2f, 7.0f, 1.8f), FRotator::ZeroRotator, FColor(18, 18, 20, 255));
+
+		// Velcro Top Patch Panel (4 x 5 x 0.3)
+		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
+			FVector(0.0f, -2.0f, 18.0f), FVector(4.0f, 5.0f, 0.3f), FRotator::ZeroRotator, FColor(35, 35, 38, 255));
+
+		BallisticHelmetProcMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
+
+		if (BaseMat)
+		{
+			if (UMaterialInstanceDynamic* HelmetMID = BallisticHelmetProcMesh->CreateDynamicMaterialInstance(0, BaseMat))
+			{
+				HelmetMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.06f, 0.07f, 0.08f, 1.0f));
+				HelmetMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.06f, 0.07f, 0.08f, 1.0f));
+				HelmetMID->SetScalarParameterValue(TEXT("Roughness"), 0.65f);
+				HelmetMID->SetScalarParameterValue(TEXT("Metallic"), 0.15f);
+			}
+		}
+	}
 }
 
