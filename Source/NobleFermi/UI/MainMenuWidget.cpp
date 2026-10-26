@@ -1773,6 +1773,953 @@ private:
 
 };
 
+// =============================================================================
+// INTERACTIVE SPARK PARTICLE SYSTEM & POPPING TACTICAL SLATE WIDGETS
+// =============================================================================
+
+struct FMenuSparkParticle
+{
+	FVector2D Position;
+	FVector2D Velocity;
+	float Life;
+	float MaxLife;
+	FLinearColor Color;
+	float Size;
+	float Drag;
+	float Gravity;
+	float SparkLength;
+};
+
+/**
+ * SFPSSparkOverlayWidget
+ * Real-time Slate particle overlay for high-velocity glowing sparks,
+ * welding bursts, and electrical crackles across the tactical Command Center UI.
+ */
+class SFPSSparkOverlayWidget : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SFPSSparkOverlayWidget) {}
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs)
+	{
+		SetCanTick(true);
+		SetVisibility(EVisibility::HitTestInvisible);
+	}
+
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override
+	{
+		const float Delta = static_cast<float>(InDeltaTime);
+		for (int32 i = ActiveSparks.Num() - 1; i >= 0; --i)
+		{
+			FMenuSparkParticle& P = ActiveSparks[i];
+			P.Life -= Delta;
+			if (P.Life <= 0.0f)
+			{
+				ActiveSparks.RemoveAtSwap(i);
+				continue;
+			}
+
+			P.Velocity.Y += P.Gravity * Delta;
+			P.Velocity *= FMath::Pow(P.Drag, Delta * 60.0f);
+			P.Position += P.Velocity * Delta;
+		}
+	}
+
+	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect,
+		FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override
+	{
+		const FSlateBrush* WhiteBrush = FAppStyle::Get().GetBrush("WhiteBrush");
+
+		for (const FMenuSparkParticle& P : ActiveSparks)
+		{
+			const float NormalizedLife = FMath::Clamp(P.Life / FMath::Max(0.001f, P.MaxLife), 0.0f, 1.0f);
+			const float Speed = P.Velocity.Size();
+			const FVector2D Dir = (Speed > 1.0f) ? (P.Velocity / Speed) : FVector2D(1.0f, 0.0f);
+
+			const float StreakLen = FMath::Clamp(Speed * 0.045f * P.SparkLength, 3.0f, 22.0f);
+			const FVector2D Head = P.Position;
+			const FVector2D Tail = P.Position - Dir * StreakLen;
+
+			TArray<FVector2D> StreakLine;
+			StreakLine.Add(Tail);
+			StreakLine.Add(Head);
+
+			FLinearColor SparkColor = FMath::Lerp(P.Color, FLinearColor::White, NormalizedLife * 0.65f);
+			SparkColor.A = NormalizedLife;
+
+			FSlateDrawElement::MakeLines(
+				OutDrawElements,
+				LayerId + 1,
+				AllottedGeometry.ToPaintGeometry(),
+				StreakLine,
+				ESlateDrawEffect::None,
+				SparkColor,
+				false,
+				P.Size
+			);
+
+			const float HeadSize = FMath::Max(1.5f, P.Size * 1.1f);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				AllottedGeometry.ToPaintGeometry(
+					FVector2f(HeadSize, HeadSize),
+					FSlateLayoutTransform(FVector2f(Head.X - HeadSize * 0.5f, Head.Y - HeadSize * 0.5f))
+				),
+				WhiteBrush,
+				ESlateDrawEffect::None,
+				FLinearColor::White.CopyWithNewOpacity(NormalizedLife)
+			);
+		}
+
+		return LayerId + 3;
+	}
+
+	void SpawnSparkBurst(const FVector2D& Origin, int32 Count, const FLinearColor& BaseColor,
+		float SpeedMin = 140.0f, float SpeedMax = 420.0f, float DirectionAngleDeg = -1.0f, float SpreadAngleDeg = 360.0f)
+	{
+		for (int32 i = 0; i < Count; ++i)
+		{
+			FMenuSparkParticle Spark;
+			Spark.Position = Origin + FVector2D(FMath::FRandRange(-5.0f, 5.0f), FMath::FRandRange(-5.0f, 5.0f));
+
+			float AngleRad = 0.0f;
+			if (DirectionAngleDeg >= 0.0f)
+			{
+				const float HalfSpread = FMath::DegreesToRadians(SpreadAngleDeg * 0.5f);
+				const float CenterAngle = FMath::DegreesToRadians(DirectionAngleDeg);
+				AngleRad = CenterAngle + FMath::FRandRange(-HalfSpread, HalfSpread);
+			}
+			else
+			{
+				AngleRad = FMath::FRandRange(0.0f, 2.0f * PI);
+			}
+
+			const float Speed = FMath::FRandRange(SpeedMin, SpeedMax);
+			Spark.Velocity = FVector2D(FMath::Cos(AngleRad) * Speed, FMath::Sin(AngleRad) * Speed);
+			Spark.MaxLife = FMath::FRandRange(0.35f, 0.85f);
+			Spark.Life = Spark.MaxLife;
+			Spark.Color = BaseColor;
+			Spark.Size = FMath::FRandRange(1.8f, 3.2f);
+			Spark.Drag = FMath::FRandRange(0.88f, 0.94f);
+			Spark.Gravity = FMath::FRandRange(350.0f, 650.0f);
+			Spark.SparkLength = FMath::FRandRange(0.8f, 1.4f);
+
+			ActiveSparks.Add(Spark);
+		}
+
+		if (ActiveSparks.Num() > 300)
+		{
+			ActiveSparks.RemoveAt(0, ActiveSparks.Num() - 300);
+		}
+	}
+
+private:
+	TArray<FMenuSparkParticle> ActiveSparks;
+};
+
+/**
+ * SFPSInteractiveNavRowWidget
+ * Highly reactive AAA tactical menu navigation row (01..06) that physically pops on mouse hover,
+ * blooms with electric cyan cyber-glass, illuminates typography, and sprays directional sparks.
+ */
+class SFPSInteractiveNavRowWidget : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SFPSInteractiveNavRowWidget)
+		: _Section(EFPSMenuSection::Play)
+		, _NumStr(TEXT("01"))
+		, _IconIndex(0)
+		, _Title(TEXT("DEPLOYMENT"))
+		, _Subtitle(TEXT("MISSION BRIEFING"))
+		, _ShowBottomDivider(true)
+	{}
+		SLATE_ARGUMENT(EFPSMenuSection, Section)
+		SLATE_ARGUMENT(FString, NumStr)
+		SLATE_ARGUMENT(int32, IconIndex)
+		SLATE_ARGUMENT(FString, Title)
+		SLATE_ARGUMENT(FString, Subtitle)
+		SLATE_ARGUMENT(bool, ShowBottomDivider)
+		SLATE_ATTRIBUTE(bool, IsSelected)
+		SLATE_EVENT(FOnClicked, OnClicked)
+		SLATE_ARGUMENT(TWeakPtr<SFPSSparkOverlayWidget>, SparkOverlay)
+		SLATE_ARGUMENT(TWeakObjectPtr<UMainMenuWidget>, MenuWidget)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs)
+	{
+		Section = InArgs._Section;
+		NumStr = InArgs._NumStr;
+		IconIndex = InArgs._IconIndex;
+		Title = InArgs._Title;
+		Subtitle = InArgs._Subtitle;
+		bShowBottomDivider = InArgs._ShowBottomDivider;
+		IsSelected = InArgs._IsSelected;
+		OnClicked = InArgs._OnClicked;
+		SparkOverlay = InArgs._SparkOverlay;
+		MenuWidget = InArgs._MenuWidget;
+
+		SetCanTick(true);
+		SetCursor(EMouseCursor::Hand);
+
+		ChildSlot
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(SBox)
+				.HeightOverride(64.0f)
+				[
+					SAssignNew(BackgroundBorder, SBorder)
+					.BorderBackgroundColor(FLinearColor(0.015f, 0.035f, 0.07f, 0.40f))
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+					.Padding(0.0f)
+					[
+						SNew(SHorizontalBox)
+						// Left Glowing Indicator Blade
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SAssignNew(BladeBox, SBox)
+							.WidthOverride(4.0f)
+							[
+								SAssignNew(BladeBorder, SBorder)
+								.BorderBackgroundColor(MWTheme::CyanAccent.CopyWithNewOpacity(0.20f))
+								.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+							]
+						]
+						// Main Row Content Box with hardware RenderTransform pop
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.0f)
+						.VAlign(VAlign_Center)
+						.Padding(14.0f, 6.0f)
+						[
+							SAssignNew(ContentBox, SHorizontalBox)
+							// Index Number (01..06)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(0.0f, 0.0f, 14.0f, 0.0f)
+							[
+								SAssignNew(NumberText, STextBlock)
+								.Text(FText::FromString(NumStr))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
+								.ColorAndOpacity(MWTheme::CyanAccent)
+							]
+							// Vector Line-Art Icon
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(0.0f, 0.0f, 14.0f, 0.0f)
+							[
+								SNew(SFPSMenuVectorIconWidget)
+								.IconIndex(IconIndex)
+							]
+							// Title & Subtitle Stack
+							+ SHorizontalBox::Slot()
+							.FillWidth(1.0f)
+							.VAlign(VAlign_Center)
+							[
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								[
+									SAssignNew(TitleText, STextBlock)
+									.Text(FText::FromString(Title))
+									.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+									.ColorAndOpacity(MWTheme::TextSecondary)
+								]
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(0.0f, 2.0f, 0.0f, 0.0f)
+								[
+									SAssignNew(SubtitleText, STextBlock)
+									.Text(FText::FromString(Subtitle))
+									.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+									.ColorAndOpacity(MWTheme::TextMuted)
+								]
+							]
+							// Right Indicating Chevron
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(8.0f, 0.0f, 6.0f, 0.0f)
+							[
+								SAssignNew(ChevronText, STextBlock)
+								.Text(FText::FromString(TEXT("❯")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 13))
+								.ColorAndOpacity(FLinearColor::Transparent)
+							]
+						]
+					]
+				]
+			]
+			// Bottom Divider
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(SBox)
+				.HeightOverride(bShowBottomDivider ? 1.0f : 0.0f)
+				.Padding(12.0f, 0.0f)
+				[
+					SNew(SBorder)
+					.BorderBackgroundColor(MWTheme::CyanAccent.CopyWithNewOpacity(0.18f))
+					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+				]
+			]
+		];
+	}
+
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override
+	{
+		const float Delta = static_cast<float>(InDeltaTime);
+		const bool bSelected = IsSelected.Get(false);
+
+		HoverAlpha = FMath::FInterpTo(HoverAlpha, bIsHovered ? 1.0f : 0.0f, Delta, 16.0f);
+		SelectionFlashTimer = FMath::Max(0.0f, SelectionFlashTimer - Delta);
+		ActivePulseTimer += Delta;
+
+		// 1. Content Translation Pop (+6px rightward slide on hover)
+		if (ContentBox.IsValid())
+		{
+			ContentBox->SetRenderTransform(FSlateRenderTransform(FVector2D(HoverAlpha * 6.0f, 0.0f)));
+		}
+
+		// 2. Background Border Color
+		if (BackgroundBorder.IsValid())
+		{
+			FLinearColor Bg = FLinearColor(0.015f, 0.035f, 0.07f, 0.40f);
+			if (bSelected)
+			{
+				const float Breathe = 0.04f * FMath::Sin(ActivePulseTimer * 3.5f);
+				Bg = FMath::Lerp(Bg, FLinearColor(1.0f, 0.70f, 0.0f, 0.22f + Breathe), 0.85f);
+			}
+			if (HoverAlpha > 0.01f)
+			{
+				Bg = FMath::Lerp(Bg, FLinearColor(0.0f, 0.65f, 0.95f, 0.28f), HoverAlpha);
+			}
+			if (SelectionFlashTimer > 0.0f)
+			{
+				const float FlashAlpha = (SelectionFlashTimer / 0.35f) * 0.45f;
+				Bg = FMath::Lerp(Bg, FLinearColor::White, FlashAlpha);
+			}
+			BackgroundBorder->SetBorderBackgroundColor(Bg);
+		}
+
+		// 3. Indicator Blade Width & Color
+		if (BladeBox.IsValid())
+		{
+			const float BladeW = bSelected ? 7.0f : FMath::Lerp(4.0f, 8.5f, HoverAlpha);
+			BladeBox->SetWidthOverride(BladeW);
+		}
+		if (BladeBorder.IsValid())
+		{
+			FLinearColor BladeCol = bSelected ? MWTheme::AmberAccent : FMath::Lerp(MWTheme::CyanAccent.CopyWithNewOpacity(0.20f), FLinearColor(0.0f, 1.0f, 1.0f, 1.0f), HoverAlpha);
+			BladeBorder->SetBorderBackgroundColor(BladeCol);
+		}
+
+		// 4. Typography Color Pop
+		if (NumberText.IsValid())
+		{
+			FLinearColor NumCol = bSelected ? MWTheme::AmberAccent : FMath::Lerp(MWTheme::CyanAccent, FLinearColor::White, HoverAlpha);
+			NumberText->SetColorAndOpacity(NumCol);
+		}
+		if (TitleText.IsValid())
+		{
+			FLinearColor TitCol = (bSelected || HoverAlpha > 0.05f) ? FLinearColor::White : MWTheme::TextSecondary;
+			TitleText->SetColorAndOpacity(TitCol);
+		}
+		if (SubtitleText.IsValid())
+		{
+			FLinearColor SubCol = (HoverAlpha > 0.05f) ? MWTheme::CyanAccent : MWTheme::TextMuted;
+			SubtitleText->SetColorAndOpacity(SubCol);
+		}
+		if (ChevronText.IsValid())
+		{
+			FLinearColor ChevCol = bSelected ? MWTheme::AmberAccent : MWTheme::CyanAccent.CopyWithNewOpacity(HoverAlpha);
+			ChevronText->SetColorAndOpacity(ChevCol);
+		}
+	}
+
+	virtual void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		SCompoundWidget::OnMouseEnter(MyGeometry, MouseEvent);
+		bIsHovered = true;
+
+		if (SparkOverlay.IsValid())
+		{
+			const FVector2D LocalEdge(10.0f, MyGeometry.GetLocalSize().Y * 0.5f);
+			const FVector2D AbsPos = MyGeometry.LocalToAbsolute(LocalEdge);
+			const FVector2D OverlayPos = SparkOverlay.Pin()->GetTickSpaceGeometry().AbsoluteToLocal(AbsPos);
+			SparkOverlay.Pin()->SpawnSparkBurst(OverlayPos, 14, FLinearColor(0.0f, 1.0f, 1.0f, 1.0f), 180.0f, 440.0f, 15.0f, 75.0f);
+		}
+
+		if (MenuWidget.IsValid())
+		{
+			MenuWidget->PlayTacticalFeedbackSound(false);
+		}
+	}
+
+	virtual void OnMouseLeave(const FPointerEvent& MouseEvent) override
+	{
+		SCompoundWidget::OnMouseLeave(MouseEvent);
+		bIsHovered = false;
+	}
+
+	virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+		{
+			SelectionFlashTimer = 0.35f;
+
+			if (SparkOverlay.IsValid())
+			{
+				const FVector2D LocalCenter = MyGeometry.GetLocalSize() * 0.5f;
+				const FVector2D AbsPos = MyGeometry.LocalToAbsolute(LocalCenter);
+				const FVector2D OverlayPos = SparkOverlay.Pin()->GetTickSpaceGeometry().AbsoluteToLocal(AbsPos);
+				SparkOverlay.Pin()->SpawnSparkBurst(OverlayPos, 36, FLinearColor(1.0f, 0.78f, 0.0f, 1.0f), 200.0f, 520.0f, -1.0f, 360.0f);
+			}
+
+			if (MenuWidget.IsValid())
+			{
+				MenuWidget->PlayTacticalFeedbackSound(true);
+			}
+
+			if (OnClicked.IsBound())
+			{
+				return OnClicked.Execute();
+			}
+			return FReply::Handled();
+		}
+		return FReply::Unhandled();
+	}
+
+private:
+	EFPSMenuSection Section;
+	FString NumStr;
+	int32 IconIndex;
+	FString Title;
+	FString Subtitle;
+	bool bShowBottomDivider;
+	TAttribute<bool> IsSelected;
+	FOnClicked OnClicked;
+	TWeakPtr<SFPSSparkOverlayWidget> SparkOverlay;
+	TWeakObjectPtr<UMainMenuWidget> MenuWidget;
+
+	bool bIsHovered = false;
+	float HoverAlpha = 0.0f;
+	float SelectionFlashTimer = 0.0f;
+	float ActivePulseTimer = 0.0f;
+
+	TSharedPtr<SBorder> BackgroundBorder;
+	TSharedPtr<SBox> BladeBox;
+	TSharedPtr<SBorder> BladeBorder;
+	TSharedPtr<SHorizontalBox> ContentBox;
+	TSharedPtr<STextBlock> NumberText;
+	TSharedPtr<STextBlock> TitleText;
+	TSharedPtr<STextBlock> SubtitleText;
+	TSharedPtr<STextBlock> ChevronText;
+};
+
+/**
+ * SFPSInteractiveHeroButtonWidget
+ * Giant bright tactical DEPLOY TO AREA hero button that pops with luminous solar yellow,
+ * scales dynamically on hover, and erupts with golden welding firework sparks.
+ */
+class SFPSInteractiveHeroButtonWidget : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SFPSInteractiveHeroButtonWidget) {}
+		SLATE_EVENT(FOnClicked, OnClicked)
+		SLATE_ARGUMENT(TWeakPtr<SFPSSparkOverlayWidget>, SparkOverlay)
+		SLATE_ARGUMENT(TWeakObjectPtr<UMainMenuWidget>, MenuWidget)
+		SLATE_ATTRIBUTE(int32, SelectedTheaterIndex)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs)
+	{
+		OnClicked = InArgs._OnClicked;
+		SparkOverlay = InArgs._SparkOverlay;
+		MenuWidget = InArgs._MenuWidget;
+		SelectedTheaterIndex = InArgs._SelectedTheaterIndex;
+
+		SetCanTick(true);
+		SetCursor(EMouseCursor::Hand);
+
+		ChildSlot
+		[
+			SNew(SBox)
+			.HeightOverride(58.0f)
+			[
+				SAssignNew(ButtonBorder, SBorder)
+				.BorderBackgroundColor(MWTheme::AmberAccent)
+				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+				.Padding(18.0f, 8.0f)
+				[
+					SAssignNew(InnerBox, SHorizontalBox)
+					// Left Target Icon
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					.Padding(0.0f, 0.0f, 12.0f, 0.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("🎯")))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
+						.ColorAndOpacity(FLinearColor(0.02f, 0.03f, 0.05f, 1.0f))
+					]
+					// Center Title + Active Operation Subtitle
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Center)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.HAlign(HAlign_Center)
+						[
+							SAssignNew(HeroTitleText, STextBlock)
+							.Text(FText::FromString(TEXT("DEPLOY TO AREA")))
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+							.ColorAndOpacity(FLinearColor(0.02f, 0.03f, 0.05f, 1.0f))
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.HAlign(HAlign_Center)
+						[
+							SNew(STextBlock)
+							.Text_Lambda([this]()
+							{
+								const int32 ThIdx = SelectedTheaterIndex.Get(0);
+								return FText::FromString(ThIdx == 1
+									? TEXT("OPERATION: COASTAL OPERATIONS")
+									: TEXT("OPERATION: RUST TACTICAL"));
+							})
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+							.ColorAndOpacity(FLinearColor(0.14f, 0.10f, 0.02f, 1.0f))
+						]
+					]
+					// Right Chevron
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					.Padding(10.0f, 0.0f, 0.0f, 0.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("❯")))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
+						.ColorAndOpacity(FLinearColor(0.02f, 0.03f, 0.05f, 1.0f))
+					]
+				]
+			]
+		];
+	}
+
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override
+	{
+		const float Delta = static_cast<float>(InDeltaTime);
+		HoverAlpha = FMath::FInterpTo(HoverAlpha, bIsHovered ? 1.0f : 0.0f, Delta, 14.0f);
+		PulseTimer += Delta;
+
+		const float ScaleVal = 1.0f + HoverAlpha * 0.032f;
+		SetRenderTransform(FSlateRenderTransform(FScale2D(ScaleVal, ScaleVal), FVector2D::ZeroVector));
+		SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+
+		if (ButtonBorder.IsValid())
+		{
+			const FLinearColor BaseAmber = MWTheme::AmberAccent;
+			const FLinearColor SolarYellow = FLinearColor(1.0f, 0.94f, 0.18f, 1.0f);
+			ButtonBorder->SetBorderBackgroundColor(FMath::Lerp(BaseAmber, SolarYellow, HoverAlpha));
+		}
+	}
+
+	virtual void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		SCompoundWidget::OnMouseEnter(MyGeometry, MouseEvent);
+		bIsHovered = true;
+
+		if (SparkOverlay.IsValid())
+		{
+			const FVector2D LocalCenter = MyGeometry.GetLocalSize() * 0.5f;
+			const FVector2D AbsPos = MyGeometry.LocalToAbsolute(LocalCenter);
+			const FVector2D OverlayPos = SparkOverlay.Pin()->GetTickSpaceGeometry().AbsoluteToLocal(AbsPos);
+			SparkOverlay.Pin()->SpawnSparkBurst(OverlayPos, 18, FLinearColor(1.0f, 0.90f, 0.15f, 1.0f), 180.0f, 480.0f, 270.0f, 90.0f);
+		}
+
+		if (MenuWidget.IsValid())
+		{
+			MenuWidget->PlayTacticalFeedbackSound(false);
+		}
+	}
+
+	virtual void OnMouseLeave(const FPointerEvent& MouseEvent) override
+	{
+		SCompoundWidget::OnMouseLeave(MouseEvent);
+		bIsHovered = false;
+	}
+
+	virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+		{
+			if (SparkOverlay.IsValid())
+			{
+				const FVector2D LocalCenter = MyGeometry.GetLocalSize() * 0.5f;
+				const FVector2D AbsPos = MyGeometry.LocalToAbsolute(LocalCenter);
+				const FVector2D OverlayPos = SparkOverlay.Pin()->GetTickSpaceGeometry().AbsoluteToLocal(AbsPos);
+				SparkOverlay.Pin()->SpawnSparkBurst(OverlayPos, 48, FLinearColor(1.0f, 0.75f, 0.0f, 1.0f), 220.0f, 620.0f, -1.0f, 360.0f);
+			}
+
+			if (MenuWidget.IsValid())
+			{
+				MenuWidget->PlayTacticalFeedbackSound(true);
+			}
+
+			if (OnClicked.IsBound())
+			{
+				return OnClicked.Execute();
+			}
+			return FReply::Handled();
+		}
+		return FReply::Unhandled();
+	}
+
+private:
+	FOnClicked OnClicked;
+	TWeakPtr<SFPSSparkOverlayWidget> SparkOverlay;
+	TWeakObjectPtr<UMainMenuWidget> MenuWidget;
+	TAttribute<int32> SelectedTheaterIndex;
+
+	bool bIsHovered = false;
+	float HoverAlpha = 0.0f;
+	float PulseTimer = 0.0f;
+
+	TSharedPtr<SBorder> ButtonBorder;
+	TSharedPtr<SHorizontalBox> InnerBox;
+	TSharedPtr<STextBlock> HeroTitleText;
+};
+
+/**
+ * SFPSInteractiveOperationCardWidget
+ * Theater selector card that pops with neon cyan cyber glass on hover,
+ * responds with electric sparks, and cycles between operations on click.
+ */
+class SFPSInteractiveOperationCardWidget : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SFPSInteractiveOperationCardWidget) {}
+		SLATE_ATTRIBUTE(int32, SelectedTheaterIndex)
+		SLATE_EVENT(FOnClicked, OnClicked)
+		SLATE_ARGUMENT(TWeakPtr<SFPSSparkOverlayWidget>, SparkOverlay)
+		SLATE_ARGUMENT(TWeakObjectPtr<UMainMenuWidget>, MenuWidget)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs)
+	{
+		SelectedTheaterIndex = InArgs._SelectedTheaterIndex;
+		OnClicked = InArgs._OnClicked;
+		SparkOverlay = InArgs._SparkOverlay;
+		MenuWidget = InArgs._MenuWidget;
+
+		SetCanTick(true);
+		SetCursor(EMouseCursor::Hand);
+
+		ChildSlot
+		[
+			SAssignNew(OuterBorder, SBorder)
+			.BorderBackgroundColor(MWTheme::CyanAccent)
+			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+			.Padding(1.5f)
+			[
+				SAssignNew(InnerBorder, SBorder)
+				.BorderBackgroundColor(FLinearColor(0.025f, 0.065f, 0.125f, 0.92f))
+				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+				.Padding(14.0f, 12.0f)
+				[
+					SAssignNew(ContentBox, SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.VAlign(VAlign_Center)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SAssignNew(TitleText, STextBlock)
+							.Text_Lambda([this]()
+							{
+								return FText::FromString(SelectedTheaterIndex.Get(0) == 1
+									? TEXT("OPERATION: COASTAL OPS")
+									: TEXT("OPERATION: RUST TACTICAL"));
+							})
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
+							.ColorAndOpacity(MWTheme::TextPrimary)
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(0.0f, 3.0f, 0.0f, 0.0f)
+						[
+							SNew(STextBlock)
+							.Text_Lambda([this]()
+							{
+								return FText::FromString(SelectedTheaterIndex.Get(0) == 1
+									? TEXT("North Sea Littoral / Dike & Pier")
+									: TEXT("Industrial Combat / High Intensity"));
+							})
+							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
+							.ColorAndOpacity(MWTheme::TextSecondary)
+						]
+					]
+					// Right Amber '>' Cycler Chevron
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					.Padding(10.0f, 0.0f, 0.0f, 0.0f)
+					[
+						SAssignNew(ChevronText, STextBlock)
+						.Text(FText::FromString(TEXT("❯")))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+						.ColorAndOpacity(MWTheme::AmberAccent)
+					]
+				]
+			]
+		];
+	}
+
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override
+	{
+		const float Delta = static_cast<float>(InDeltaTime);
+		HoverAlpha = FMath::FInterpTo(HoverAlpha, bIsHovered ? 1.0f : 0.0f, Delta, 14.0f);
+
+		if (ContentBox.IsValid())
+		{
+			ContentBox->SetRenderTransform(FSlateRenderTransform(FVector2D(HoverAlpha * 4.0f, 0.0f)));
+		}
+
+		if (OuterBorder.IsValid())
+		{
+			const FLinearColor BaseBorder = MWTheme::CyanAccent;
+			const FLinearColor PopBorder = FLinearColor(0.2f, 1.0f, 1.0f, 1.0f);
+			OuterBorder->SetBorderBackgroundColor(FMath::Lerp(BaseBorder, PopBorder, HoverAlpha));
+		}
+
+		if (InnerBorder.IsValid())
+		{
+			const FLinearColor BaseInner(0.025f, 0.065f, 0.125f, 0.92f);
+			const FLinearColor PopInner(0.035f, 0.12f, 0.22f, 0.96f);
+			InnerBorder->SetBorderBackgroundColor(FMath::Lerp(BaseInner, PopInner, HoverAlpha));
+		}
+	}
+
+	virtual void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		SCompoundWidget::OnMouseEnter(MyGeometry, MouseEvent);
+		bIsHovered = true;
+
+		if (SparkOverlay.IsValid())
+		{
+			const FVector2D LocalCenter = MyGeometry.GetLocalSize() * 0.5f;
+			const FVector2D AbsPos = MyGeometry.LocalToAbsolute(LocalCenter);
+			const FVector2D OverlayPos = SparkOverlay.Pin()->GetTickSpaceGeometry().AbsoluteToLocal(AbsPos);
+			SparkOverlay.Pin()->SpawnSparkBurst(OverlayPos, 14, FLinearColor(0.0f, 1.0f, 1.0f, 1.0f), 160.0f, 420.0f, -1.0f, 360.0f);
+		}
+
+		if (MenuWidget.IsValid())
+		{
+			MenuWidget->PlayTacticalFeedbackSound(false);
+		}
+	}
+
+	virtual void OnMouseLeave(const FPointerEvent& MouseEvent) override
+	{
+		SCompoundWidget::OnMouseLeave(MouseEvent);
+		bIsHovered = false;
+	}
+
+	virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+		{
+			if (SparkOverlay.IsValid())
+			{
+				const FVector2D LocalCenter = MyGeometry.GetLocalSize() * 0.5f;
+				const FVector2D AbsPos = MyGeometry.LocalToAbsolute(LocalCenter);
+				const FVector2D OverlayPos = SparkOverlay.Pin()->GetTickSpaceGeometry().AbsoluteToLocal(AbsPos);
+				SparkOverlay.Pin()->SpawnSparkBurst(OverlayPos, 32, FLinearColor(0.0f, 1.0f, 1.0f, 1.0f), 200.0f, 500.0f, -1.0f, 360.0f);
+			}
+
+			if (MenuWidget.IsValid())
+			{
+				MenuWidget->PlayTacticalFeedbackSound(true);
+			}
+
+			if (OnClicked.IsBound())
+			{
+				return OnClicked.Execute();
+			}
+			return FReply::Handled();
+		}
+		return FReply::Unhandled();
+	}
+
+private:
+	TAttribute<int32> SelectedTheaterIndex;
+	FOnClicked OnClicked;
+	TWeakPtr<SFPSSparkOverlayWidget> SparkOverlay;
+	TWeakObjectPtr<UMainMenuWidget> MenuWidget;
+
+	bool bIsHovered = false;
+	float HoverAlpha = 0.0f;
+
+	TSharedPtr<SBorder> OuterBorder;
+	TSharedPtr<SBorder> InnerBorder;
+	TSharedPtr<SHorizontalBox> ContentBox;
+	TSharedPtr<STextBlock> TitleText;
+	TSharedPtr<STextBlock> ChevronText;
+};
+
+/**
+ * SFPSInteractiveActionPillWidget
+ * Modern Warfare sub-action button pill that blooms bright cyan on hover and emits sparks.
+ */
+class SFPSInteractiveActionPillWidget : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SFPSInteractiveActionPillWidget) {}
+		SLATE_ARGUMENT(FString, Label)
+		SLATE_EVENT(FOnClicked, OnClicked)
+		SLATE_ARGUMENT(TWeakPtr<SFPSSparkOverlayWidget>, SparkOverlay)
+		SLATE_ARGUMENT(TWeakObjectPtr<UMainMenuWidget>, MenuWidget)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs)
+	{
+		Label = InArgs._Label;
+		OnClicked = InArgs._OnClicked;
+		SparkOverlay = InArgs._SparkOverlay;
+		MenuWidget = InArgs._MenuWidget;
+
+		SetCanTick(true);
+		SetCursor(EMouseCursor::Hand);
+
+		ChildSlot
+		[
+			SAssignNew(OuterBorder, SBorder)
+			.BorderBackgroundColor(MWTheme::CyanAccent.CopyWithNewOpacity(0.35f))
+			.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+			.Padding(1.0f)
+			[
+				SAssignNew(InnerBorder, SBorder)
+				.BorderBackgroundColor(FLinearColor(0.02f, 0.05f, 0.09f, 0.90f))
+				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
+				.Padding(8.0f, 7.0f)
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				[
+					SAssignNew(LabelText, STextBlock)
+					.Text(FText::FromString(Label))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+					.ColorAndOpacity(MWTheme::TextPrimary)
+				]
+			]
+		];
+	}
+
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override
+	{
+		const float Delta = static_cast<float>(InDeltaTime);
+		HoverAlpha = FMath::FInterpTo(HoverAlpha, bIsHovered ? 1.0f : 0.0f, Delta, 14.0f);
+
+		if (OuterBorder.IsValid())
+		{
+			const FLinearColor DimBorder = MWTheme::CyanAccent.CopyWithNewOpacity(0.35f);
+			const FLinearColor PopBorder = FLinearColor(0.0f, 1.0f, 1.0f, 1.0f);
+			OuterBorder->SetBorderBackgroundColor(FMath::Lerp(DimBorder, PopBorder, HoverAlpha));
+		}
+
+		if (InnerBorder.IsValid())
+		{
+			const FLinearColor DimInner(0.02f, 0.05f, 0.09f, 0.90f);
+			const FLinearColor PopInner(0.04f, 0.12f, 0.20f, 0.95f);
+			InnerBorder->SetBorderBackgroundColor(FMath::Lerp(DimInner, PopInner, HoverAlpha));
+		}
+
+		if (LabelText.IsValid())
+		{
+			const FLinearColor DimText = MWTheme::TextPrimary;
+			const FLinearColor PopText = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
+			LabelText->SetColorAndOpacity(FMath::Lerp(DimText, PopText, HoverAlpha));
+		}
+	}
+
+	virtual void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		SCompoundWidget::OnMouseEnter(MyGeometry, MouseEvent);
+		bIsHovered = true;
+
+		if (SparkOverlay.IsValid())
+		{
+			const FVector2D LocalCenter = MyGeometry.GetLocalSize() * 0.5f;
+			const FVector2D AbsPos = MyGeometry.LocalToAbsolute(LocalCenter);
+			const FVector2D OverlayPos = SparkOverlay.Pin()->GetTickSpaceGeometry().AbsoluteToLocal(AbsPos);
+			SparkOverlay.Pin()->SpawnSparkBurst(OverlayPos, 8, FLinearColor(0.0f, 1.0f, 1.0f, 1.0f), 140.0f, 320.0f, -1.0f, 360.0f);
+		}
+
+		if (MenuWidget.IsValid())
+		{
+			MenuWidget->PlayTacticalFeedbackSound(false);
+		}
+	}
+
+	virtual void OnMouseLeave(const FPointerEvent& MouseEvent) override
+	{
+		SCompoundWidget::OnMouseLeave(MouseEvent);
+		bIsHovered = false;
+	}
+
+	virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+		{
+			if (SparkOverlay.IsValid())
+			{
+				const FVector2D LocalCenter = MyGeometry.GetLocalSize() * 0.5f;
+				const FVector2D AbsPos = MyGeometry.LocalToAbsolute(LocalCenter);
+				const FVector2D OverlayPos = SparkOverlay.Pin()->GetTickSpaceGeometry().AbsoluteToLocal(AbsPos);
+				SparkOverlay.Pin()->SpawnSparkBurst(OverlayPos, 20, FLinearColor(1.0f, 0.78f, 0.0f, 1.0f), 160.0f, 440.0f, -1.0f, 360.0f);
+			}
+
+			if (MenuWidget.IsValid())
+			{
+				MenuWidget->PlayTacticalFeedbackSound(true);
+			}
+
+			if (OnClicked.IsBound())
+			{
+				return OnClicked.Execute();
+			}
+			return FReply::Handled();
+		}
+		return FReply::Unhandled();
+	}
+
+private:
+	FString Label;
+	FOnClicked OnClicked;
+	TWeakPtr<SFPSSparkOverlayWidget> SparkOverlay;
+	TWeakObjectPtr<UMainMenuWidget> MenuWidget;
+
+	bool bIsHovered = false;
+	float HoverAlpha = 0.0f;
+
+	TSharedPtr<SBorder> OuterBorder;
+	TSharedPtr<SBorder> InnerBorder;
+	TSharedPtr<STextBlock> LabelText;
+};
+
 
 
 UMainMenuWidget::UMainMenuWidget()
@@ -1785,11 +2732,33 @@ UMainMenuWidget::UMainMenuWidget()
 
 
 
+void UMainMenuWidget::TriggerSparkBurst(const FVector2D& ScreenPos, int32 Count, const FLinearColor& BaseColor,
+	float SpeedMin, float SpeedMax, float DirectionAngleDeg, float SpreadAngleDeg)
+{
+	if (SparkOverlay.IsValid())
+	{
+		SparkOverlay->SpawnSparkBurst(ScreenPos, Count, BaseColor, SpeedMin, SpeedMax, DirectionAngleDeg, SpreadAngleDeg);
+	}
+}
+
+void UMainMenuWidget::PlayTacticalFeedbackSound(bool bIsClick)
+{
+	if (TransitionSound)
+	{
+		UGameplayStatics::PlaySound2D(this, TransitionSound);
+	}
+}
+
 void UMainMenuWidget::NativeConstruct()
 
 {
 
 	Super::NativeConstruct();
+
+	if (!TransitionSound)
+	{
+		TransitionSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Audio/Weapons/Reloads/A_Weapon_DryFire_Click.A_Weapon_DryFire_Click"));
+	}
 
 
 
@@ -1999,106 +2968,27 @@ void UMainMenuWidget::SetPreviewActor(AFPSCharacterPreviewActor* InPreviewActor)
 
 TSharedRef<SWidget> UMainMenuWidget::RebuildWidget()
 {
-	// Left Navigation Row Builder matching Docs/Menu_Mockup_Reference.jpg (01..06 with Vector Icons & Dividers)
+		// Left Navigation Row Builder matching Docs/Menu_Mockup_Reference.jpg (01..06 with Vector Icons & Dividers)
 	auto MakeMockupSideNavItem = [this](const FString& NumStr, int32 IconIdx, const FString& Title, const FString& Subtitle, EFPSMenuSection Section, TSharedPtr<SBorder>& OutIndicator, bool bShowBottomDivider = true) -> TSharedRef<SWidget>
 	{
-		return SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(SBox)
-				.HeightOverride(64.0f)
-				[
-					SNew(SButton)
-					.ButtonColorAndOpacity(FLinearColor::Transparent)
-					.ContentPadding(0.0f)
-					.OnClicked_Lambda([this, Section]()
-					{
-						NavigateToSection(Section);
-						return FReply::Handled();
-					})
-					[
-						SNew(SHorizontalBox)
-						// Left 5px Glowing Cyan Active Bar
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						[
-							SNew(SBox)
-							.WidthOverride(5.0f)
-							[
-								SAssignNew(OutIndicator, SBorder)
-								.BorderBackgroundColor(Section == EFPSMenuSection::Play ? MWTheme::CyanAccent : FLinearColor::Transparent)
-								.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-							]
-						]
-						// Row Content (Large Cyan Index + Vector Line-Art Icon + Bold Title + Muted Subtitle)
-						+ SHorizontalBox::Slot()
-						.FillWidth(1.0f)
-						.VAlign(VAlign_Center)
-						.Padding(14.0f, 6.0f)
-						[
-							SNew(SHorizontalBox)
-							// Large Cyan Number (01..06)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.VAlign(VAlign_Center)
-							.Padding(0.0f, 0.0f, 14.0f, 0.0f)
-							[
-								SNew(STextBlock)
-								.Text(FText::FromString(NumStr))
-								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
-								.ColorAndOpacity(MWTheme::CyanAccent)
-							]
-							// Custom Vector Line-Art Icon (28x28)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.VAlign(VAlign_Center)
-							.Padding(0.0f, 0.0f, 14.0f, 0.0f)
-							[
-								SNew(SFPSMenuVectorIconWidget)
-								.IconIndex(IconIdx)
-							]
-							// Title & Subtitle Stack
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.0f)
-							.VAlign(VAlign_Center)
-							[
-								SNew(SVerticalBox)
-								+ SVerticalBox::Slot()
-								.AutoHeight()
-								[
-									SNew(STextBlock)
-									.Text(FText::FromString(Title))
-									.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-									.ColorAndOpacity(MWTheme::TextPrimary)
-								]
-								+ SVerticalBox::Slot()
-								.AutoHeight()
-								.Padding(0.0f, 2.0f, 0.0f, 0.0f)
-								[
-									SNew(STextBlock)
-									.Text(FText::FromString(Subtitle))
-									.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
-									.ColorAndOpacity(MWTheme::TextMuted)
-								]
-							]
-						]
-					]
-				]
-			]
-			// Crisp 1px Horizontal Divider Line between items
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(SBox)
-				.HeightOverride(bShowBottomDivider ? 1.0f : 0.0f)
-				.Padding(12.0f, 0.0f)
-				[
-					SNew(SBorder)
-					.BorderBackgroundColor(MWTheme::CyanAccent.CopyWithNewOpacity(0.18f))
-					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				]
-			];
+		return SNew(SFPSInteractiveNavRowWidget)
+			.Section(Section)
+			.NumStr(NumStr)
+			.IconIndex(IconIdx)
+			.Title(Title)
+			.Subtitle(Subtitle)
+			.ShowBottomDivider(bShowBottomDivider)
+			.IsSelected_Lambda([this, Section]()
+			{
+				return CurrentSection == Section || (Section == EFPSMenuSection::Play && CurrentSection == EFPSMenuSection::Home);
+			})
+			.OnClicked_Lambda([this, Section]()
+			{
+				NavigateToSection(Section);
+				return FReply::Handled();
+			})
+			.SparkOverlay(SparkOverlay)
+			.MenuWidget(this);
 	};
 
 	// Dedicated Operator Customization View (Slot 5): Unobstructed 3D Operator on Left/Center + Categorized Submenu on Right
@@ -2315,12 +3205,19 @@ TSharedRef<SWidget> UMainMenuWidget::RebuildWidget()
 				]
 			]
 		]
-		// Layer 3: Tactical Operator Authentication & 6-Digit Website Verification Modal Overlay
+				// Layer 3: Tactical Operator Authentication & 6-Digit Website Verification Modal Overlay
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
 		[
 			BuildAuthModal()
+		]
+		// Layer 4: Interactive Reactive Tactical Spark Particle System
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			SAssignNew(SparkOverlay, SFPSSparkOverlayWidget)
 		];
 }
 
@@ -2610,32 +3507,13 @@ TSharedRef<SWidget> UMainMenuWidget::BuildTacticalLobbyView()
 
 TSharedRef<SWidget> UMainMenuWidget::BuildLeftBlade()
 {
-	auto MakeMockupActionPill = [](const FString& Label, TFunction<FReply()> OnClick) -> TSharedRef<SWidget>
+		auto MakeMockupActionPill = [this](const FString& Label, TFunction<FReply()> OnClick) -> TSharedRef<SWidget>
 	{
-		return SNew(SButton)
-			.ButtonColorAndOpacity(FLinearColor::Transparent)
-			.ContentPadding(0.0f)
+		return SNew(SFPSInteractiveActionPillWidget)
+			.Label(Label)
 			.OnClicked_Lambda(OnClick)
-			[
-				SNew(SBorder)
-				.BorderBackgroundColor(MWTheme::CyanAccent.CopyWithNewOpacity(0.35f))
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(1.0f)
-				[
-					SNew(SBorder)
-					.BorderBackgroundColor(FLinearColor(0.02f, 0.05f, 0.09f, 0.90f))
-					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-					.Padding(8.0f, 7.0f)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(Label))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
-						.ColorAndOpacity(MWTheme::TextPrimary)
-					]
-				]
-			];
+			.SparkOverlay(SparkOverlay)
+			.MenuWidget(this);
 	};
 
 	return SNew(SVerticalBox)
@@ -2709,79 +3587,20 @@ TSharedRef<SWidget> UMainMenuWidget::BuildLeftBlade()
 				.ColorAndOpacity(MWTheme::TextSecondary)
 			]
 		]
-		// 3. Clickable ACTIVE OPERATION Selector Box (Click '>' to cycle between Rust Tactical & Coastal Operations!)
+				// 3. Clickable ACTIVE OPERATION Selector Box (Click '>' to cycle between Rust Tactical & Coastal Operations!)
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.Padding(0.0f, 0.0f, 0.0f, 14.0f)
 		[
-			SNew(SButton)
-			.ButtonColorAndOpacity(FLinearColor::Transparent)
-			.ContentPadding(0.0f)
-			.ToolTipText(FText::FromString(TEXT("Click to cycle Combat Operation (Rust Tactical <-> Coastal Operations)")))
+			SNew(SFPSInteractiveOperationCardWidget)
+			.SelectedTheaterIndex_Lambda([this]() { return SelectedTheaterIndex; })
 			.OnClicked_Lambda([this]()
 			{
 				const int32 NextTheater = (SelectedTheaterIndex == 0) ? 1 : 0;
 				return HandleTheaterCardClicked(NextTheater);
 			})
-			[
-				SNew(SBorder)
-				.BorderBackgroundColor(MWTheme::CyanAccent)
-				.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-				.Padding(1.5f)
-				[
-					SNew(SBorder)
-					.BorderBackgroundColor(FLinearColor(0.025f, 0.065f, 0.125f, 0.92f))
-					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-					.Padding(14.0f, 12.0f)
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.FillWidth(1.0f)
-						.VAlign(VAlign_Center)
-						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							[
-								SNew(STextBlock)
-								.Text_Lambda([this]()
-								{
-									return FText::FromString(SelectedTheaterIndex == 1
-										? TEXT("OPERATION: COASTAL OPS")
-										: TEXT("OPERATION: RUST TACTICAL"));
-								})
-								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
-								.ColorAndOpacity(MWTheme::TextPrimary)
-							]
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.Padding(0.0f, 3.0f, 0.0f, 0.0f)
-							[
-								SNew(STextBlock)
-								.Text_Lambda([this]()
-								{
-									return FText::FromString(SelectedTheaterIndex == 1
-										? TEXT("North Sea Littoral / Dike & Pier")
-										: TEXT("Industrial Combat / High Intensity"));
-								})
-								.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
-								.ColorAndOpacity(MWTheme::TextSecondary)
-							]
-						]
-						// Right Amber '>' Cycler Chevron (exact match to mockup!)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						.Padding(10.0f, 0.0f, 0.0f, 0.0f)
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("❯")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
-							.ColorAndOpacity(MWTheme::AmberAccent)
-						]
-					]
-				]
-			]
+			.SparkOverlay(SparkOverlay)
+			.MenuWidget(this)
 		]
 		// 4. OPERATION BRIEF Section
 		+ SVerticalBox::Slot()
@@ -2988,80 +3807,15 @@ TSharedRef<SWidget> UMainMenuWidget::BuildLeftBlade()
 				})
 			]
 		]
-		// 8. Prominent Bright Amber/Yellow [ DEPLOY TO AREA > ] Hero Button (exact match to mockup!)
+				// 8. Prominent Bright Amber/Yellow [ DEPLOY TO AREA > ] Hero Button (exact match to mockup!)
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
-			SNew(SBox)
-			.HeightOverride(58.0f)
-			[
-				SNew(SButton)
-				.ButtonColorAndOpacity(FLinearColor::Transparent)
-				.ContentPadding(0.0f)
-				.OnClicked_Lambda([this]() { return HandleQuickplayClicked(); })
-				[
-					SNew(SBorder)
-					.BorderBackgroundColor(MWTheme::AmberAccent)
-					.BorderImage(FAppStyle::Get().GetBrush("WhiteBrush"))
-					.Padding(18.0f, 8.0f)
-					[
-						SNew(SHorizontalBox)
-						// Left Target Icon
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						.Padding(0.0f, 0.0f, 12.0f, 0.0f)
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("🎯")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
-							.ColorAndOpacity(FLinearColor(0.02f, 0.03f, 0.05f, 1.0f))
-						]
-						// Center Title + Active Operation Subtitle
-						+ SHorizontalBox::Slot()
-						.FillWidth(1.0f)
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.HAlign(HAlign_Center)
-							[
-								SNew(STextBlock)
-								.Text(FText::FromString(TEXT("DEPLOY TO AREA")))
-								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
-								.ColorAndOpacity(FLinearColor(0.02f, 0.03f, 0.05f, 1.0f))
-							]
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.HAlign(HAlign_Center)
-							[
-								SNew(STextBlock)
-								.Text_Lambda([this]()
-								{
-									return FText::FromString(SelectedTheaterIndex == 1
-										? TEXT("OPERATION: COASTAL OPERATIONS")
-										: TEXT("OPERATION: RUST TACTICAL"));
-								})
-								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
-								.ColorAndOpacity(FLinearColor(0.14f, 0.10f, 0.02f, 1.0f))
-							]
-						]
-						// Right '>' Chevron
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						.Padding(12.0f, 0.0f, 0.0f, 0.0f)
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("❯")))
-							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
-							.ColorAndOpacity(FLinearColor(0.02f, 0.03f, 0.05f, 1.0f))
-						]
-					]
-				]
-			]
+			SNew(SFPSInteractiveHeroButtonWidget)
+			.SelectedTheaterIndex_Lambda([this]() { return SelectedTheaterIndex; })
+			.OnClicked_Lambda([this]() { return HandleQuickplayClicked(); })
+			.SparkOverlay(SparkOverlay)
+			.MenuWidget(this)
 		];
 }
 
@@ -6626,6 +7380,7 @@ void UMainMenuWidget::NavigateToSection(EFPSMenuSection Section)
 {
 
 	CurrentSection = Section;
+	TriggerSparkBurst(FVector2D(150.0f, 350.0f), 24, MWTheme::CyanAccent);
 
 	if (ContentSwitcher.IsValid())
 
@@ -6982,13 +7737,10 @@ void UMainMenuWidget::SelectTheater(int32 TheaterIndex)
 
 
 FReply UMainMenuWidget::HandleTheaterCardClicked(int32 TheaterIndex)
-
 {
-
 	SelectTheater(TheaterIndex);
-
+	TriggerSparkBurst(FVector2D(1500.0f, 320.0f), 28, MWTheme::CyanAccent);
 	return FReply::Handled();
-
 }
 
 
@@ -7000,6 +7752,7 @@ FReply UMainMenuWidget::HandleModeCardClicked(int32 ModeIndex)
 	SelectedModeIndex = FMath::Clamp(ModeIndex, 0, 2);
 
 	UpdateModeCardVisuals();
+	TriggerSparkBurst(FVector2D(1500.0f, 650.0f), 30, MWTheme::AmberAccent);
 
 	if (TransitionSound)
 

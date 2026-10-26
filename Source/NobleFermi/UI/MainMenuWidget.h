@@ -11,6 +11,7 @@ class SEditableTextBox;
 class STextBlock;
 class SBorder;
 class AFPSCharacterPreviewActor;
+class SFPSSparkOverlayWidget;
 
 UENUM(BlueprintType)
 enum class EFPSMenuSection : uint8
@@ -283,4 +284,13 @@ private:
 	bool bMenuVSMActive = false;
 	float MenuScreenPercentage = 75.0f;
 	int32 MenuFpsLimit = 144;
+
+public:
+	// Global Interactive Spark Particle Overlay & Audio Feedback
+	TSharedPtr<SFPSSparkOverlayWidget> SparkOverlay;
+
+	void TriggerSparkBurst(const FVector2D& ScreenPos, int32 Count, const FLinearColor& BaseColor,
+		float SpeedMin = 140.0f, float SpeedMax = 420.0f, float DirectionAngleDeg = -1.0f, float SpreadAngleDeg = 360.0f);
+
+	void PlayTacticalFeedbackSound(bool bIsClick);
 };

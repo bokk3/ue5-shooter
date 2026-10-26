@@ -98,6 +98,17 @@ void AFPSMenuGameMode::BeginPlay()
 	{
 		float MenuShotDelay = GIsEditor ? 7.0f : 130.0f;
 		FParse::Value(FCommandLine::Get(), TEXT("MenuShotDelay="), MenuShotDelay);
+
+		FTimerHandle PreShotSparkHandle;
+		GetWorldTimerManager().SetTimer(PreShotSparkHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
+		{
+			if (ActiveMenuWidget)
+			{
+				ActiveMenuWidget->TriggerSparkBurst(FVector2D(280.0f, 440.0f), 28, FLinearColor(0.0f, 1.0f, 1.0f, 1.0f), 220.0f, 480.0f, 15.0f, 65.0f);
+				ActiveMenuWidget->TriggerSparkBurst(FVector2D(220.0f, 800.0f), 38, FLinearColor(1.0f, 0.85f, 0.15f, 1.0f), 240.0f, 520.0f, 270.0f, 80.0f);
+			}
+		}), FMath::Max(0.5f, MenuShotDelay - 0.2f), false);
+
 		FTimerHandle ScreenshotTimerHandle;
 		GetWorldTimerManager().SetTimer(ScreenshotTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
 		{
