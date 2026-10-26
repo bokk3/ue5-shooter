@@ -187,11 +187,35 @@ noble-fermi/
 
 ---
 
-## In-Game Showcase // 3rd-Person Tactical Gameplay
+## In-Game Showcase // Authentic Unreal Engine 5.8 Captures
 
-![Noble Fermi - Tactical 3rd-Person Over-the-Shoulder Gameplay on Rust Tactical](Docs/images/gameplay_3rd_person_rust_tactical.png)
+All screenshots are authentic, unedited in-engine captures rendered in real time at **1920×1080** via the DirectX 12 SM5 viewport on Unreal Engine 5.8:
 
-*Live in-engine capture of the 21-bone tactical operator (`SK_BaseMale`) holding the 3D `SM_AK47` rifle on Rust Tactical, featuring the pure Slate C++ AR visor HUD (36-segment circular radar minimap, cosine-faded compass tape, 4-plate Level IV ceramic armor vitals, live ECG waveform, center-screen directional threat radar, and 128-tick Fermi Chrono-Field telemetry).*
+### 1. Command Center & 3D Hangar Diorama (Slate Spark Overlay)
+![Noble Fermi - Tactical Command Center & 3D Hangar Diorama](Docs/Screenshots/menu_command_center.png)
+
+*Tactical Command Center featuring semi-transparent acrylic glass blades (`SBackgroundBlur`), real-time `SFPSSparkOverlayWidget` electrical sparks with glowing diamond cores, and Vanguard Spec-Ops operator on a beveled turntable plinth holding the AK-47 assault rifle with wet floor reflections.*
+
+---
+
+### 2. Rust Tactical Arena // 3rd-Person OTS Combat & Pure Slate AR Visor HUD
+![Noble Fermi - Rust Tactical 3rd-Person Over-the-Shoulder Gameplay](Docs/Screenshots/gameplay_rust_tactical.png)
+
+*Live in-engine match on Rust Tactical (60m × 60m). Over-the-shoulder perspective with 21-bone operator (`SK_BaseMale`), Level IV ceramic armor rig, and pure Slate C++ AR Visor HUD (36-segment circular radar minimap, compass tape, 4-plate armor vitals, live ECG waveform, 30-round bullet matrix, and enemy tactical bots in combat).*
+
+---
+
+### 3. Coastal Operations Littoral Arena // North Sea Seawalls & Tactical Fireteams
+![Noble Fermi - Coastal Operations Littoral Arena Gameplay](Docs/Screenshots/gameplay_coastal_operations.png)
+
+*High-stakes littoral engagement along the North Sea dike and pier. Shows seawall concrete revetments, bunker entry, pulsing navigation hazard beacons, and hostile bot fireteams moving into tactical formation.*
+
+---
+
+### 4. Operator Customization & 3D Rig Inspector // 7-Zone Armor & Camouflage
+![Noble Fermi - Operator Customization & 3D Rig Inspector](Docs/Screenshots/operator_customization_armory.png)
+
+*Tactical Armory & Customization subview featuring the 360° turntable inspection mode, 4 authentic military camouflage patterns (Task Force Echo Slate, Woodland Tactical, Desert Spec-Ops, Stealth Blackout), dual-currency Gold/Opals economy, and animation stance selectors.*
 
 ---
 

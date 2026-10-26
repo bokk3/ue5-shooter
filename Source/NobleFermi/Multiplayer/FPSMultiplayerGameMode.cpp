@@ -12,6 +12,9 @@
 #include "Misc/ConfigCacheIni.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
+#include "Misc/CommandLine.h"
+#include "HAL/PlatformFileManager.h"
+#include "UnrealClient.h"
 
 AFPSMultiplayerGameMode::AFPSMultiplayerGameMode()
 {
@@ -26,8 +29,12 @@ void AFPSMultiplayerGameMode::InitGame(const FString& MapName, const FString& Op
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 
-	// Check URL Option "?Theater=Coastal" or "?Theater=Rust" (e.g. for dedicated server or map transitions)
-	const FString TheaterOption = UGameplayStatics::ParseOption(Options, TEXT("Theater"));
+	// Check URL Option "?Theater=Coastal" or "?Theater=Rust" or command line "-Theater=Coastal"
+	FString TheaterOption = UGameplayStatics::ParseOption(Options, TEXT("Theater"));
+	if (TheaterOption.IsEmpty())
+	{
+		FParse::Value(FCommandLine::Get(), TEXT("Theater="), TheaterOption);
+	}
 	if (TheaterOption.Equals(TEXT("Coastal"), ESearchCase::IgnoreCase))
 	{
 		ActiveTheaterIndex = 1;
@@ -131,6 +138,57 @@ void AFPSMultiplayerGameMode::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] BeginPlay: Match in progress on %s. Arena: %s"),
 		ActiveTheaterIndex == 1 ? TEXT("Coastal Operations") : TEXT("Rust Tactical"),
 		*GetNameSafe(ActiveTheaterIndex == 1 ? (AActor*)ActiveCoastalArena : (AActor*)ActiveArena));
+
+	// Auto screenshot verification if -TakeGameplayShot is passed on command line
+	if (FParse::Param(FCommandLine::Get(), TEXT("TakeGameplayShot")))
+	{
+		UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("DisableAllScreenMessages"));
+
+		float ShotDelay = GIsEditor ? 9.0f : 14.0f;
+		FParse::Value(FCommandLine::Get(), TEXT("GameplayShotDelay="), ShotDelay);
+
+		FString ShotName = (ActiveTheaterIndex == 1) ? TEXT("gameplay_coastal_operations.png") : TEXT("gameplay_rust_tactical.png");
+		FParse::Value(FCommandLine::Get(), TEXT("ShotName="), ShotName);
+
+		// Action trigger (fire weapon burst for dynamic muzzle flash, brass casing ejection, and HUD recoil right before capture)
+		FTimerHandle ActionTimerHandle;
+		GetWorldTimerManager().SetTimer(ActionTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
+		{
+			APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+			if (PC && PC->GetPawn())
+			{
+				if (AFPSCharacter* Char = Cast<AFPSCharacter>(PC->GetPawn()))
+				{
+					Char->StartFire();
+				}
+			}
+		}), FMath::Max(0.5f, ShotDelay - 0.5f), false);
+
+		FTimerHandle ScreenshotTimerHandle;
+		GetWorldTimerManager().SetTimer(ScreenshotTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this, ShotName]()
+		{
+			const FString ScreenshotDir = FPaths::Combine(FPaths::ProjectDir(), TEXT("Docs"), TEXT("Screenshots"));
+			IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+			PlatformFile.CreateDirectoryTree(*ScreenshotDir);
+
+			const FString ScreenshotFile = FPaths::Combine(ScreenshotDir, ShotName);
+			FScreenshotRequest::RequestScreenshot(ScreenshotFile, true, false);
+			UE_LOG(LogTemp, Warning, TEXT("[GAMEPLAY_SCREENSHOT] Real in-engine screenshot queued to: %s"), *ScreenshotFile);
+
+			FScreenshotRequest::OnScreenshotRequestProcessed().AddLambda([]()
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[GAMEPLAY_SCREENSHOT] Real in-engine screenshot successfully written to disk! Clean exit in 1s."));
+				FGenericPlatformMisc::RequestExit(false);
+			});
+
+			FTimerHandle ExitTimerHandle;
+			GetWorldTimerManager().SetTimer(ExitTimerHandle, FTimerDelegate::CreateWeakLambda(this, []()
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[GAMEPLAY_SCREENSHOT] Safety timeout reached, requesting exit..."));
+				FGenericPlatformMisc::RequestExit(false);
+			}), 5.0f, false);
+		}), ShotDelay, false);
+	}
 }
 
 void AFPSMultiplayerGameMode::SpawnInitialTacticalBots()

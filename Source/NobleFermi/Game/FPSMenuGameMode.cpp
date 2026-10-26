@@ -99,6 +99,33 @@ void AFPSMenuGameMode::BeginPlay()
 		float MenuShotDelay = GIsEditor ? 7.0f : 130.0f;
 		FParse::Value(FCommandLine::Get(), TEXT("MenuShotDelay="), MenuShotDelay);
 
+		FString ShotName = TEXT("menu_real_actual.png");
+		FParse::Value(FCommandLine::Get(), TEXT("ShotName="), ShotName);
+
+		FString MenuSectionStr;
+		if (FParse::Value(FCommandLine::Get(), TEXT("MenuSection="), MenuSectionStr))
+		{
+			FTimerHandle SectionTimerHandle;
+			GetWorldTimerManager().SetTimer(SectionTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this, MenuSectionStr]()
+			{
+				if (ActiveMenuWidget)
+				{
+					if (MenuSectionStr.Equals(TEXT("Gunsmith"), ESearchCase::IgnoreCase) || MenuSectionStr.Equals(TEXT("Arsenal"), ESearchCase::IgnoreCase) || MenuSectionStr.Equals(TEXT("Loadout"), ESearchCase::IgnoreCase))
+					{
+						ActiveMenuWidget->NavigateToSection(EFPSMenuSection::Loadout);
+					}
+					else if (MenuSectionStr.Equals(TEXT("Customization"), ESearchCase::IgnoreCase) || MenuSectionStr.Equals(TEXT("Operator"), ESearchCase::IgnoreCase))
+					{
+						ActiveMenuWidget->NavigateToSection(EFPSMenuSection::Customization);
+					}
+					else if (MenuSectionStr.Equals(TEXT("DailyRewards"), ESearchCase::IgnoreCase) || MenuSectionStr.Equals(TEXT("ArmoryVault"), ESearchCase::IgnoreCase))
+					{
+						ActiveMenuWidget->NavigateToSection(EFPSMenuSection::DailyRewards);
+					}
+				}
+			}), 0.5f, false);
+		}
+
 		FTimerHandle PreShotSparkHandle;
 		GetWorldTimerManager().SetTimer(PreShotSparkHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
 		{
@@ -110,7 +137,7 @@ void AFPSMenuGameMode::BeginPlay()
 		}), FMath::Max(0.5f, MenuShotDelay - 0.2f), false);
 
 		FTimerHandle ScreenshotTimerHandle;
-		GetWorldTimerManager().SetTimer(ScreenshotTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
+		GetWorldTimerManager().SetTimer(ScreenshotTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this, ShotName]()
 		{
 			const FString ScreenshotDir = FPaths::Combine(FPaths::ProjectDir(), TEXT("Docs"), TEXT("Screenshots"));
 			IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
@@ -156,7 +183,7 @@ void AFPSMenuGameMode::BeginPlay()
 					PCLocal->PlayerCameraManager ? PCLocal->PlayerCameraManager->GetFOVAngle() : 0.0f);
 			}
 
-			const FString ScreenshotFile = FPaths::Combine(ScreenshotDir, TEXT("menu_real_actual.png"));
+			const FString ScreenshotFile = FPaths::Combine(ScreenshotDir, ShotName);
 			FScreenshotRequest::RequestScreenshot(ScreenshotFile, true, false);
 			UE_LOG(LogTemp, Warning, TEXT("[SCREENSHOT] Real in-engine screenshot queued to: %s"), *ScreenshotFile);
 

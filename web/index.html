@@ -404,6 +404,7 @@
         <a href="#card-anatomy" class="text-slate-300 hover:text-tacticalCyan transition-colors duration-300">02 // 21-BONE &amp; ARMOR</a>
         <a href="#card-netcode" class="text-slate-300 hover:text-tacticalCyan transition-colors duration-300">03 // 128-HZ NETCODE</a>
         <a href="#card-deploy" class="text-slate-300 hover:text-tacticalCyan transition-colors duration-300">04 // DEPLOYMENT</a>
+        <a href="#showcase-gallery" class="text-slate-300 hover:text-tacticalCyan transition-colors duration-300">05 // GALLERY</a>
       </nav>
 
       <!-- Right Controls: Rainburst Pulse, Reduced Motion Toggle & Launch CTA -->
@@ -1008,6 +1009,156 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
           </div>
         </article>
 
+      </div>
+    </section>
+
+    <!-- ===============================================================
+         05 // IN-ENGINE TACTICAL GALLERY // REAL VIEWPORT CAPTURES
+         =============================================================== -->
+    <section id="showcase-gallery" class="px-4 sm:px-6 pb-28 max-w-7xl mx-auto">
+      <div class="hud-card hud-corner p-6 sm:p-10 lg:p-12">
+        <span class="corner-tr"></span><span class="corner-bl"></span>
+        <div class="specular-top-edge mb-8"></div>
+
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 pb-6 border-b border-cyan-500/20">
+          <div>
+            <div class="flex items-center gap-3 font-mono text-xs mb-3">
+              <span class="px-2.5 py-1 rounded-md bg-cyan-950 border border-cyan-500/40 text-tacticalCyan font-bold">
+                05 // IN-ENGINE VIEWPORT SHOWCASE
+              </span>
+              <span class="text-amber-400 font-mono">DIRECTX 12 SM5 // 1920&times;1080</span>
+            </div>
+            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-white tracking-tight uppercase">
+              AUTHENTIC IN-GAME <span class="text-tacticalCyan glow-cyan-text">OPERATIONAL CAPTURES</span>
+            </h2>
+          </div>
+          <p class="text-slate-400 text-xs sm:text-sm max-w-md font-mono leading-relaxed">
+            Real in-engine 1920&times;1080 frame grabs featuring pure Slate C++ AR Visor telemetry, live electrical sparks with glowing hot-white cores, the 3D Vanguard operator in hangar diorama, and high-intensity tactical arena combat.
+          </p>
+        </div>
+
+        <!-- 4-Card Tactical Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <!-- Card 1: Command Center & Slate Sparks -->
+          <div class="hud-card hud-corner rounded-xl overflow-hidden border border-cyan-500/30 bg-slate-950/80 group">
+            <div class="relative overflow-hidden cursor-pointer" onclick="openGalleryModal('assets/screenshots/menu_command_center.png', 'Command Center &amp; 3D Hangar Diorama', 'Tactical Command Center featuring semi-transparent acrylic glass blades (SBackgroundBlur), real-time SFPSSparkOverlayWidget electrical sparks with glowing diamond cores, and Vanguard Spec-Ops operator on a beveled turntable plinth holding the AK-47 assault rifle with wet floor reflections.', ['LOBBY HUD', 'SLATE SPARKS', '3D HANGAR DIORAMA'])">
+              <img
+                src="assets/screenshots/menu_command_center.png"
+                alt="Noble Fermi Command Center &amp; 3D Hangar Diorama with Live Sparks"
+                loading="lazy"
+                decoding="async"
+                class="w-full h-auto aspect-video object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity"></div>
+              <div class="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">
+                1920 &times; 1080 // CLICK TO EXPAND
+              </div>
+            </div>
+            <div class="p-5 sm:p-6 space-y-3">
+              <div class="flex flex-wrap items-center gap-2 text-[10px] font-mono">
+                <span class="px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-tacticalCyan font-bold">LOBBY HUD</span>
+                <span class="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-amber-400 font-bold">SLATE SPARKS</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 font-bold">3D HANGAR DIORAMA</span>
+              </div>
+              <h3 class="text-lg font-bold font-display text-white uppercase tracking-wide group-hover:text-tacticalCyan transition-colors">
+                01 // Command Center &amp; 3D Hangar Diorama
+              </h3>
+              <p class="text-xs text-slate-300 leading-relaxed font-sans">
+                Tactical Command Center featuring semi-transparent acrylic glass blades (<code class="text-cyan-300 font-mono">SBackgroundBlur</code>), real-time <code class="text-amber-300 font-mono">SFPSSparkOverlayWidget</code> electrical sparks with glowing diamond cores, and Vanguard Spec-Ops operator holding the AK-47 on a beveled turntable plinth.
+              </p>
+            </div>
+          </div>
+
+          <!-- Card 2: Rust Tactical Arena -->
+          <div class="hud-card hud-corner rounded-xl overflow-hidden border border-cyan-500/30 bg-slate-950/80 group">
+            <div class="relative overflow-hidden cursor-pointer" onclick="openGalleryModal('assets/screenshots/gameplay_rust_tactical.png', 'Rust Tactical // 3rd-Person OTS Combat &amp; Pure Slate AR Visor', 'Live in-engine match on Rust Tactical (60m x 60m). Over-the-shoulder perspective with 21-bone operator (SK_BaseMale), Level IV ceramic armor rig, and pure Slate C++ AR Visor HUD (36-segment circular radar minimap, compass tape, 4-plate armor vitals, live ECG waveform, 30-round bullet matrix, and enemy tactical bots in combat).', ['3RD-PERSON OTS', '128-HZ REPLICATION', 'AR VISOR HUD'])">
+              <img
+                src="assets/screenshots/gameplay_rust_tactical.png"
+                alt="Noble Fermi Rust Tactical 3rd-Person Over-the-Shoulder Gameplay"
+                loading="lazy"
+                decoding="async"
+                class="w-full h-auto aspect-video object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity"></div>
+              <div class="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">
+                1920 &times; 1080 // CLICK TO EXPAND
+              </div>
+            </div>
+            <div class="p-5 sm:p-6 space-y-3">
+              <div class="flex flex-wrap items-center gap-2 text-[10px] font-mono">
+                <span class="px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-tacticalCyan font-bold">3RD-PERSON OTS</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 font-bold">128-HZ REPLICATION</span>
+                <span class="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-amber-400 font-bold">AR VISOR HUD</span>
+              </div>
+              <h3 class="text-lg font-bold font-display text-white uppercase tracking-wide group-hover:text-tacticalCyan transition-colors">
+                02 // Rust Tactical // 60m &times; 60m Arena
+              </h3>
+              <p class="text-xs text-slate-300 leading-relaxed font-sans">
+                Over-the-shoulder perspective with 21-bone operator (<code class="text-cyan-300 font-mono">SK_BaseMale</code>), Level IV ceramic armor rig, and pure Slate C++ AR Visor HUD (36-segment circular radar minimap, compass tape, 4-plate armor vitals, live ECG waveform, 30-round bullet matrix, and active tactical bot firefights).
+              </p>
+            </div>
+          </div>
+
+          <!-- Card 3: Coastal Operations -->
+          <div class="hud-card hud-corner rounded-xl overflow-hidden border border-cyan-500/30 bg-slate-950/80 group">
+            <div class="relative overflow-hidden cursor-pointer" onclick="openGalleryModal('assets/screenshots/gameplay_coastal_operations.png', 'Coastal Operations // North Sea Littoral Arena', 'High-stakes littoral engagement along the North Sea dike and pier. Shows seawall concrete revetments, bunker entry, pulsing navigation hazard beacons, and hostile bot fireteams moving into tactical formation.', ['NORTH SEA DIKE', 'MARITIME HAZARD', 'BOT FIRETEAMS'])">
+              <img
+                src="assets/screenshots/gameplay_coastal_operations.png"
+                alt="Noble Fermi Coastal Operations Littoral Arena Gameplay"
+                loading="lazy"
+                decoding="async"
+                class="w-full h-auto aspect-video object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity"></div>
+              <div class="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">
+                1920 &times; 1080 // CLICK TO EXPAND
+              </div>
+            </div>
+            <div class="p-5 sm:p-6 space-y-3">
+              <div class="flex flex-wrap items-center gap-2 text-[10px] font-mono">
+                <span class="px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-tacticalCyan font-bold">NORTH SEA DIKE</span>
+                <span class="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-amber-400 font-bold">MARITIME HAZARD</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 font-bold">BOT FIRETEAMS</span>
+              </div>
+              <h3 class="text-lg font-bold font-display text-white uppercase tracking-wide group-hover:text-tacticalCyan transition-colors">
+                03 // Coastal Operations // Pier &amp; Dike
+              </h3>
+              <p class="text-xs text-slate-300 leading-relaxed font-sans">
+                High-stakes littoral combat along the North Sea dike and pier. Features seawall concrete revetments, bunker entry, pulsing maritime hazard beacons, and hostile bot fireteams moving into tactical formation.
+              </p>
+            </div>
+          </div>
+
+          <!-- Card 4: Operator Customization & 3D Rig Inspector -->
+          <div class="hud-card hud-corner rounded-xl overflow-hidden border border-cyan-500/30 bg-slate-950/80 group">
+            <div class="relative overflow-hidden cursor-pointer" onclick="openGalleryModal('assets/screenshots/operator_customization_armory.png', 'Operator Customization &amp; 3D Rig Inspector', 'Tactical Armory &amp; Customization subview featuring the 360° turntable inspection mode, 4 authentic military camouflage patterns (Task Force Echo Slate, Woodland Tactical, Desert Spec-Ops, Stealth Blackout), dual-currency Gold/Opals economy, and animation stance selectors.', ['7-ZONE RIG', '360° TURNTABLE', 'DUAL-CURRENCY'])">
+              <img
+                src="assets/screenshots/operator_customization_armory.png"
+                alt="Noble Fermi Operator Customization &amp; 3D Rig Inspector"
+                loading="lazy"
+                decoding="async"
+                class="w-full h-auto aspect-video object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity"></div>
+              <div class="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">
+                1920 &times; 1080 // CLICK TO EXPAND
+              </div>
+            </div>
+            <div class="p-5 sm:p-6 space-y-3">
+              <div class="flex flex-wrap items-center gap-2 text-[10px] font-mono">
+                <span class="px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-tacticalCyan font-bold">7-ZONE RIG</span>
+                <span class="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-amber-400 font-bold">360&deg; TURNTABLE</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 font-bold">DUAL-CURRENCY</span>
+              </div>
+              <h3 class="text-lg font-bold font-display text-white uppercase tracking-wide group-hover:text-tacticalCyan transition-colors">
+                04 // Operator Customization &amp; 3D Rig
+              </h3>
+              <p class="text-xs text-slate-300 leading-relaxed font-sans">
+                Tactical Armory &amp; Customization subview featuring the 360&deg; turntable inspection mode, 4 military camouflage patterns (Task Force Echo Slate, Woodland Tactical, Desert Spec-Ops, Stealth Blackout), dual-currency Gold/Opals economy, and animation stance selectors.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -1791,5 +1942,96 @@ Packaged\Windows\NobleFermi.exe ?game=/Script/NobleFermi.FPSMultiplayerGameMode 
 
     </div>
   </div>
+
+  <!-- =====================================================================
+       GALLERY LIGHTBOX MODAL
+       ===================================================================== -->
+  <div
+    id="gallery-modal-backdrop"
+    class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-6"
+    onclick="handleGalleryBackdropClick(event)"
+  >
+    <div
+      class="relative w-full max-w-5xl bg-[#050B16] border border-cyan-500/40 rounded-2xl shadow-[0_0_50px_rgba(0,229,255,0.25)] overflow-hidden"
+    >
+      <div class="flex items-center justify-between px-6 py-4 border-b border-cyan-500/20 bg-slate-950/80 font-mono text-xs">
+        <div class="flex items-center space-x-3">
+          <div class="w-2.5 h-2.5 bg-tacticalCyan rotate-45 shadow-[0_0_8px_#00E5FF]"></div>
+          <span id="gallery-modal-title" class="text-white font-bold tracking-wider uppercase">MODAL TITLE</span>
+        </div>
+        <button
+          type="button"
+          onclick="closeGalleryModal()"
+          class="text-slate-400 hover:text-white px-2 py-1 rounded border border-slate-700 hover:border-cyan-500 transition-colors"
+        >
+          [ESC / CLOSE &times;]
+        </button>
+      </div>
+
+      <div class="p-4 sm:p-6 bg-black flex justify-center items-center max-h-[75vh] overflow-hidden">
+        <img
+          id="gallery-modal-img"
+          src=""
+          alt=""
+          class="w-auto h-auto max-h-[70vh] max-w-full object-contain rounded-lg border border-slate-800 shadow-2xl"
+        />
+      </div>
+
+      <div class="px-6 py-4 bg-slate-950/90 border-t border-cyan-500/20 font-mono text-xs space-y-2">
+        <div id="gallery-modal-badges" class="flex flex-wrap gap-2 text-[10px]"></div>
+        <p id="gallery-modal-desc" class="text-slate-300 text-xs font-sans leading-relaxed"></p>
+        <div class="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-800/80">
+          <span>UNREAL ENGINE 5.8 // DIRECTX 12 SM5 // 1920&times;1080</span>
+          <a id="gallery-modal-link" href="" target="_blank" class="text-tacticalCyan hover:underline">OPEN RAW 1080P IMAGE &UpperRightArrow;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openGalleryModal(src, title, desc, badges) {
+      const modal = document.getElementById('gallery-modal-backdrop');
+      if (!modal) return;
+      document.getElementById('gallery-modal-img').src = src;
+      document.getElementById('gallery-modal-title').innerHTML = title;
+      document.getElementById('gallery-modal-desc').innerHTML = desc;
+      document.getElementById('gallery-modal-link').href = src;
+
+      const badgeContainer = document.getElementById('gallery-modal-badges');
+      badgeContainer.innerHTML = '';
+      if (Array.isArray(badges)) {
+        badges.forEach(b => {
+          const span = document.createElement('span');
+          span.className = 'px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-tacticalCyan font-bold';
+          span.textContent = b;
+          badgeContainer.appendChild(span);
+        });
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeGalleryModal() {
+      const modal = document.getElementById('gallery-modal-backdrop');
+      if (modal) {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+      }
+    }
+
+    function handleGalleryBackdropClick(e) {
+      if (e.target.id === 'gallery-modal-backdrop') {
+        closeGalleryModal();
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeGalleryModal();
+      }
+    });
+  </script>
+
 </body>
 </html>
