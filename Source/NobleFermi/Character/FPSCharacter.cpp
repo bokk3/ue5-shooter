@@ -768,9 +768,7 @@ void AFPSCharacter::Tick(float DeltaTime)
 			if (AFPSWeaponBase* Weapon = InventoryComponent->GetActiveWeapon())
 			{
 				Weapon->SetActorHiddenInGame(false);
-				const FTransform HandWorldTrans = MeshComp->GetSocketTransform(FName(TEXT("hand_r")), RTS_World);
 				Weapon->SetActorScale3D(FVector(1.0f, 1.0f, 1.0f));
-				Weapon->SetActorLocationAndRotation(HandWorldTrans.GetLocation(), GetControlRotation());
 			}
 		}
 

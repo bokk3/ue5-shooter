@@ -3005,7 +3005,7 @@ TSharedRef<SWidget> UMainMenuWidget::RebuildWidget()
 			.AutoWidth()
 			[
 				SNew(SBox)
-				.WidthOverride(410.0f)
+				.WidthOverride(448.0f)
 				[
 					SNew(SFPSChamferedHudFrameWidget)
 					.Padding(FMargin(18.0f, 16.0f))
@@ -3077,13 +3077,13 @@ TSharedRef<SWidget> UMainMenuWidget::RebuildWidget()
 			.FillHeight(1.0f)
 			[
 				SNew(SHorizontalBox)
-				// LEFT CHAMFERED HUD NAVIGATION PANEL (295px wide — matches Docs/Menu_Mockup_Reference.jpg)
+				// LEFT CHAMFERED HUD NAVIGATION PANEL (334px wide — prevents all text truncation)
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				.Padding(0.0f, 0.0f, 18.0f, 0.0f)
 				[
 					SNew(SBox)
-					.WidthOverride(295.0f)
+					.WidthOverride(334.0f)
 					[
 						SNew(SFPSChamferedHudFrameWidget)
 						.Padding(FMargin(6.0f, 14.0f))

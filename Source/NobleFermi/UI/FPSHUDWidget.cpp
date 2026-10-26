@@ -617,6 +617,10 @@ public:
 		DrawLine(VitX - 12.0f * HUDScale + BarSkew, VitY - 8.0f * HUDScale, VitX + 28.0f * HUDScale + BarSkew, VitY - 8.0f * HUDScale, 1.8f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
 		DrawLine(VitX - 12.0f * HUDScale, VitY + 86.0f * HUDScale, VitX + 20.0f * HUDScale, VitY + 86.0f * HUDScale, 1.8f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
 
+		// 3.0 High-Contrast Tactical Backing Panel for Vitals
+		DrawSkewedRect(VitX - 8.0f * HUDScale, VitY - 8.0f * HUDScale, 292.0f * HUDScale, 78.0f * HUDScale, 6.0f * HUDScale,
+			FLinearColor(0.01f, 0.03f, 0.06f, 0.78f), FLinearColor(0.02f, 0.04f, 0.08f, 0.65f), 0);
+
 		// 3.1 Segmented 4-Plate Level IV Ceramic Armor Row
 		const float ShieldPct = OwningHUD->MaxShield > 0.0f ? FMath::Clamp(OwningHUD->CurrentShield / OwningHUD->MaxShield, 0.0f, 1.0f) : 0.0f;
 		const float ShieldGhostPct = OwningHUD->MaxShield > 0.0f ? FMath::Clamp(OwningHUD->DisplayedShieldGhost / OwningHUD->MaxShield, 0.0f, 1.0f) : 0.0f;
@@ -992,17 +996,19 @@ public:
 		const float CX = ScreenW * 0.5f;
 		const float CY = ScreenH * 0.5f;
 
-		// 5.1 Dynamic Multi-Layer Contrast Reticle (Fades smoothly during ADS)
-		const float CrosshairAlpha = FMath::Clamp(1.0f - OwningHUD->ADSAlpha * 1.25f, 0.0f, 1.0f);
-		if (CrosshairAlpha > 0.02f && !OwningHUD->bIsReloading)
+		// 5.1 Dynamic Multi-Layer Precision Reticle (Persists with Precision Holographic ADS Center-Dot)
+		const float CrosshairAlpha = 1.0f; // 100% visible in third-person OTS to guarantee instant target acquisition
+		if (!OwningHUD->bIsReloading)
 		{
-			const float Gap = FMath::Clamp(OwningHUD->CurrentSpreadRadius * HUDScale, 8.0f * HUDScale, 50.0f * HUDScale);
-			const float Len = 9.0f * HUDScale;
-			const float TBracket = 3.0f * HUDScale;
+			const float HipGap = FMath::Clamp(OwningHUD->CurrentSpreadRadius * HUDScale, 8.0f * HUDScale, 50.0f * HUDScale);
+			const float AdsGap = 4.5f * HUDScale;
+			const float Gap = FMath::Lerp(HipGap, AdsGap, OwningHUD->ADSAlpha);
+			const float Len = FMath::Lerp(9.0f * HUDScale, 5.0f * HUDScale, OwningHUD->ADSAlpha);
+			const float TBracket = FMath::Lerp(3.0f * HUDScale, 1.8f * HUDScale, OwningHUD->ADSAlpha);
 
-			const FLinearColor DarkOutline(0.0f, 0.02f, 0.04f, 0.52f * CrosshairAlpha);
-			const FLinearColor BrightCore(0.92f, 0.99f, 1.0f, 0.92f * CrosshairAlpha);
-			const FLinearColor TealTip(0.0f, 0.94f, 0.86f, 0.88f * CrosshairAlpha);
+			const FLinearColor DarkOutline(0.0f, 0.02f, 0.04f, 0.75f);
+			const FLinearColor BrightCore = FMath::Lerp(FLinearColor(0.92f, 0.99f, 1.0f, 0.92f), FLinearColor(0.0f, 0.95f, 1.0f, 1.0f), OwningHUD->ADSAlpha);
+			const FLinearColor TealTip(0.0f, 0.94f, 0.86f, 0.95f);
 
 			// Dark Contrast Backing Lines
 			DrawLine(CX, CY - Gap - Len - 1.0f, CX, CY - Gap + 1.0f, 3.5f * HUDScale, DarkOutline, 2);
@@ -1022,8 +1028,15 @@ public:
 			DrawLine(CX - Gap, CY - TBracket, CX - Gap, CY + TBracket, 1.4f * HUDScale, TealTip, 3);
 			DrawLine(CX + Gap, CY - TBracket, CX + Gap, CY + TBracket, 1.4f * HUDScale, TealTip, 3);
 
-			// Precision Center Micro-Dot
-			DrawDiamond(CX, CY, 1.8f * HUDScale, 1.0f * HUDScale, TealTip, true, 3);
+			// Precision Center Holographic Micro-Dot (Sharp 2.2px cyan dot in ADS)
+			const float DotSize = FMath::Lerp(1.8f * HUDScale, 2.4f * HUDScale, OwningHUD->ADSAlpha);
+			DrawDiamond(CX, CY, DotSize, DotSize * 0.55f, TealTip, true, 3);
+
+			// ADS Precision Aim Ring
+			if (OwningHUD->ADSAlpha > 0.05f)
+			{
+				DrawArc(CX, CY, 14.0f * HUDScale, 0.0f, 360.0f, 1.2f * HUDScale, FLinearColor(0.0f, 0.94f, 0.86f, 0.40f * OwningHUD->ADSAlpha), 32, 2);
+			}
 		}
 
 		// 5.2 Center Radial 4-Phase Reload Progress Ring
@@ -1213,7 +1226,7 @@ public:
 		// 5.6 Center-Screen Directional Hit & Visual Audio Semicircle + Chevron Radar (Deaf Accessibility)
 		if (OwningHUD->bEnableVisualAudioRadar)
 		{
-			const float ThreatRadius = 165.0f * HUDScale;
+			const float ThreatRadius = 78.0f * HUDScale;
 
 			for (const FFPSThreatIndicator& Ind : OwningHUD->ActiveThreatIndicators)
 		{

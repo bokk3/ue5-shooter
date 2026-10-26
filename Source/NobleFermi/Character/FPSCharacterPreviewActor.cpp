@@ -28,8 +28,8 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	// 2. Camera: Calibrated to frame the full Task Force Echo Operator & Hangar stage
 	PreviewCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("PreviewCamera"));
 	PreviewCamera->SetupAttachment(RootComponent);
-	PreviewCamera->SetRelativeLocation(FVector(400.0f, 0.0f, 90.0f));
-	PreviewCamera->SetRelativeRotation(FRotator(-1.5f, 180.0f, 0.0f));
+	PreviewCamera->SetRelativeLocation(FVector(400.0f, 0.0f, 78.0f));
+	PreviewCamera->SetRelativeRotation(FRotator(0.0f, 180.0f, 0.0f));
 	PreviewCamera->FieldOfView = 50.0f;
 	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMethod = true;
 	PreviewCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
