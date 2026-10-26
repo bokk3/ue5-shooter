@@ -489,7 +489,7 @@ void AFPSCharacterPreviewActor::ApplyCamoColors()
 		if (BodyMID)
 		{
 			// Clean tactical tints for Vanguard Spec-Ops Soldier
-			FLinearColor CamoTint = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f); // UrbanDigital (Task Force Echo Slate / Default)
+			FLinearColor CamoTint = FLinearColor(0.28f, 0.32f, 0.38f, 1.0f); // UrbanDigital (Task Force Echo Dark Slate / Default)
 			if (CurrentCamo == EOperatorCamo::WoodlandTactical)
 			{
 				CamoTint = FLinearColor(0.85f, 1.05f, 0.85f, 1.0f); // Tactical Woodland Olive

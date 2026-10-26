@@ -1432,12 +1432,12 @@ void AFPSMenuHangarStage::Tick(float DeltaTime)
 	if (WarmWindowKeySpotLight)
 	{
 		const float FirePulse = 1.0f + 0.06f * FMath::Sin(StageAnimTime * 4.2f) + 0.03f * FMath::Cos(StageAnimTime * 9.7f);
-		WarmWindowKeySpotLight->SetIntensity(48000.0f * FirePulse);
+		WarmWindowKeySpotLight->SetIntensity(4500.0f * FirePulse);
 	}
 
 	if (CyanConsoleBounceLight)
 	{
 		const float CyberPulse = 1.0f + 0.05f * FMath::Sin(StageAnimTime * 2.8f);
-		CyanConsoleBounceLight->SetIntensity(11000.0f * CyberPulse);
+		CyanConsoleBounceLight->SetIntensity(2200.0f * CyberPulse);
 	}
 }

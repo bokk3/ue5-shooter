@@ -23,6 +23,7 @@ AFPSMenuGameMode::AFPSMenuGameMode()
 void AFPSMenuGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+	UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("DisableAllScreenMessages"));
 	// Enforce baseline iGPU optimization on fresh startup if no user config exists yet
 	if (GConfig && GetWorld())
 	{
@@ -95,6 +96,8 @@ void AFPSMenuGameMode::BeginPlay()
 	// Auto screenshot verification if -TakeMenuShot is passed on command line
 	if (FParse::Param(FCommandLine::Get(), TEXT("TakeMenuShot")))
 	{
+		float MenuShotDelay = GIsEditor ? 7.0f : 130.0f;
+		FParse::Value(FCommandLine::Get(), TEXT("MenuShotDelay="), MenuShotDelay);
 		FTimerHandle ScreenshotTimerHandle;
 		GetWorldTimerManager().SetTimer(ScreenshotTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
 		{
@@ -158,6 +161,6 @@ void AFPSMenuGameMode::BeginPlay()
 				UE_LOG(LogTemp, Warning, TEXT("[SCREENSHOT] Safety timeout reached, requesting exit..."));
 				FGenericPlatformMisc::RequestExit(false);
 			}), 6.0f, false);
-		}), 7.0f, false);
+		}), MenuShotDelay, false);
 	}
 }
