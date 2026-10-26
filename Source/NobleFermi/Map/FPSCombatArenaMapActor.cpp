@@ -1,4 +1,5 @@
 #include "Map/FPSCombatArenaMapActor.h"
+#include "Map/FPSCoastalMaterialLibrary.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Components/SkyAtmosphereComponent.h"
@@ -19,13 +20,13 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	RootComponent = SceneRoot;
 
-	// 1. Cinematic Golden-Hour Atmospheric Lighting (Movable / Pure Dynamic Lumen)
+	// 1. Cinematic Golden-Hour Rio Hillside Favela Lighting
 	SunLight = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("SunLight"));
 	SunLight->SetupAttachment(RootComponent);
 	SunLight->SetMobility(EComponentMobility::Movable);
-	SunLight->SetRelativeRotation(FRotator(-38.0f, 45.0f, 0.0f));
-	SunLight->SetIntensity(10.0f); // Calibrated tactical sun lux for locked exposure
-	SunLight->SetLightColor(FLinearColor(1.0f, 0.94f, 0.84f)); // Warm tactical desert sun
+	SunLight->SetRelativeRotation(FRotator(-32.0f, 42.0f, 0.0f));
+	SunLight->SetIntensity(12.0f);
+	SunLight->SetLightColor(FLinearColor(1.0f, 0.92f, 0.80f)); // Warm golden-hour tropical sun
 	SunLight->bAtmosphereSunLight = true;
 	SunLight->bCastVolumetricShadow = false;
 	SunLight->CastShadows = 1;
@@ -33,43 +34,43 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 	SkyLight = CreateDefaultSubobject<USkyLightComponent>(TEXT("SkyLight"));
 	SkyLight->SetupAttachment(RootComponent);
 	SkyLight->SetMobility(EComponentMobility::Movable);
-	SkyLight->SetIntensity(1.5f);
-	SkyLight->SetLightColor(FLinearColor(0.85f, 0.92f, 1.0f));
-	SkyLight->bRealTimeCapture = false;
+	SkyLight->SetIntensity(3.6f);
+	SkyLight->SetLightColor(FLinearColor(0.82f, 0.90f, 1.0f));
+	SkyLight->bRealTimeCapture = true;
 
 	SkyAtmosphere = CreateDefaultSubobject<USkyAtmosphereComponent>(TEXT("SkyAtmosphere"));
 	SkyAtmosphere->SetupAttachment(RootComponent);
 
 	HeightFog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("HeightFog"));
 	HeightFog->SetupAttachment(RootComponent);
-	HeightFog->SetFogDensity(0.0015f);
-	HeightFog->SetFogInscatteringColor(FLinearColor(0.85f, 0.75f, 0.55f)); // Warm dust haze
+	HeightFog->SetFogDensity(0.0010f);
+	HeightFog->SetFogInscatteringColor(FLinearColor(0.88f, 0.76f, 0.58f)); // Warm tropical golden haze
 
 	TowerBeaconLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("TowerBeaconLight"));
 	TowerBeaconLight->SetupAttachment(RootComponent);
 	TowerBeaconLight->SetMobility(EComponentMobility::Movable);
 	TowerBeaconLight->SetRelativeLocation(FVector(0.0f, 0.0f, 780.0f));
 	TowerBeaconLight->SetIntensity(30.0f);
-	TowerBeaconLight->SetLightColor(FLinearColor(1.0f, 0.1f, 0.05f)); // Red hazard beacon
-	TowerBeaconLight->SetAttenuationRadius(1500.0f);
+	TowerBeaconLight->SetLightColor(FLinearColor(1.0f, 0.58f, 0.18f)); // Warm tungsten favela rooftop bulb
+	TowerBeaconLight->SetAttenuationRadius(1600.0f);
 	TowerBeaconLight->SetCastShadows(false);
 
-	// Post Process: Lock Exposure to prevent white screen / eye adaptation blowout
+	// Post Process: Balanced Exposure to bring out rich favela colors & textures
 	PostProcess = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcess"));
 	PostProcess->SetupAttachment(RootComponent);
 	PostProcess->bUnbound = true;
 	PostProcess->Settings.bOverride_AutoExposureMethod = true;
-	PostProcess->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+	PostProcess->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Basic;
 	PostProcess->Settings.bOverride_AutoExposureBias = true;
-	PostProcess->Settings.AutoExposureBias = 0.0f;
+	PostProcess->Settings.AutoExposureBias = 0.5f;
 	PostProcess->Settings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
 	PostProcess->Settings.AutoExposureApplyPhysicalCameraExposure = 0;
 	PostProcess->Settings.bOverride_AutoExposureMinBrightness = true;
-	PostProcess->Settings.AutoExposureMinBrightness = 1.0f;
+	PostProcess->Settings.AutoExposureMinBrightness = 0.35f;
 	PostProcess->Settings.bOverride_AutoExposureMaxBrightness = true;
-	PostProcess->Settings.AutoExposureMaxBrightness = 1.0f;
+	PostProcess->Settings.AutoExposureMaxBrightness = 3.0f;
 	PostProcess->Settings.bOverride_BloomIntensity = true;
-	PostProcess->Settings.BloomIntensity = 0.1f;
+	PostProcess->Settings.BloomIntensity = 0.15f;
 
 	// 2. Load Base Meshes & Materials
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
@@ -80,7 +81,7 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object : nullptr;
 	UMaterialInterface* BaseMat = BaseMatFinder.Succeeded() ? BaseMatFinder.Object : nullptr;
 
-	// 3. Ground Plane (60m x 60m = 6000 x 6000 units, 100 units thick)
+	// 3. Cobblestone Ground Plane (60m x 60m = 6000 x 6000 units, 100 units thick)
 	GroundFloorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GroundFloorMesh"));
 	GroundFloorMesh->SetupAttachment(RootComponent);
 	GroundFloorMesh->SetMobility(EComponentMobility::Movable);
@@ -91,7 +92,7 @@ AFPSCombatArenaMapActor::AFPSCombatArenaMapActor()
 	GroundFloorMesh->SetCollisionProfileName(TEXT("BlockAll"));
 	GroundFloorMesh->SetCastShadow(true);
 
-	// 4. Construct Sub-Zones
+	// 4. Construct Favela Sub-Zones
 	ConstructPerimeter(CubeMesh, BaseMat);
 	ConstructCentralDerrick(CubeMesh, CylinderMesh, BaseMat);
 	ConstructContainerYard(CubeMesh, BaseMat);
@@ -116,11 +117,11 @@ void AFPSCombatArenaMapActor::ConstructPerimeter(UStaticMesh* CubeMesh, UMateria
 		PerimeterWalls.Add(Wall);
 	};
 
-	// 4 Blast Walls (60m perimeter, 6m high, 1m thick)
-	AddWall(TEXT("Wall_North"), FVector(3000.0f, 0.0f, 250.0f), FVector(1.0f, 60.0f, 6.0f));
-	AddWall(TEXT("Wall_South"), FVector(-3000.0f, 0.0f, 250.0f), FVector(1.0f, 60.0f, 6.0f));
-	AddWall(TEXT("Wall_East"), FVector(0.0f, 3000.0f, 250.0f), FVector(60.0f, 1.0f, 6.0f));
-	AddWall(TEXT("Wall_West"), FVector(0.0f, -3000.0f, 250.0f), FVector(60.0f, 1.0f, 6.0f));
+	// 4 Hillside Retaining Masonry Walls (60m perimeter, 3.2m high so hillside shanties rise above them!)
+	AddWall(TEXT("Wall_North"), FVector(3000.0f, 0.0f, 160.0f), FVector(1.0f, 60.0f, 3.2f));
+	AddWall(TEXT("Wall_South"), FVector(-3000.0f, 0.0f, 160.0f), FVector(1.0f, 60.0f, 3.2f));
+	AddWall(TEXT("Wall_East"), FVector(0.0f, 3000.0f, 160.0f), FVector(60.0f, 1.0f, 3.2f));
+	AddWall(TEXT("Wall_West"), FVector(0.0f, -3000.0f, 160.0f), FVector(60.0f, 1.0f, 3.2f));
 }
 
 void AFPSCombatArenaMapActor::ConstructCentralDerrick(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* BaseMat)
@@ -140,33 +141,33 @@ void AFPSCombatArenaMapActor::ConstructCentralDerrick(UStaticMesh* CubeMesh, USt
 		DerrickComponents.Add(Comp);
 	};
 
-	// Derrick Base Platform (12m x 12m x 0.5m)
-	AddPart(TEXT("Derrick_Base"), CubeMesh, FVector(0.0f, 0.0f, 25.0f), FRotator::ZeroRotator, FVector(12.0f, 12.0f, 0.5f));
+	// Central Favela Laje Watchtower Foundation Plinth (11m x 11m x 0.45m)
+	AddPart(TEXT("Derrick_Base"), CubeMesh, FVector(0.0f, 0.0f, 22.0f), FRotator::ZeroRotator, FVector(11.0f, 11.0f, 0.45f));
 
-	// Center Drill Shaft Cylinder
-	AddPart(TEXT("Derrick_Core"), CylinderMesh, FVector(0.0f, 0.0f, 380.0f), FRotator::ZeroRotator, FVector(1.5f, 1.5f, 7.5f));
+	// Central Brick Masonry Core House (2.6m x 2.6m x 7.2m)
+	AddPart(TEXT("Derrick_Core"), CubeMesh, FVector(0.0f, 0.0f, 365.0f), FRotator::ZeroRotator, FVector(2.6f, 2.6f, 7.2f));
 
-	// 4 Corner Steel Pylons
-	AddPart(TEXT("Derrick_Pylon_NW"), CubeMesh, FVector(400.0f, -400.0f, 360.0f), FRotator(0.0f, 0.0f, 8.0f), FVector(0.8f, 0.8f, 7.2f));
-	AddPart(TEXT("Derrick_Pylon_NE"), CubeMesh, FVector(400.0f, 400.0f, 360.0f), FRotator(0.0f, 0.0f, -8.0f), FVector(0.8f, 0.8f, 7.2f));
-	AddPart(TEXT("Derrick_Pylon_SW"), CubeMesh, FVector(-400.0f, -400.0f, 360.0f), FRotator(0.0f, 0.0f, 8.0f), FVector(0.8f, 0.8f, 7.2f));
-	AddPart(TEXT("Derrick_Pylon_SE"), CubeMesh, FVector(-400.0f, 400.0f, 360.0f), FRotator(0.0f, 0.0f, -8.0f), FVector(0.8f, 0.8f, 7.2f));
+	// 4 Reinforced Concrete Structural Corner Pillars (vertical 0 deg)
+	AddPart(TEXT("Derrick_Pylon_NW"), CubeMesh, FVector(380.0f, -380.0f, 365.0f), FRotator::ZeroRotator, FVector(0.55f, 0.55f, 7.3f));
+	AddPart(TEXT("Derrick_Pylon_NE"), CubeMesh, FVector(380.0f, 380.0f, 365.0f), FRotator::ZeroRotator, FVector(0.55f, 0.55f, 7.3f));
+	AddPart(TEXT("Derrick_Pylon_SW"), CubeMesh, FVector(-380.0f, -380.0f, 365.0f), FRotator::ZeroRotator, FVector(0.55f, 0.55f, 7.3f));
+	AddPart(TEXT("Derrick_Pylon_SE"), CubeMesh, FVector(-380.0f, 380.0f, 365.0f), FRotator::ZeroRotator, FVector(0.55f, 0.55f, 7.3f));
 
-	// Mid-Level Catwalk (Z = 350)
-	AddPart(TEXT("Derrick_Catwalk"), CubeMesh, FVector(0.0f, 0.0f, 350.0f), FRotator::ZeroRotator, FVector(9.0f, 9.0f, 0.2f));
+	// Second-Story Concrete Laje Terrace (Z = 350)
+	AddPart(TEXT("Derrick_Catwalk"), CubeMesh, FVector(0.0f, 0.0f, 350.0f), FRotator::ZeroRotator, FVector(8.6f, 8.6f, 0.22f));
 
-	// Catwalk Railings
-	AddPart(TEXT("Derrick_Rail_N"), CubeMesh, FVector(450.0f, 0.0f, 385.0f), FRotator::ZeroRotator, FVector(0.2f, 9.0f, 0.7f));
-	AddPart(TEXT("Derrick_Rail_S"), CubeMesh, FVector(-450.0f, 0.0f, 385.0f), FRotator::ZeroRotator, FVector(0.2f, 9.0f, 0.7f));
+	// Brick Laje Parapet Walls
+	AddPart(TEXT("Derrick_Rail_N"), CubeMesh, FVector(420.0f, 0.0f, 390.0f), FRotator::ZeroRotator, FVector(0.24f, 8.6f, 0.8f));
+	AddPart(TEXT("Derrick_Rail_S"), CubeMesh, FVector(-420.0f, 0.0f, 390.0f), FRotator::ZeroRotator, FVector(0.24f, 8.6f, 0.8f));
 
-	// Access Ramps (West & East): Scale.X is length along slope (8.2m), Scale.Y is ramp width (2.2m)
+	// Concrete Access Ramps (West & East)
 	AddPart(TEXT("Derrick_Ramp_West"), CubeMesh, FVector(0.0f, -800.0f, 175.0f), FRotator(25.5f, 90.0f, 0.0f), FVector(8.2f, 2.2f, 0.25f));
 	AddPart(TEXT("Derrick_Ramp_East"), CubeMesh, FVector(0.0f, 800.0f, 175.0f), FRotator(-25.5f, 90.0f, 0.0f), FVector(8.2f, 2.2f, 0.25f));
 
-	// Top Sniper Platform (Z = 720)
-	AddPart(TEXT("Derrick_Top_Platform"), CubeMesh, FVector(0.0f, 0.0f, 720.0f), FRotator::ZeroRotator, FVector(4.0f, 4.0f, 0.2f));
-	AddPart(TEXT("Derrick_Top_Rail_N"), CubeMesh, FVector(200.0f, 0.0f, 755.0f), FRotator::ZeroRotator, FVector(0.2f, 4.0f, 0.7f));
-	AddPart(TEXT("Derrick_Top_Rail_S"), CubeMesh, FVector(-200.0f, 0.0f, 755.0f), FRotator::ZeroRotator, FVector(0.2f, 4.0f, 0.7f));
+	// Top Laje Sniper Roof Slab (Z = 720)
+	AddPart(TEXT("Derrick_Top_Platform"), CubeMesh, FVector(0.0f, 0.0f, 720.0f), FRotator::ZeroRotator, FVector(4.2f, 4.2f, 0.22f));
+	AddPart(TEXT("Derrick_Top_Rail_N"), CubeMesh, FVector(200.0f, 0.0f, 755.0f), FRotator::ZeroRotator, FVector(0.22f, 4.2f, 0.7f));
+	AddPart(TEXT("Derrick_Top_Rail_S"), CubeMesh, FVector(-200.0f, 0.0f, 755.0f), FRotator::ZeroRotator, FVector(0.22f, 4.2f, 0.7f));
 }
 
 void AFPSCombatArenaMapActor::ConstructContainerYard(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat)
@@ -186,15 +187,15 @@ void AFPSCombatArenaMapActor::ConstructContainerYard(UStaticMesh* CubeMesh, UMat
 		ContainerComponents.Add(Comp);
 	};
 
-	// Standard Shipping Container Dimensions: 6.0m x 2.4m x 2.6m
-	AddContainer(TEXT("Container_Blue"), FVector(-1400.0f, -1400.0f, 130.0f), FRotator(0.0f, 15.0f, 0.0f), FVector(6.0f, 2.4f, 2.6f));
-	AddContainer(TEXT("Container_Red"), FVector(0.0f, -1800.0f, 130.0f), FRotator(0.0f, 0.0f, 0.0f), FVector(6.0f, 2.4f, 2.6f));
-	AddContainer(TEXT("Container_Olive"), FVector(1400.0f, -1400.0f, 130.0f), FRotator(0.0f, -20.0f, 0.0f), FVector(6.0f, 2.4f, 2.6f));
+	// West Beco Favela Shanty Blocks & Shoot-Through Alley Passage
+	AddContainer(TEXT("Container_Blue"), FVector(-1400.0f, -1400.0f, 135.0f), FRotator(0.0f, 12.0f, 0.0f), FVector(5.4f, 2.8f, 2.7f));
+	AddContainer(TEXT("Container_Red"), FVector(0.0f, -1800.0f, 135.0f), FRotator(0.0f, 0.0f, 0.0f), FVector(5.6f, 2.8f, 2.7f));
+	AddContainer(TEXT("Container_Olive"), FVector(1400.0f, -1400.0f, 135.0f), FRotator(0.0f, -14.0f, 0.0f), FVector(5.4f, 2.8f, 2.7f));
 
-	// Shoot-Through Tunnel Container (Left Wall, Right Wall, Roof)
-	AddContainer(TEXT("Container_Tunnel_WallL"), FVector(-200.0f, -1080.0f, 130.0f), FRotator::ZeroRotator, FVector(6.0f, 0.2f, 2.6f));
-	AddContainer(TEXT("Container_Tunnel_WallR"), FVector(-200.0f, -1320.0f, 130.0f), FRotator::ZeroRotator, FVector(6.0f, 0.2f, 2.6f));
-	AddContainer(TEXT("Container_Tunnel_Roof"), FVector(-200.0f, -1200.0f, 260.0f), FRotator::ZeroRotator, FVector(6.0f, 2.4f, 0.2f));
+	// Shoot-Through Beco Covered Alleyway (Left Wall, Right Wall, Concrete Laje Roof)
+	AddContainer(TEXT("Container_Tunnel_WallL"), FVector(-200.0f, -1080.0f, 130.0f), FRotator::ZeroRotator, FVector(6.0f, 0.24f, 2.6f));
+	AddContainer(TEXT("Container_Tunnel_WallR"), FVector(-200.0f, -1320.0f, 130.0f), FRotator::ZeroRotator, FVector(6.0f, 0.24f, 2.6f));
+	AddContainer(TEXT("Container_Tunnel_Roof"), FVector(-200.0f, -1200.0f, 262.0f), FRotator::ZeroRotator, FVector(6.2f, 2.6f, 0.22f));
 }
 
 void AFPSCombatArenaMapActor::ConstructPipelineAndBunker(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* BaseMat)
@@ -214,20 +215,20 @@ void AFPSCombatArenaMapActor::ConstructPipelineAndBunker(UStaticMesh* CubeMesh, 
 		PipelineComponents.Add(Comp);
 	};
 
-	// Heavy Oil Pipeline along East Flank (Y = 1800, Pitch = 90 aligns 12m cylinders along X axis)
-	AddPipe(TEXT("Pipe_Seg_1"), CylinderMesh, FVector(-1200.0f, 1800.0f, 110.0f), FRotator(90.0f, 0.0f, 0.0f), FVector(1.1f, 1.1f, 12.0f));
-	AddPipe(TEXT("Pipe_Seg_2"), CylinderMesh, FVector(0.0f, 1800.0f, 110.0f), FRotator(90.0f, 0.0f, 0.0f), FVector(1.1f, 1.1f, 12.0f));
-	AddPipe(TEXT("Pipe_Seg_3"), CylinderMesh, FVector(1200.0f, 1800.0f, 110.0f), FRotator(90.0f, 0.0f, 0.0f), FVector(1.1f, 1.1f, 12.0f));
+	// East Beco Stepped Brick & Cinder-Block Retaining Terrace Walls (replaces oil pipeline cylinders)
+	AddPipe(TEXT("Pipe_Seg_1"), CubeMesh, FVector(-1200.0f, 1800.0f, 65.0f), FRotator::ZeroRotator, FVector(10.5f, 0.55f, 1.3f));
+	AddPipe(TEXT("Pipe_Seg_2"), CubeMesh, FVector(0.0f, 1800.0f, 65.0f), FRotator::ZeroRotator, FVector(10.5f, 0.55f, 1.3f));
+	AddPipe(TEXT("Pipe_Seg_3"), CubeMesh, FVector(1200.0f, 1800.0f, 65.0f), FRotator::ZeroRotator, FVector(10.5f, 0.55f, 1.3f));
 
-	// Concrete Cradles
-	AddPipe(TEXT("Pipe_Cradle_1"), CubeMesh, FVector(-600.0f, 1800.0f, 40.0f), FRotator::ZeroRotator, FVector(1.0f, 1.8f, 0.8f));
-	AddPipe(TEXT("Pipe_Cradle_2"), CubeMesh, FVector(600.0f, 1800.0f, 40.0f), FRotator::ZeroRotator, FVector(1.0f, 1.8f, 0.8f));
+	// Masonry Buttress Pillars
+	AddPipe(TEXT("Pipe_Cradle_1"), CubeMesh, FVector(-600.0f, 1800.0f, 80.0f), FRotator::ZeroRotator, FVector(0.9f, 0.9f, 1.6f));
+	AddPipe(TEXT("Pipe_Cradle_2"), CubeMesh, FVector(600.0f, 1800.0f, 80.0f), FRotator::ZeroRotator, FVector(0.9f, 0.9f, 1.6f));
 
-	// Reinforced Concrete Bunker
-	AddPipe(TEXT("Bunker_Wall_Back"), CubeMesh, FVector(200.0f, 1550.0f, 100.0f), FRotator::ZeroRotator, FVector(4.0f, 0.4f, 2.0f));
-	AddPipe(TEXT("Bunker_Wall_L"), CubeMesh, FVector(400.0f, 1400.0f, 100.0f), FRotator::ZeroRotator, FVector(0.4f, 3.0f, 2.0f));
-	AddPipe(TEXT("Bunker_Wall_R"), CubeMesh, FVector(0.0f, 1400.0f, 100.0f), FRotator::ZeroRotator, FVector(0.4f, 3.0f, 2.0f));
-	AddPipe(TEXT("Bunker_Roof"), CubeMesh, FVector(200.0f, 1400.0f, 210.0f), FRotator::ZeroRotator, FVector(4.2f, 3.2f, 0.3f));
+	// East Beco Ground-Floor Brick Guardhouse (Casa da Esquina)
+	AddPipe(TEXT("Bunker_Wall_Back"), CubeMesh, FVector(200.0f, 1550.0f, 105.0f), FRotator::ZeroRotator, FVector(4.0f, 0.35f, 2.1f));
+	AddPipe(TEXT("Bunker_Wall_L"), CubeMesh, FVector(400.0f, 1400.0f, 105.0f), FRotator::ZeroRotator, FVector(0.35f, 3.0f, 2.1f));
+	AddPipe(TEXT("Bunker_Wall_R"), CubeMesh, FVector(0.0f, 1400.0f, 105.0f), FRotator::ZeroRotator, FVector(0.35f, 3.0f, 2.1f));
+	AddPipe(TEXT("Bunker_Roof"), CubeMesh, FVector(200.0f, 1400.0f, 215.0f), FRotator::ZeroRotator, FVector(4.2f, 3.2f, 0.25f));
 }
 
 void AFPSCombatArenaMapActor::ConstructCenterCover(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat)
@@ -247,18 +248,18 @@ void AFPSCombatArenaMapActor::ConstructCenterCover(UStaticMesh* CubeMesh, UMater
 		BarrierComponents.Add(Comp);
 	};
 
-	// Center Armored Vehicle Wreck (Hull & Turret)
-	AddBarrier(TEXT("Vehicle_Hull"), FVector(200.0f, -200.0f, 80.0f), FRotator(0.0f, 25.0f, 0.0f), FVector(5.0f, 2.5f, 1.6f));
-	AddBarrier(TEXT("Vehicle_Turret"), FVector(180.0f, -180.0f, 180.0f), FRotator(0.0f, 15.0f, 0.0f), FVector(2.0f, 2.0f, 1.0f));
+	// Center Plaza Brick Market Stall & Timber Counter
+	AddBarrier(TEXT("Vehicle_Hull"), FVector(180.0f, -220.0f, 52.0f), FRotator(0.0f, 15.0f, 0.0f), FVector(3.2f, 1.8f, 1.05f));
+	AddBarrier(TEXT("Vehicle_Turret"), FVector(180.0f, -220.0f, 125.0f), FRotator(0.0f, 15.0f, 0.0f), FVector(3.0f, 0.35f, 0.55f));
 
-	// Concrete Jersey Barriers (2.0m x 0.6m x 1.0m)
-	AddBarrier(TEXT("Barrier_1"), FVector(-800.0f, -400.0f, 50.0f), FRotator(0.0f, 45.0f, 0.0f), FVector(2.0f, 0.6f, 1.0f));
-	AddBarrier(TEXT("Barrier_2"), FVector(-800.0f, 400.0f, 50.0f), FRotator(0.0f, -45.0f, 0.0f), FVector(2.0f, 0.6f, 1.0f));
-	AddBarrier(TEXT("Barrier_3"), FVector(800.0f, -400.0f, 50.0f), FRotator(0.0f, -45.0f, 0.0f), FVector(2.0f, 0.6f, 1.0f));
-	AddBarrier(TEXT("Barrier_4"), FVector(800.0f, 400.0f, 50.0f), FRotator(0.0f, 45.0f, 0.0f), FVector(2.0f, 0.6f, 1.0f));
+	// Plaza Masonry & Cinder-Block Cover Walls
+	AddBarrier(TEXT("Barrier_1"), FVector(-800.0f, -420.0f, 52.0f), FRotator(0.0f, 35.0f, 0.0f), FVector(2.1f, 0.55f, 1.05f));
+	AddBarrier(TEXT("Barrier_2"), FVector(-800.0f, 420.0f, 52.0f), FRotator(0.0f, -35.0f, 0.0f), FVector(2.1f, 0.55f, 1.05f));
+	AddBarrier(TEXT("Barrier_3"), FVector(800.0f, -420.0f, 52.0f), FRotator(0.0f, -35.0f, 0.0f), FVector(2.1f, 0.55f, 1.05f));
+	AddBarrier(TEXT("Barrier_4"), FVector(800.0f, 420.0f, 52.0f), FRotator(0.0f, 35.0f, 0.0f), FVector(2.1f, 0.55f, 1.05f));
 
-	AddBarrier(TEXT("Barrier_Alpha_Exit"), FVector(-1800.0f, 0.0f, 50.0f), FRotator::ZeroRotator, FVector(4.0f, 0.6f, 1.0f));
-	AddBarrier(TEXT("Barrier_Bravo_Exit"), FVector(1800.0f, 0.0f, 50.0f), FRotator::ZeroRotator, FVector(4.0f, 0.6f, 1.0f));
+	AddBarrier(TEXT("Barrier_Alpha_Exit"), FVector(-1800.0f, 0.0f, 48.0f), FRotator::ZeroRotator, FVector(2.8f, 0.55f, 0.95f));
+	AddBarrier(TEXT("Barrier_Bravo_Exit"), FVector(1800.0f, 0.0f, 48.0f), FRotator::ZeroRotator, FVector(2.8f, 0.55f, 0.95f));
 }
 
 void AFPSCombatArenaMapActor::ConstructObjectives(UStaticMesh* CylinderMesh, UMaterialInterface* BaseMat)
@@ -291,87 +292,75 @@ void AFPSCombatArenaMapActor::BeginPlay()
 		SkyLight->RecaptureSky();
 	}
 
-	// Color Dynamic Materials with Tactical Military Palette
-	auto SetColor = [](UStaticMeshComponent* Comp, const FLinearColor& Color)
-	{
-		if (Comp)
-		{
-			UMaterialInstanceDynamic* MID = Comp->CreateDynamicMaterialInstance(0);
-			if (MID)
-			{
-				MID->SetVectorParameterValue(TEXT("Color"), Color);
-				MID->SetVectorParameterValue(TEXT("BaseColor"), Color);
-			}
-		}
-	};
+	// 1. Ground: Portuguese Cobblestone Plaza (Pedra Portuguesa / Paralelepipedo)
+	UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(GroundFloorMesh, ECoastalSurfaceType::FavelaCobble);
 
-	// Ground: Desert Industrial Asphalt / Concrete
-	if (GroundFloorMesh)
+	// 2. Perimeter Retaining Walls: Unpainted Cinder Blocks & Terracotta Brick
+	for (int32 i = 0; i < PerimeterWalls.Num(); ++i)
 	{
-		GroundFloorMesh->ComponentTags.Add(FName(TEXT("Concrete")));
-		SetColor(GroundFloorMesh, FLinearColor(0.38f, 0.35f, 0.28f));
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(
+			PerimeterWalls[i],
+			(i % 2 == 0) ? ECoastalSurfaceType::FavelaCinder : ECoastalSurfaceType::FavelaBrick);
 	}
 
-	// Blast Walls: Reinforced Concrete
-	for (UStaticMeshComponent* Wall : PerimeterWalls)
+	// 3. Central 3-Story Favela Laje Watchtower: Concrete Pillars, Slabs & Tijolo Baiano Brick Core
+	for (int32 i = 0; i < DerrickComponents.Num(); ++i)
 	{
-		if (Wall)
+		UStaticMeshComponent* Part = DerrickComponents[i];
+		if (!Part) continue;
+		const FString PartName = Part->GetName();
+		if (PartName.Contains(TEXT("Core")) || PartName.Contains(TEXT("Rail")))
 		{
-			Wall->ComponentTags.Add(FName(TEXT("Concrete")));
-			SetColor(Wall, FLinearColor(0.48f, 0.49f, 0.50f));
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Part, ECoastalSurfaceType::FavelaBrick);
 		}
-	}
-
-	// Derrick: Industrial Rust Steel
-	for (UStaticMeshComponent* DerrickPart : DerrickComponents)
-	{
-		if (DerrickPart)
+		else if (PartName.Contains(TEXT("Base")))
 		{
-			DerrickPart->ComponentTags.Add(FName(TEXT("Metal")));
-			SetColor(DerrickPart, FLinearColor(0.25f, 0.22f, 0.18f));
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Part, ECoastalSurfaceType::FavelaCobble);
+		}
+		else
+		{
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Part, ECoastalSurfaceType::MarineCastConcrete);
 		}
 	}
 
-	// Containers: Distinct Tactical Metal
-	for (UStaticMeshComponent* Comp : ContainerComponents)
+	// 4. West Beco Shanty Blocks & Covered Alleyway
+	for (int32 i = 0; i < ContainerComponents.Num(); ++i)
 	{
-		if (Comp) Comp->ComponentTags.Add(FName(TEXT("Metal")));
-	}
-	if (ContainerComponents.IsValidIndex(0)) SetColor(ContainerComponents[0], FLinearColor(0.12f, 0.28f, 0.55f)); // Blue
-	if (ContainerComponents.IsValidIndex(1)) SetColor(ContainerComponents[1], FLinearColor(0.55f, 0.14f, 0.10f)); // Red
-	if (ContainerComponents.IsValidIndex(2)) SetColor(ContainerComponents[2], FLinearColor(0.22f, 0.30f, 0.18f)); // Olive
-	for (int32 i = 3; i < ContainerComponents.Num(); ++i)
-	{
-		SetColor(ContainerComponents[i], FLinearColor(0.40f, 0.38f, 0.34f)); // Tunnel
+		ECoastalSurfaceType Surf = ECoastalSurfaceType::FavelaBrick;
+		if (i == 0 || i == 2) Surf = ECoastalSurfaceType::FavelaStucco;
+		else if (i == 3 || i == 4) Surf = ECoastalSurfaceType::FavelaCinder;
+		else if (i == 5) Surf = ECoastalSurfaceType::MarineCastConcrete;
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(ContainerComponents[i], Surf);
 	}
 
-	// Pipeline: Industrial Dark Metal
-	for (UStaticMeshComponent* Pipe : PipelineComponents)
+	// 5. East Beco Retaining Walls & Brick Guardhouse
+	for (int32 i = 0; i < PipelineComponents.Num(); ++i)
 	{
-		if (Pipe)
-		{
-			Pipe->ComponentTags.Add(FName(TEXT("Metal")));
-			SetColor(Pipe, FLinearColor(0.18f, 0.19f, 0.21f));
-		}
+		const ECoastalSurfaceType Surf = (i < 3)
+			? ECoastalSurfaceType::FavelaCinder
+			: ((i == 8) ? ECoastalSurfaceType::MarineCastConcrete : ECoastalSurfaceType::FavelaBrick);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(PipelineComponents[i], Surf);
 	}
 
-	// Barriers & Vehicle
-	for (UStaticMeshComponent* Barrier : BarrierComponents)
+	// 6. Plaza Market Stall & Masonry Cover Barriers
+	for (int32 i = 0; i < BarrierComponents.Num(); ++i)
 	{
-		if (Barrier)
-		{
-			Barrier->ComponentTags.Add(FName(TEXT("Concrete")));
-			SetColor(Barrier, FLinearColor(0.42f, 0.43f, 0.45f));
-		}
+		const ECoastalSurfaceType Surf = (i == 1)
+			? ECoastalSurfaceType::WeatheredPierTimber
+			: ((i % 2 == 0) ? ECoastalSurfaceType::FavelaBrick : ECoastalSurfaceType::FavelaCinder);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(BarrierComponents[i], Surf);
 	}
 
-	// Objectives
+	// 7. Objectives
 	for (UStaticMeshComponent* Flag : ObjectiveFlags)
 	{
-		SetColor(Flag, FLinearColor(0.95f, 0.65f, 0.15f));
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Flag, ECoastalSurfaceType::FavelaMetal);
 	}
 
-	// Spawn Player Starts
+	// 8. Populate Instanced Favela Architecture, Corrugated Roofs, Drainage Gutters, Foliage & Swaying Wires
+	UFPSCoastalMaterialLibrary::PopulateRochaVelhaFavela(this, RootComponent);
+
+	// 9. Spawn Player Starts
 	SpawnTacticalPlayerStarts();
 }
 
@@ -379,11 +368,10 @@ void AFPSCombatArenaMapActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Pulse Aviation Hazard Beacon Light
 	if (TowerBeaconLight)
 	{
 		BeaconTimer += DeltaTime * 3.5f;
-		float Intensity = 3000.0f + 3000.0f * FMath::Sin(BeaconTimer);
+		float Intensity = 2600.0f + 1200.0f * FMath::Sin(BeaconTimer);
 		TowerBeaconLight->SetIntensity(Intensity);
 	}
 }
@@ -409,17 +397,17 @@ void AFPSCombatArenaMapActor::SpawnTacticalPlayerStarts()
 		}
 	};
 
-	// 4 Team Alpha Spawns (Task Force 141 - South Safe Revetments, Z=115cm for 96cm capsule clearance)
+	// 4 Team Alpha Spawns (South Cobblestone Plaza, Z=115cm)
 	CreateStart(FVector(-2400.0f, -600.0f, 115.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
 	CreateStart(FVector(-2400.0f, -200.0f, 115.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
 	CreateStart(FVector(-2400.0f, 200.0f, 115.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
 	CreateStart(FVector(-2400.0f, 600.0f, 115.0f), FRotator(0.0f, 0.0f, 0.0f), FName("TeamAlpha"));
 
-	// 4 Team Bravo Spawns (OpFor - North Loading Docks, Z=115cm for 96cm capsule clearance)
+	// 4 Team Bravo Spawns (North Hillside Terrace, Z=115cm)
 	CreateStart(FVector(2400.0f, -600.0f, 115.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
 	CreateStart(FVector(2400.0f, -200.0f, 115.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
 	CreateStart(FVector(2400.0f, 200.0f, 115.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
 	CreateStart(FVector(2400.0f, 600.0f, 115.0f), FRotator(0.0f, 180.0f, 0.0f), FName("TeamBravo"));
 
-	UE_LOG(LogTemp, Warning, TEXT("[CombatArena] Rust Tactical: Successfully spawned 8 PlayerStarts (4 TeamAlpha, 4 TeamBravo)."));
+	UE_LOG(LogTemp, Warning, TEXT("[FavelaArena] Favela // Rocha Velha: Successfully spawned 8 PlayerStarts (4 TeamAlpha, 4 TeamBravo)."));
 }

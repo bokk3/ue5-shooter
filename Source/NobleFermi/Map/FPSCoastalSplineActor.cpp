@@ -54,64 +54,48 @@ void AFPSCoastalSplineActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	auto ApplyTint = [](UStaticMeshComponent* Comp, const FLinearColor& Color, float Roughness = 0.80f)
-	{
-		if (!Comp) return;
-		if (UMaterialInstanceDynamic* DynMat = Comp->CreateDynamicMaterialInstance(0))
-		{
-			DynMat->SetVectorParameterValue(TEXT("Color"), Color);
-			DynMat->SetVectorParameterValue(TEXT("BaseColor"), Color);
-			DynMat->SetScalarParameterValue(TEXT("Roughness"), Roughness);
-		}
-	};
-
-	// 1. Weathered macadam crest roadway (Dark slate asphalt)
+	// 1. Weathered macadam crest roadway
 	for (UStaticMeshComponent* Comp : CrestRoadComponents)
 	{
 		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::WeatheredAsphalt);
-		ApplyTint(Comp, FLinearColor(0.16f, 0.17f, 0.19f), 0.75f);
 	}
 
 	// 2. Concrete curbs & central bunker housing
 	for (UStaticMeshComponent* Comp : CurbComponents)
 	{
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::MarineCastConcrete);
-		ApplyTint(Comp, FLinearColor(0.42f, 0.44f, 0.46f), 0.78f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::FavelaBrick);
 	}
 
-	// 3. Seaward armored revetment slope slabs (Previously missing in BeginPlay!)
+	// 3. Seaward armored cobblestone revetment slope slabs
 	for (UStaticMeshComponent* Comp : SeawardRevetmentComponents)
 	{
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::BasaltRiprapRock);
-		ApplyTint(Comp, FLinearColor(0.22f, 0.24f, 0.27f), 0.72f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::FavelaCobble);
 	}
 
 	// 4. Basalt riprap armor rocks
 	for (UStaticMeshComponent* Comp : BasaltRiprapComponents)
 	{
 		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::BasaltRiprapRock);
-		ApplyTint(Comp, FLinearColor(0.13f, 0.14f, 0.16f), 0.65f);
 	}
 
 	// 5. Wave-breaking concrete tetrapods
 	for (UStaticMeshComponent* Comp : TetrapodComponents)
 	{
 		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::MarineCastConcrete);
-		ApplyTint(Comp, FLinearColor(0.48f, 0.49f, 0.50f), 0.78f);
 	}
 
-	// 6. Landward stabilized coastal turf / marram grass back-slope
-	for (UStaticMeshComponent* Comp : LandwardSlopeComponents)
+	// 6. Landward stabilized coastal favela slope (Cobblestone & Cinder Block)
+	for (int32 i = 0; i < LandwardSlopeComponents.Num(); ++i)
 	{
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::FineBeachSand);
-		ApplyTint(Comp, FLinearColor(0.26f, 0.31f, 0.22f), 0.88f); // North Sea coastal marram turf green-tan
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(
+			LandwardSlopeComponents[i],
+			(i % 2 == 0) ? ECoastalSurfaceType::FavelaCobble : ECoastalSurfaceType::FavelaCinder);
 	}
 
 	// 7. Flank access stairs & pier abutment ramp
 	for (UStaticMeshComponent* Comp : StairComponents)
 	{
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::MarineCastConcrete);
-		ApplyTint(Comp, FLinearColor(0.46f, 0.47f, 0.49f), 0.76f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::FavelaCobble);
 	}
 
 	// 8. Drainage Culvert & Sluice Portal
@@ -119,12 +103,11 @@ void AFPSCoastalSplineActor::BeginPlay()
 	{
 		if (Comp && Comp->ComponentTags.Contains(FName("Sluice_Steel")))
 		{
-			ApplyTint(Comp, FLinearColor(0.32f, 0.16f, 0.10f), 0.60f); // Rusted iron ribs
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::FavelaMetal);
 		}
 		else
 		{
-			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::MarineCastConcrete);
-			ApplyTint(Comp, FLinearColor(0.36f, 0.38f, 0.40f), 0.80f);
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::FavelaBrick);
 		}
 	}
 }

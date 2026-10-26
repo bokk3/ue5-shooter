@@ -23,13 +23,13 @@ AFPSCoastalOperationsMapActor::AFPSCoastalOperationsMapActor()
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	RootComponent = SceneRoot;
 
-	// 1. Cinematic North Sea Overcast / Maritime Sun Lighting (Pure Dynamic Lumen)
+	// 1. Cinematic Golden-Hour Brazilian Coastline Favela Lighting
 	SunLight = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("SunLight"));
 	SunLight->SetupAttachment(RootComponent);
 	SunLight->SetMobility(EComponentMobility::Movable);
-	SunLight->SetRelativeRotation(FRotator(-34.0f, 62.0f, 0.0f));
-	SunLight->SetIntensity(8.5f); // Calibrated maritime sun lux for locked manual exposure
-	SunLight->SetLightColor(FLinearColor(1.0f, 0.95f, 0.88f)); // Golden maritime sun through light sea spray
+	SunLight->SetRelativeRotation(FRotator(-32.0f, 55.0f, 0.0f));
+	SunLight->SetIntensity(11.5f); // Tropical maritime sun lux
+	SunLight->SetLightColor(FLinearColor(1.0f, 0.94f, 0.84f)); // Golden tropical sun
 	SunLight->bAtmosphereSunLight = true;
 	SunLight->bCastVolumetricShadow = false;
 	SunLight->CastShadows = 1;
@@ -37,17 +37,17 @@ AFPSCoastalOperationsMapActor::AFPSCoastalOperationsMapActor()
 	SkyLight = CreateDefaultSubobject<USkyLightComponent>(TEXT("SkyLight"));
 	SkyLight->SetupAttachment(RootComponent);
 	SkyLight->SetMobility(EComponentMobility::Movable);
-	SkyLight->SetIntensity(1.8f);
-	SkyLight->SetLightColor(FLinearColor(0.80f, 0.90f, 1.0f)); // Cold ocean sky ambient
-	SkyLight->bRealTimeCapture = false;
+	SkyLight->SetIntensity(3.6f);
+	SkyLight->SetLightColor(FLinearColor(0.82f, 0.90f, 1.0f)); // Tropical sky ambient
+	SkyLight->bRealTimeCapture = true;
 
 	SkyAtmosphere = CreateDefaultSubobject<USkyAtmosphereComponent>(TEXT("SkyAtmosphere"));
 	SkyAtmosphere->SetupAttachment(RootComponent);
 
 	HeightFog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("HeightFog"));
 	HeightFog->SetupAttachment(RootComponent);
-	HeightFog->SetFogDensity(0.0022f);
-	HeightFog->SetFogInscatteringColor(FLinearColor(0.78f, 0.86f, 0.96f)); // Volumetric maritime sea-mist
+	HeightFog->SetFogDensity(0.0012f);
+	HeightFog->SetFogInscatteringColor(FLinearColor(0.82f, 0.88f, 0.96f)); // Volumetric maritime sea-mist
 
 	PierHeadNavBeacon = CreateDefaultSubobject<UPointLightComponent>(TEXT("PierHeadNavBeacon"));
 	PierHeadNavBeacon->SetupAttachment(RootComponent);
@@ -67,20 +67,20 @@ AFPSCoastalOperationsMapActor::AFPSCoastalOperationsMapActor()
 	DikeHazardBeacon->SetAttenuationRadius(2000.0f);
 	DikeHazardBeacon->SetCastShadows(false);
 
-	// Post Process: Lock Exposure to prevent high-albedo sand blowout (AEM_Manual)
+	// Post Process: Balanced Exposure to showcase coastal favela textures
 	PostProcess = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcess"));
 	PostProcess->SetupAttachment(RootComponent);
 	PostProcess->bUnbound = true;
 	PostProcess->Settings.bOverride_AutoExposureMethod = true;
-	PostProcess->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+	PostProcess->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Basic;
 	PostProcess->Settings.bOverride_AutoExposureBias = true;
-	PostProcess->Settings.AutoExposureBias = 0.0f;
+	PostProcess->Settings.AutoExposureBias = 0.5f;
 	PostProcess->Settings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
 	PostProcess->Settings.AutoExposureApplyPhysicalCameraExposure = 0;
 	PostProcess->Settings.bOverride_AutoExposureMinBrightness = true;
-	PostProcess->Settings.AutoExposureMinBrightness = 1.0f;
+	PostProcess->Settings.AutoExposureMinBrightness = 0.35f;
 	PostProcess->Settings.bOverride_AutoExposureMaxBrightness = true;
-	PostProcess->Settings.AutoExposureMaxBrightness = 1.0f;
+	PostProcess->Settings.AutoExposureMaxBrightness = 3.0f;
 	PostProcess->Settings.bOverride_BloomIntensity = true;
 	PostProcess->Settings.BloomIntensity = 0.15f;
 
@@ -132,10 +132,10 @@ void AFPSCoastalOperationsMapActor::BeginPlay()
 		}
 	};
 
-	// 1. Beach sand & ocean water
+	// 1. Coastal Favela Cobblestone & Sand Substrate + Reflective Bay Water
 	UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(BeachFloorMesh, ECoastalSurfaceType::FineBeachSand);
 	if (BeachFloorMesh) BeachFloorMesh->ComponentTags.AddUnique(FName("Surface_Sand_Dune"));
-	ApplyTint(WaterPlaneMesh, FLinearColor(0.04f, 0.16f, 0.22f), 0.08f);
+	UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(WaterPlaneMesh, ECoastalSurfaceType::FavelaPuddle);
 
 	// 2. Weathered maritime pier planks
 	for (UStaticMeshComponent* Plank : PierVisualPlanks)
@@ -158,45 +158,49 @@ void AFPSCoastalOperationsMapActor::BeginPlay()
 		if (Beam) Beam->ComponentTags.AddUnique(FName("Surface_Pier_Wood"));
 	}
 
-	// 5. Cast-iron mooring bollards
+	// 5. Cast-iron mooring bollards, railings & ladders
 	for (UStaticMeshComponent* Bollard : PierBollards)
 	{
-		ApplyTint(Bollard, FLinearColor(0.18f, 0.14f, 0.12f), 0.60f); // Rusted iron
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Bollard, ECoastalSurfaceType::FavelaMetal);
 	}
-
-	// 6. Galvanized steel tube railings
 	for (UStaticMeshComponent* Railing : PierRailings)
 	{
-		ApplyTint(Railing, FLinearColor(0.55f, 0.57f, 0.60f), 0.40f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Railing, ECoastalSurfaceType::FavelaMetal);
 	}
-
-	// 7. Marine access ladders
 	for (UStaticMeshComponent* Ladder : PierLadders)
 	{
-		ApplyTint(Ladder, FLinearColor(0.35f, 0.36f, 0.38f), 0.50f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Ladder, ECoastalSurfaceType::FavelaMetal);
 	}
 
-	// 8. Coastal dunes (stoss vs slip face)
-	for (UStaticMeshComponent* Dune : DuneComponents)
+	// 8. Coastal hillside embankments & masonry berms
+	for (int32 i = 0; i < DuneComponents.Num(); ++i)
 	{
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Dune, ECoastalSurfaceType::FineBeachSand);
-		if (Dune)
-		{
-			Dune->ComponentTags.AddUnique(FName("Surface_Sand_Dune"));
-		}
+		UStaticMeshComponent* Dune = DuneComponents[i];
+		if (!Dune) continue;
+		const FString DName = Dune->GetName();
+		const ECoastalSurfaceType Surf = DName.Contains(TEXT("Cover"))
+			? ECoastalSurfaceType::FavelaBrick
+			: ECoastalSurfaceType::FavelaDirt;
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Dune, Surf);
+		Dune->ComponentTags.AddUnique(FName("Surface_Sand_Dune"));
 	}
 
 	// 9. Perimeter boundaries
-	for (UStaticMeshComponent* Wall : PerimeterWalls)
+	for (int32 i = 0; i < PerimeterWalls.Num(); ++i)
 	{
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Wall, ECoastalSurfaceType::MarineCastConcrete);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(
+			PerimeterWalls[i],
+			(i % 2 == 0) ? ECoastalSurfaceType::FavelaCinder : ECoastalSurfaceType::FavelaBrick);
 	}
 
 	// 10. Domination Objectives (A, B, C)
 	for (UStaticMeshComponent* Flag : ObjectiveFlags)
 	{
-		ApplyTint(Flag, FLinearColor(0.95f, 0.65f, 0.15f), 0.30f);
+		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Flag, ECoastalSurfaceType::FavelaMetal);
 	}
+
+	// 11. Populate Baia Brava Coastal Favela Shanties, Corrugated Roofs, Drainage Gutters, Foliage & Swaying Wires
+	UFPSCoastalMaterialLibrary::PopulateBaiaBravaFavela(this, RootComponent);
 
 	SpawnTacticalPlayerStarts();
 }
@@ -525,9 +529,9 @@ void AFPSCoastalOperationsMapActor::ConstructCoastalDunes(UStaticMesh* CubeMesh,
 	AddDune(TEXT("Dune_Trans_Slip_W"), FVector(-2700.0f, 5760.0f, 115.0f), FRotator(-28.0f, 90.0f, 0.0f), FVector(5.5f, 44.0f, 0.8f), true);
 	AddDune(TEXT("Dune_Trans_Slip_E"), FVector(2700.0f, 5760.0f, 115.0f), FRotator(-28.0f, 90.0f, 0.0f), FVector(5.5f, 44.0f, 0.8f), true);
 
-	// 3. Central Interdune Basin & Flag A Waist/Chest Defilade Berms
-	AddDune(TEXT("Dune_Basin_Cover_W"), FVector(-750.0f, 3650.0f, 75.0f), FRotator(0.0f, 25.0f, 0.0f), FVector(8.5f, 3.2f, 1.6f), false);
-	AddDune(TEXT("Dune_Basin_Cover_E"), FVector(750.0f, 3650.0f, 75.0f), FRotator(0.0f, -25.0f, 0.0f), FVector(8.5f, 3.2f, 1.6f), false);
+	// 3. Avenue Flank Brick Retaining Walls (leaving central cobblestone avenue clear for sightlines)
+	AddDune(TEXT("Dune_Basin_Cover_W"), FVector(-1580.0f, 3650.0f, 55.0f), FRotator(0.0f, 12.0f, 0.0f), FVector(4.2f, 1.2f, 1.1f), false);
+	AddDune(TEXT("Dune_Basin_Cover_E"), FVector(1580.0f, 3650.0f, 55.0f), FRotator(0.0f, -12.0f, 0.0f), FVector(4.2f, 1.2f, 1.1f), false);
 
 	// 4. Barchanoid Parabolic Dunes (West & East Flank Overwatches)
 	AddDune(TEXT("Dune_Peak_West"), FVector(-4600.0f, 3800.0f, 110.0f), FRotator(10.0f, 65.0f, 0.0f), FVector(14.0f, 12.0f, 2.4f), false);
@@ -622,5 +626,5 @@ void AFPSCoastalOperationsMapActor::SpawnTacticalPlayerStarts()
 	CreateStart(FVector(800.0f, -2450.0f, 115.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
 	CreateStart(FVector(1800.0f, -2300.0f, 115.0f), FRotator(0.0f, 90.0f, 0.0f), FName("TeamBravo"));
 
-	UE_LOG(LogTemp, Warning, TEXT("[CoastalOps] Coastal Operations: Successfully spawned 8 PlayerStarts (4 TeamAlpha, 4 TeamBravo)."));
+	UE_LOG(LogTemp, Warning, TEXT("[BaiaBrava] Favela // Baia Brava: Successfully spawned 8 PlayerStarts (4 TeamAlpha, 4 TeamBravo)."));
 }

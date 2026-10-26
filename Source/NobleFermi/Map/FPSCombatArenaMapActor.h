@@ -15,15 +15,14 @@ class UPostProcessComponent;
 class APlayerStart;
 
 /**
- * Procedural Tactical Combat Arena Actor: "Rust Tactical"
- * Spawns a full 60m x 60m competitive MW2-style arena complete with:
- * - Multi-level central oil derrick sniper rig (12m high) with catwalks and access ramps.
- * - Flank Lane A: 4 shipping containers with shoot-through tunnel.
- * - Flank Lane B: Elevated pipeline trench and concrete bunker.
- * - Center Lane: Armored vehicle wreck and concrete Jersey barriers.
- * - 3 Domination Flag Bases (A, B, C) with holographic beacons.
- * - 8 Tactical PlayerStarts (4 Team Alpha, 4 Team Bravo).
- * - Golden-hour desert sun, atmosphere, volumetric dust haze, and industrial floodlights.
+ * Procedural Tactical Favela Combat Arena Actor: "Favela // Rocha Velha"
+ * Spawns a full 60m x 60m hillside Brazilian favela tactical arena complete with:
+ * - Multi-level central 3-story Laje Watchtower with concrete pillars, rebar spires, and corrugated tin roof.
+ * - West & East Becos (narrow cobblestone alleys) flanked by multi-story terracotta brick, cinder-block, and peeling pastel stucco shanties.
+ * - Open concrete stormwater drainage sluices (valetas), sky-reflecting rainwater puddles, and red laterite dirt shoulders.
+ * - Corrugated zinc roofing plates weighted with discarded tires, cinder blocks, and 1000L blue polyethylene water tanks.
+ * - Tropical urban foliage (banana palms, climbing wall ivy, gutter weeds) and swaying catenary electrical wiring ("gatos").
+ * - 3 Domination Flag Bases (A, B, C) and 8 Tactical PlayerStarts (4 Team Alpha, 4 Team Bravo).
  */
 UCLASS()
 class NOBLEFERMI_API AFPSCombatArenaMapActor : public AActor

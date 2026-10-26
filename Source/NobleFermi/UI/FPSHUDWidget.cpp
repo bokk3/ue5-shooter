@@ -1,4 +1,6 @@
 #include "UI/FPSHUDWidget.h"
+#include "Map/FPSCoastalOperationsMapActor.h"
+#include "Kismet/GameplayStatics.h"
 #include "Character/FPSCharacter.h"
 #include "Character/FPSCharacterMovementComponent.h"
 #include "Combat/FPSHealthComponent.h"
@@ -382,11 +384,15 @@ public:
 		DrawLine(CenterCompassX - 32.0f * HUDScale, TopY + TapeH - 1.0f * HUDScale, CenterCompassX + 28.0f * HUDScale, TopY + TapeH - 1.0f * HUDScale, 1.2f * HUDScale, TealPrimary * FLinearColor(1, 1, 1, 0.7f), 2);
 		DrawGlowText(CenterCompassX - 24.0f * HUDScale, TopY + TapeH + 0.5f * HUDScale, BearingPillText, FontSmall, HudWhite, 0.8f);
 
-		// Detect Active Theater (0 = Rust Tactical, 1 = Coastal Operations)
+		// Detect Active Theater (0 = Favela // Rocha Velha, 1 = Favela // Baía Brava)
 		int32 ActiveTheaterIdx = 0;
 		if (UWorld* HudWorld = OwningHUD->GetWorld())
 		{
-			if (UGameInstance* GI = HudWorld->GetGameInstance())
+			if (UGameplayStatics::GetActorOfClass(HudWorld, AFPSCoastalOperationsMapActor::StaticClass()) != nullptr)
+			{
+				ActiveTheaterIdx = 1;
+			}
+			else if (UGameInstance* GI = HudWorld->GetGameInstance())
 			{
 				if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
 				{
@@ -590,7 +596,7 @@ public:
 			FLinearColor(0.0f, 0.16f, 0.22f, 0.30f), FLinearColor(0.0f, 0.08f, 0.12f, 0.0f), 0);
 		DrawLine(CalloutX - 6.0f * HUDScale, CalloutY - 2.0f * HUDScale, CalloutX - 11.0f * HUDScale, CalloutY + 18.0f * HUDScale, 2.2f * HUDScale, TealPrimary, 2);
 		DrawGlowText(CalloutX, CalloutY,
-			FString::Printf(TEXT("%s // [%+03.0fm, %+03.0fm]"), bIsCoastalOps ? TEXT("COASTAL OPS") : TEXT("RUST TACTICAL"), OwningHUD->PlayerLocation.X / 100.0f, OwningHUD->PlayerLocation.Y / 100.0f),
+			FString::Printf(TEXT("%s // [%+03.0fm, %+03.0fm]"), bIsCoastalOps ? TEXT("FAVELA // BAÍA BRAVA") : TEXT("FAVELA // ROCHA VELHA"), OwningHUD->PlayerLocation.X / 100.0f, OwningHUD->PlayerLocation.Y / 100.0f),
 			FontMicro, FLinearColor(0.78f, 0.92f, 0.98f, 0.82f), 0.7f);
 
 		// =========================================================================

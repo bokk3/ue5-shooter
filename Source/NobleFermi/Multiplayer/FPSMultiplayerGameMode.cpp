@@ -35,11 +35,15 @@ void AFPSMultiplayerGameMode::InitGame(const FString& MapName, const FString& Op
 	{
 		FParse::Value(FCommandLine::Get(), TEXT("Theater="), TheaterOption);
 	}
-	if (TheaterOption.Equals(TEXT("Coastal"), ESearchCase::IgnoreCase))
+	if (TheaterOption.Equals(TEXT("Coastal"), ESearchCase::IgnoreCase) ||
+		TheaterOption.Equals(TEXT("BaiaBrava"), ESearchCase::IgnoreCase) ||
+		TheaterOption.Equals(TEXT("Baia"), ESearchCase::IgnoreCase))
 	{
 		ActiveTheaterIndex = 1;
 	}
-	else if (TheaterOption.Equals(TEXT("Rust"), ESearchCase::IgnoreCase))
+	else if (TheaterOption.Equals(TEXT("Rust"), ESearchCase::IgnoreCase) ||
+		TheaterOption.Equals(TEXT("RochaVelha"), ESearchCase::IgnoreCase) ||
+		TheaterOption.Equals(TEXT("Favela"), ESearchCase::IgnoreCase))
 	{
 		ActiveTheaterIndex = 0;
 	}
@@ -56,7 +60,7 @@ void AFPSMultiplayerGameMode::InitGame(const FString& MapName, const FString& Op
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] InitGame: Initializing 128-tick tactical multiplayer match in Theater %d (%s)..."),
-		ActiveTheaterIndex, ActiveTheaterIndex == 1 ? TEXT("Coastal Operations") : TEXT("Rust Tactical"));
+		ActiveTheaterIndex, ActiveTheaterIndex == 1 ? TEXT("Favela // Baía Brava") : TEXT("Favela // Rocha Velha"));
 
 	EnsureCombatArenaExists();
 }
@@ -136,7 +140,7 @@ void AFPSMultiplayerGameMode::BeginPlay()
 	EnsureCombatArenaExists();
 	SpawnInitialTacticalBots();
 	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] BeginPlay: Match in progress on %s. Arena: %s"),
-		ActiveTheaterIndex == 1 ? TEXT("Coastal Operations") : TEXT("Rust Tactical"),
+		ActiveTheaterIndex == 1 ? TEXT("Favela // Baía Brava") : TEXT("Favela // Rocha Velha"),
 		*GetNameSafe(ActiveTheaterIndex == 1 ? (AActor*)ActiveCoastalArena : (AActor*)ActiveArena));
 
 	// Auto screenshot verification if -TakeGameplayShot is passed on command line

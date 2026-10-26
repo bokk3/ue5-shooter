@@ -14,7 +14,7 @@
 
 > **Noble Fermi** is an authoritative 128-tick tactical shooter built natively in **Unreal Engine 5.8 C++20**. Engineered around a responsive **3rd-person over-the-shoulder (OTS) combat perspective** and **The Fermi Paradox Engine**, it fuses high-lethality military gunplay, physical **Level IV Ceramic Armor Plate fracture**, localized **0.25x relativistic time-dilation spheres (`AFPSFermiTimeBubble`)** that convert incoming hitscan rounds into dodgeable 3D brass slugs (`AFPSDilatedBulletActor`), **Acoustic Hologram Decoys & Mid-Air Quantum Phase-Swapping (`AFPSFermiDecoyActor`)**, and a **zero-UMG Pure Slate C++ AR Visor HUD & 3-Zone Acrylic Command Lobby**.
 >
-> 📦 **Latest Release**: [**Noble Fermi v0.2.0-alpha**](https://github.com/bokk3/ue5-shooter/releases/tag/v0.2.0-alpha) — Featuring the full Command Center UI with interactive Slate spark particles, real Vanguard Spec-Ops operator in 3D hangar diorama, Rust Tactical & Coastal Operations arenas with 128-tick tactical bots, and 7-zone customizable armor loadouts.
+> 📦 **Latest Release**: [**Noble Fermi v0.2.0-alpha**](https://github.com/bokk3/ue5-shooter/releases/tag/v0.2.0-alpha) — Featuring the full Command Center UI with interactive Slate spark particles, real Vanguard Spec-Ops operator in 3D hangar diorama, Favela // Rocha Velha & Favela // Baía Brava arenas with 128-tick tactical bots, and 7-zone customizable armor loadouts.
 
 ---
 
@@ -117,7 +117,7 @@
 > [!TIP]
 > Download the pre-packaged standalone release directly from the [**v0.2.0-alpha Release**](https://github.com/bokk3/ue5-shooter/releases/tag/v0.2.0-alpha), or launch from local source as detailed below.
 
-### 1. Launch Standalone Client (3-Zone Lobby → Rust Tactical Arena)
+### 1. Launch Standalone Client (3-Zone Lobby → Favela // Rocha Velha Arena)
 Double-click `Launch_Menu.bat` or run from PowerShell:
 ```powershell
 .\Launch_Menu.bat

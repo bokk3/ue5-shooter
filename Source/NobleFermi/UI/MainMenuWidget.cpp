@@ -2295,8 +2295,8 @@ public:
 							{
 								const int32 ThIdx = SelectedTheaterIndex.Get(0);
 								return FText::FromString(ThIdx == 1
-									? TEXT("OPERATION: COASTAL OPERATIONS")
-									: TEXT("OPERATION: RUST TACTICAL"));
+									? TEXT("FAVELA: BAÍA BRAVA")
+									: TEXT("FAVELA: ROCHA VELHA"));
 							})
 							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
 							.ColorAndOpacity(FLinearColor(0.14f, 0.10f, 0.02f, 1.0f))
@@ -2452,8 +2452,8 @@ public:
 							.Text_Lambda([this]()
 							{
 								return FText::FromString(SelectedTheaterIndex.Get(0) == 1
-									? TEXT("OPERATION: COASTAL OPS")
-									: TEXT("OPERATION: RUST TACTICAL"));
+									? TEXT("FAVELA: BAÍA BRAVA")
+									: TEXT("FAVELA: ROCHA VELHA"));
 							})
 							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
 							.ColorAndOpacity(MWTheme::TextPrimary)
@@ -2466,8 +2466,8 @@ public:
 							.Text_Lambda([this]()
 							{
 								return FText::FromString(SelectedTheaterIndex.Get(0) == 1
-									? TEXT("North Sea Littoral / Dike & Pier")
-									: TEXT("Industrial Combat / High Intensity"));
+									? TEXT("120m Coastal Hillside & Waterfront Pier")
+									: TEXT("60m Hillside Shanty Town & Laje Watchtower"));
 							})
 							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
 							.ColorAndOpacity(MWTheme::TextSecondary)
@@ -5699,14 +5699,14 @@ TSharedRef<SWidget> UMainMenuWidget::BuildServerBrowserView()
 									+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f)
 									[
 										SNew(STextBlock)
-										.Text(FText::FromString(TEXT("• [EU-WEST] Amsterdam #1 — 10/12 Operators | Map: Coastal Operations | 14ms")))
+										.Text(FText::FromString(TEXT("• [EU-WEST] Amsterdam #1 — 10/12 Operators | Map: Favela Baía Brava | 14ms")))
 										.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
 										.ColorAndOpacity(MWTheme::TextPrimary)
 									]
 									+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f)
 									[
 										SNew(STextBlock)
-										.Text(FText::FromString(TEXT("• [EU-CENTRAL] Frankfurt #2 — 12/12 Operators | Map: Rust Tactical | 18ms")))
+										.Text(FText::FromString(TEXT("• [EU-CENTRAL] Frankfurt #2 — 12/12 Operators | Map: Favela Rocha Velha | 18ms")))
 										.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
 										.ColorAndOpacity(MWTheme::TextPrimary)
 									]
@@ -7631,7 +7631,7 @@ void UMainMenuWidget::HostListenRoom()
 	UWorld* World = GetWorld();
 	if (World)
 	{
-		const FString TheaterOpt = (SelectedTheaterIndex == 1) ? TEXT("Coastal") : TEXT("Rust");
+		const FString TheaterOpt = (SelectedTheaterIndex == 1) ? TEXT("BaiaBrava") : TEXT("RochaVelha");
 		const FString OpenOptions = FString::Printf(TEXT("listen?game=/Script/NobleFermi.FPSMultiplayerGameMode?Theater=%s"), *TheaterOpt);
 		UGameplayStatics::OpenLevel(World, FName(TEXT("/Engine/Maps/Entry")), true, OpenOptions);
 	}
