@@ -488,7 +488,18 @@ UTexture2D* UFPSCoastalMaterialLibrary::GetOrCreateRoughnessTexture(ECoastalSurf
 UMaterialInterface* UFPSCoastalMaterialLibrary::LoadFavelaMaterial(const TCHAR* MaterialName)
 {
 	const FString Path = FString::Printf(TEXT("/Game/Environment/Favela/Materials/%s.%s"), MaterialName, MaterialName);
-	return Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, *Path));
+	UMaterialInterface* Mat = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, *Path));
+	if (!Mat)
+	{
+		Mat = LoadObject<UMaterialInterface>(nullptr, *Path);
+	}
+	if (!Mat)
+	{
+		const FString AltPath = FString::Printf(TEXT("/Game/Environment/Favela/Materials/%s"), MaterialName);
+		Mat = LoadObject<UMaterialInterface>(nullptr, *AltPath);
+	}
+	UE_LOG(LogTemp, Warning, TEXT("[FAVELA_MAT] Trying to load: %s -> Result: %s"), *Path, Mat ? TEXT("SUCCESS") : TEXT("FAILED"));
+	return Mat;
 }
 
 UMaterialInterface* UFPSCoastalMaterialLibrary::GetOrCreateCoastalMaterial(UObject* WorldContext, ECoastalSurfaceType SurfaceType, FVector2D WindDirection)
@@ -719,7 +730,7 @@ static UInstancedStaticMeshComponent* CreateFavelaISM(AActor* Owner, USceneCompo
 	ISM->SetupAttachment(Root);
 	ISM->SetMobility(EComponentMobility::Movable);
 	ISM->SetStaticMesh(Mesh);
-	ISM->NumCustomDataFloats = 6;
+	ISM->SetNumCustomDataFloats(6);
 	ISM->SetCastShadow(bCollides);
 	ISM->SetCollisionProfileName(bCollides ? TEXT("BlockAll") : TEXT("NoCollision"));
 	if (!PhysTag.IsNone())
@@ -785,8 +796,12 @@ void FFPSFavelaEnvironmentKit::AddBox(UInstancedStaticMeshComponent* ISM, const 
 	if (!ISM) return;
 	const FTransform Xf(Rot, Center, SizeCm / 100.0f);
 	const int32 Idx = ISM->AddInstance(Xf, false);
-	const TArray<float> Custom = { Tint.R, Tint.G, Tint.B, Peel, BaseZ, 0.0f };
-	ISM->SetCustomData(Idx, Custom, false);
+	ISM->SetCustomDataValue(Idx, 0, Tint.R, false);
+	ISM->SetCustomDataValue(Idx, 1, Tint.G, false);
+	ISM->SetCustomDataValue(Idx, 2, Tint.B, false);
+	ISM->SetCustomDataValue(Idx, 3, Peel, false);
+	ISM->SetCustomDataValue(Idx, 4, BaseZ, false);
+	ISM->SetCustomDataValue(Idx, 5, 0.0f, false);
 }
 
 void FFPSFavelaEnvironmentKit::AddMesh(UInstancedStaticMeshComponent* ISM, const FVector& Loc, const FRotator& Rot, const FVector& Scale, const FLinearColor& Tint, float Peel, float BaseZ)
@@ -794,8 +809,12 @@ void FFPSFavelaEnvironmentKit::AddMesh(UInstancedStaticMeshComponent* ISM, const
 	if (!ISM) return;
 	const FTransform Xf(Rot, Loc, Scale);
 	const int32 Idx = ISM->AddInstance(Xf, false);
-	const TArray<float> Custom = { Tint.R, Tint.G, Tint.B, Peel, BaseZ, 0.0f };
-	ISM->SetCustomData(Idx, Custom, false);
+	ISM->SetCustomDataValue(Idx, 0, Tint.R, false);
+	ISM->SetCustomDataValue(Idx, 1, Tint.G, false);
+	ISM->SetCustomDataValue(Idx, 2, Tint.B, false);
+	ISM->SetCustomDataValue(Idx, 3, Peel, false);
+	ISM->SetCustomDataValue(Idx, 4, BaseZ, false);
+	ISM->SetCustomDataValue(Idx, 5, 0.0f, false);
 }
 
 FLinearColor UFPSCoastalMaterialLibrary::GetFavelaStuccoPalette(int32 PaletteIdx)
@@ -1382,6 +1401,23 @@ void FFPSFavelaEnvironmentKit::AddWindowAC(const FVector& WindowLoc, const FRota
 	AddMesh(WindowACISM, WindowLoc, WallRot, FVector(1.0f));
 }
 
+void FFPSFavelaEnvironmentKit::MarkAllRenderStatesDirty()
+{
+	UInstancedStaticMeshComponent* ISMs[] = {
+		BrickISM, CinderISM, StuccoISM, ConcreteISM, CobbleISM, AsphaltISM,
+		DirtISM, WoodISM, MetalISM, DarkISM, PuddleISM, RoofSheetISM,
+		TireISM, WaterTankISM, WeedsISM, IvyISM, BananaISM, PalmFanISM,
+		CableISM, WindowACISM, SatelliteDishISM, RebarColumnISM, TrashBagsISM
+	};
+	for (UInstancedStaticMeshComponent* ISM : ISMs)
+	{
+		if (ISM && ISM->GetInstanceCount() > 0)
+		{
+			ISM->MarkRenderStateDirty();
+		}
+	}
+}
+
 void FFPSFavelaEnvironmentKit::AddSatelliteDish(const FVector& RoofLoc, float YawDeg)
 {
 	if (!SatelliteDishISM) return;
@@ -1595,6 +1631,7 @@ void UFPSCoastalMaterialLibrary::PopulateRochaVelhaFavela(AActor* MapActor, USce
 
 	Kit.AddCableSpan(P_NW2, FVector(2750.0f, -1150.0f, 620.0f), 36.0f, 0.2f, 0.7f, 1.0f);
 	Kit.AddCableSpan(P_NE2, FVector(2750.0f, 1150.0f, 620.0f), 36.0f, 0.6f, 0.7f, 1.0f);
+	Kit.MarkAllRenderStatesDirty();
 }
 
 // =========================================================================================
@@ -1702,5 +1739,6 @@ void UFPSCoastalMaterialLibrary::PopulateBaiaBravaFavela(AActor* MapActor, UScen
 	Kit.AddCableBundle(CP_W3, CP_W4, 4, 54.0f, 612);
 	Kit.AddCableBundle(CP_E4, FVector(950.0f, -500.0f, 980.0f), 4, 58.0f, 613);
 	Kit.AddCableBundle(CP_W4, FVector(-950.0f, -500.0f, 980.0f), 4, 58.0f, 614);
+	Kit.MarkAllRenderStatesDirty();
 }
 

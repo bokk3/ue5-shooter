@@ -199,6 +199,7 @@ CMOT_F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT3
 S_COLOR = unreal.MaterialSamplerType.SAMPLERTYPE_COLOR
 S_LINEAR = unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
 S_NORMAL = unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL
+S_MASKS = unreal.MaterialSamplerType.SAMPLERTYPE_MASKS
 
 UV_CODE = r"""
 if (UseMesh > 0.5) { return MeshUV * MeshTiling; }
@@ -211,9 +212,11 @@ return uv / max(Tile, 1.0);
 """
 
 COLOR_CODE = r"""
-float peelT = Peel * IPeel;
+float3 instTint = (length(ITint) > 0.01) ? ITint : float3(1.0, 1.0, 1.0);
+float instPeel = (IPeel > 0.001) ? IPeel : 1.0;
+float peelT = Peel * instPeel;
 float show = (peelT <= 0.001) ? 1.0 : smoothstep(peelT - 0.04, peelT + 0.04, BCA);
-float3 c = lerp(UBC, BC * Tint * ITint, show);
+float3 c = lerp(UBC, BC * Tint * instTint, show);
 c *= lerp(1.0, 0.6 + 0.8 * Macro, MS);
 float vert = 1.0 - saturate(abs(N.z));
 float g = saturate(1.0 - (WP.z - BaseZ) / max(GH, 1.0));
@@ -223,7 +226,8 @@ return max(c, 0.0);
 """
 
 NORMAL_CODE = r"""
-float peelT = Peel * IPeel;
+float instPeel = (IPeel > 0.001) ? IPeel : 1.0;
+float peelT = Peel * instPeel;
 float show = (peelT <= 0.001) ? 1.0 : smoothstep(peelT - 0.04, peelT + 0.04, BCA);
 float3 t = lerp(UTN, TN, show);
 t = normalize(float3(t.xy * Strength, max(t.z, 0.05)));
@@ -237,7 +241,8 @@ return normalize(w);
 """
 
 ROUGH_CODE = r"""
-float peelT = Peel * IPeel;
+float instPeel = (IPeel > 0.001) ? IPeel : 1.0;
+float peelT = Peel * instPeel;
 float show = (peelT <= 0.001) ? 1.0 : smoothstep(peelT - 0.04, peelT + 0.04, BCA);
 float r = lerp(0.88, R, show);
 return saturate(r * RM + RA);
@@ -301,11 +306,11 @@ def build_surface_master():
 
     s_bc = texparam(mat, "BaseColorTex", T("T_Concrete_BC"), S_COLOR, -1500, -600)
     s_n = texparam(mat, "NormalTex", T("T_Concrete_N"), S_NORMAL, -1500, -350)
-    s_r = texparam(mat, "RoughnessTex", T("T_Concrete_R"), S_LINEAR, -1500, -100)
+    s_r = texparam(mat, "RoughnessTex", T("T_Concrete_R"), S_MASKS, -1500, -100)
     s_ubc = texparam(mat, "UnderBaseColorTex", T("T_Brick_BC"), S_COLOR, -1500, 150)
     s_un = texparam(mat, "UnderNormalTex", T("T_Brick_N"), S_NORMAL, -1500, 400)
-    s_gm = texparam(mat, "GrimeTex", T("T_Grime_M"), S_LINEAR, -1500, 650)
-    s_gs = texparam(mat, "GrimeTex", T("T_Grime_M"), S_LINEAR, -1500, 900)
+    s_gm = texparam(mat, "GrimeTex", T("T_Grime_M"), S_MASKS, -1500, 650)
+    s_gs = texparam(mat, "StreakTex", T("T_Grime_M"), S_MASKS, -1500, 900)
     for s, u in ((s_bc, uv_main), (s_n, uv_main), (s_r, uv_main), (s_ubc, uv_under), (s_un, uv_under), (s_gm, uv_macro), (s_gs, uv_streak)):
         link(u, "", s, "UVs")
 
@@ -415,7 +420,7 @@ def build_foliage_master():
     link(strength, "", c, "Strength")
     link(speed, "", c, "Speed")
 
-    mel.connect_material_property(m2, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    mel.connect_material_property(m1, "", unreal.MaterialProperty.MP_BASE_COLOR)
     mel.connect_material_property(s, "A", unreal.MaterialProperty.MP_OPACITY_MASK)
     mel.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
     mel.connect_material_property(c, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
@@ -444,7 +449,7 @@ def build_cable_master():
     xf = node(mat, unreal.MaterialExpressionTransform, -1400, 550)
     set_prop(xf, "transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_LOCAL)
     set_prop(xf, "transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
-    link(side_c, "", xf, "Input")
+    link(side_c, "", xf, "")
 
     def_sag = scalar(mat, "DefaultSag", 45.0, -1600, 700)
     zero = node(mat, unreal.MaterialExpressionConstant, -1600, 800)
@@ -510,27 +515,27 @@ def surf(prefix):
     return {"BaseColorTex": T("T_%s_BC" % prefix), "NormalTex": T("T_%s_N" % prefix), "RoughnessTex": T("T_%s_R" % prefix)}
 
 
-make_mi("MI_Favela_Brick", m_surface, surf("Brick"), {"TileSize": 120.0, "GrimeStrength": 0.9, "StreakStrength": 0.7})
-make_mi("MI_Favela_Cinder", m_surface, surf("Cinder"), {"TileSize": 120.0, "GrimeStrength": 0.9, "StreakStrength": 0.6})
+make_mi("MI_Favela_Brick", m_surface, surf("Brick"), {"TileSize": 120.0, "GrimeStrength": 0.9, "StreakStrength": 0.7}, {"Tint": (1.25, 0.70, 0.45, 1.0)})
+make_mi("MI_Favela_Cinder", m_surface, surf("Cinder"), {"TileSize": 120.0, "GrimeStrength": 0.9, "StreakStrength": 0.6}, {"Tint": (1.0, 1.0, 1.0, 1.0)})
 stucco = surf("Stucco")
 stucco.update({"UnderBaseColorTex": T("T_Brick_BC"), "UnderNormalTex": T("T_Brick_N")})
-make_mi("MI_Favela_Stucco", m_surface, stucco, {"TileSize": 260.0, "UnderTileSize": 120.0, "PeelAmount": 0.32, "GrimeStrength": 1.0, "StreakStrength": 0.8})
-make_mi("MI_Favela_Concrete", m_surface, surf("Concrete"), {"TileSize": 250.0, "GrimeStrength": 0.7, "StreakStrength": 0.7})
-make_mi("MI_Favela_Cobble", m_surface, surf("Cobble"), {"TileSize": 160.0, "MacroStrength": 0.45, "GrimeStrength": 0.0, "NormalStrength": 1.2})
-make_mi("MI_Favela_Asphalt", m_surface, surf("Asphalt"), {"TileSize": 320.0, "MacroStrength": 0.4, "GrimeStrength": 0.0})
-make_mi("MI_Favela_Dirt", m_surface, surf("Dirt"), {"TileSize": 260.0, "MacroStrength": 0.5, "GrimeStrength": 0.0})
-make_mi("MI_Favela_Sand", m_surface, surf("Sand"), {"TileSize": 240.0, "MacroStrength": 0.35, "GrimeStrength": 0.0})
-make_mi("MI_Favela_Wood", m_surface, surf("Wood"), {"TileSize": 120.0, "GrimeStrength": 0.6, "StreakStrength": 0.4})
-make_mi("MI_Favela_RoofMetal", m_surface, surf("Metal"), {"UseMeshUV": 1.0, "MeshTiling": 1.0, "Metallic": 0.55, "GrimeStrength": 0.0, "StreakStrength": 0.0, "MacroStrength": 0.2})
-make_mi("MI_Favela_Metal", m_surface, surf("Metal"), {"TileSize": 140.0, "Metallic": 0.5, "GrimeStrength": 0.3, "StreakStrength": 0.3})
+make_mi("MI_Favela_Stucco", m_surface, stucco, {"TileSize": 260.0, "UnderTileSize": 120.0, "PeelAmount": 0.32, "GrimeStrength": 1.0, "StreakStrength": 0.8}, {"Tint": (1.0, 1.0, 1.0, 1.0)})
+make_mi("MI_Favela_Concrete", m_surface, surf("Concrete"), {"TileSize": 250.0, "GrimeStrength": 0.7, "StreakStrength": 0.7}, {"Tint": (0.95, 0.93, 0.90, 1.0)})
+make_mi("MI_Favela_Cobble", m_surface, surf("Cobble"), {"TileSize": 160.0, "MacroStrength": 0.45, "GrimeStrength": 0.0, "NormalStrength": 1.2}, {"Tint": (1.1, 1.05, 0.95, 1.0)})
+make_mi("MI_Favela_Asphalt", m_surface, surf("Asphalt"), {"TileSize": 320.0, "MacroStrength": 0.4, "GrimeStrength": 0.0}, {"Tint": (0.7, 0.7, 0.7, 1.0)})
+make_mi("MI_Favela_Dirt", m_surface, surf("Dirt"), {"TileSize": 260.0, "MacroStrength": 0.5, "GrimeStrength": 0.0}, {"Tint": (1.35, 0.65, 0.35, 1.0)})
+make_mi("MI_Favela_Sand", m_surface, surf("Sand"), {"TileSize": 240.0, "MacroStrength": 0.35, "GrimeStrength": 0.0}, {"Tint": (1.2, 1.05, 0.8, 1.0)})
+make_mi("MI_Favela_Wood", m_surface, surf("Wood"), {"TileSize": 120.0, "GrimeStrength": 0.6, "StreakStrength": 0.4}, {"Tint": (1.2, 0.85, 0.55, 1.0)})
+make_mi("MI_Favela_RoofMetal", m_surface, surf("Metal"), {"UseMeshUV": 1.0, "MeshTiling": 1.0, "Metallic": 0.55, "GrimeStrength": 0.0, "StreakStrength": 0.0, "MacroStrength": 0.2}, {"Tint": (0.9, 0.8, 0.7, 1.0)})
+make_mi("MI_Favela_Metal", m_surface, surf("Metal"), {"TileSize": 140.0, "Metallic": 0.5, "GrimeStrength": 0.3, "StreakStrength": 0.3}, {"Tint": (0.9, 0.85, 0.8, 1.0)})
 make_mi("MI_Favela_Puddle", m_surface, surf("Asphalt"), {"TileSize": 320.0, "RoughnessMul": 0.0, "RoughnessAdd": 0.04, "Specular": 0.9, "NormalStrength": 0.05, "GrimeStrength": 0.0, "MacroStrength": 0.1}, {"Tint": (0.35, 0.37, 0.40, 1)})
-make_mi("MI_Favela_Plastic", m_surface, surf("Concrete"), {"TileSize": 400.0, "RoughnessMul": 0.4, "RoughnessAdd": 0.05, "NormalStrength": 0.1, "GrimeStrength": 0.3, "MacroStrength": 0.1}, {"Tint": (1.6, 1.6, 1.6, 1)})
+make_mi("MI_Favela_Plastic", m_surface, surf("Concrete"), {"TileSize": 400.0, "RoughnessMul": 0.4, "RoughnessAdd": 0.05, "NormalStrength": 0.1, "GrimeStrength": 0.3, "MacroStrength": 0.1}, {"Tint": (0.10, 0.45, 0.95, 1.0)})
 make_mi("MI_Favela_Rubber", m_surface, surf("Asphalt"), {"TileSize": 60.0, "RoughnessAdd": 0.1, "GrimeStrength": 0.0}, {"Tint": (0.45, 0.45, 0.45, 1)})
 make_mi("MI_Favela_Dark", m_surface, surf("Concrete"), {"TileSize": 200.0, "GrimeStrength": 0.0, "StreakStrength": 0.0, "MacroStrength": 0.0, "NormalStrength": 0.2}, {"Tint": (0.06, 0.055, 0.05, 1)})
-make_mi("MI_Favela_Weeds", m_foliage, {"LeafTex": T("T_Weeds_BC")}, {"WindStrength": 4.0})
-make_mi("MI_Favela_Ivy", m_foliage, {"LeafTex": T("T_Ivy_BC")}, {"WindStrength": 1.2, "WindSpeed": 1.4})
-make_mi("MI_Favela_Banana", m_foliage, {"LeafTex": T("T_Banana_BC")}, {"WindStrength": 14.0, "WindSpeed": 0.8})
-make_mi("MI_Favela_PalmFan", m_foliage, {"LeafTex": T("T_Banana_BC")}, {"WindStrength": 7.0, "WindSpeed": 0.9})
+make_mi("MI_Favela_Weeds", m_foliage, {"LeafTex": T("T_Weeds_BC")}, {"WindStrength": 4.0}, {"Tint": (0.95, 1.15, 0.75, 1.0)})
+make_mi("MI_Favela_Ivy", m_foliage, {"LeafTex": T("T_Ivy_BC")}, {"WindStrength": 1.2, "WindSpeed": 1.4}, {"Tint": (1.1, 1.25, 0.9, 1.0)})
+make_mi("MI_Favela_Banana", m_foliage, {"LeafTex": T("T_Banana_BC")}, {"WindStrength": 14.0, "WindSpeed": 0.8}, {"Tint": (1.0, 1.30, 0.85, 1.0)})
+make_mi("MI_Favela_PalmFan", m_foliage, {"LeafTex": T("T_Banana_BC")}, {"WindStrength": 7.0, "WindSpeed": 0.9}, {"Tint": (0.9, 1.25, 0.80, 1.0)})
 make_mi("MI_Favela_Cable", m_cable, None, {"SwayAmplitude": 7.0})
 
 # Default material slots on the meshes

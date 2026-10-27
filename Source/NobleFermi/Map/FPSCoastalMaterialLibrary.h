@@ -106,6 +106,7 @@ struct NOBLEFERMI_API FFPSFavelaEnvironmentKit
 	void AddTrashPile(const FVector& Loc, float YawDeg, float Scale = 1.0f);
 	void AddWindowAC(const FVector& WindowLoc, const FRotator& WallRot);
 	void AddSatelliteDish(const FVector& RoofLoc, float YawDeg);
+	void MarkAllRenderStatesDirty();
 };
 
 UCLASS()
