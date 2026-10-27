@@ -295,23 +295,41 @@ void AFPSCombatArenaMapActor::BeginPlay()
 	// 1. Ground: Portuguese Cobblestone Plaza (Pedra Portuguesa / Paralelepipedo)
 	UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(GroundFloorMesh, ECoastalSurfaceType::FavelaCobble);
 
-	// 2. Perimeter Retaining Walls: Unpainted Cinder Blocks & Terracotta Brick
+	// 2. Perimeter Retaining Walls: Santa Marta Stucco Peeling, Cinder Blocks & Terracotta Brick
 	for (int32 i = 0; i < PerimeterWalls.Num(); ++i)
 	{
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(
-			PerimeterWalls[i],
-			(i % 2 == 0) ? ECoastalSurfaceType::FavelaCinder : ECoastalSurfaceType::FavelaBrick);
+		if (i % 3 == 0)
+		{
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(PerimeterWalls[i], i % 6, 0.45f);
+		}
+		else
+		{
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(
+				PerimeterWalls[i],
+				(i % 2 == 0) ? ECoastalSurfaceType::FavelaCinder : ECoastalSurfaceType::FavelaBrick);
+		}
 	}
 
-	// 3. Central 3-Story Favela Laje Watchtower: Concrete Pillars, Slabs & Tijolo Baiano Brick Core
+	// 3. Central 3-Story Favela Laje Watchtower: Santa Marta Stucco Core, Painted Catwalk Fascia & Concrete Slabs
 	for (int32 i = 0; i < DerrickComponents.Num(); ++i)
 	{
 		UStaticMeshComponent* Part = DerrickComponents[i];
 		if (!Part) continue;
 		const FString PartName = Part->GetName();
-		if (PartName.Contains(TEXT("Core")) || PartName.Contains(TEXT("Rail")))
+		if (PartName.Contains(TEXT("Core")))
 		{
-			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Part, ECoastalSurfaceType::FavelaBrick);
+			// Central Tower 3-story core: Copacabana Turquoise / Cyan with exposed brick peeling
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Part, 0, 0.35f);
+		}
+		else if (PartName.Contains(TEXT("Catwalk_N")) || PartName.Contains(TEXT("Catwalk_S")))
+		{
+			// Catwalk fascia walls: Sun-Bleached Mustard Gold
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Part, 2, 0.30f);
+		}
+		else if (PartName.Contains(TEXT("Rail")))
+		{
+			// Weathered Timber / Painted Wood Railings
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Part, ECoastalSurfaceType::WeatheredPierTimber);
 		}
 		else if (PartName.Contains(TEXT("Base")))
 		{
@@ -323,32 +341,121 @@ void AFPSCombatArenaMapActor::BeginPlay()
 		}
 	}
 
-	// 4. West Beco Shanty Blocks & Covered Alleyway
+	// 4. West Beco Shanty Blocks & Covered Alleyway (Santa Marta 6-Color Palette)
 	for (int32 i = 0; i < ContainerComponents.Num(); ++i)
 	{
-		ECoastalSurfaceType Surf = ECoastalSurfaceType::FavelaBrick;
-		if (i == 0 || i == 2) Surf = ECoastalSurfaceType::FavelaStucco;
-		else if (i == 3 || i == 4) Surf = ECoastalSurfaceType::FavelaCinder;
-		else if (i == 5) Surf = ECoastalSurfaceType::MarineCastConcrete;
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(ContainerComponents[i], Surf);
+		UStaticMeshComponent* Comp = ContainerComponents[i];
+		if (!Comp) continue;
+
+		if (i == 0)
+		{
+			// Container_Blue: Copacabana Turquoise / Cyan
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 0, 0.35f);
+		}
+		else if (i == 1)
+		{
+			// Container_Red: Warm Terracotta Tangerine
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 1, 0.30f);
+		}
+		else if (i == 2)
+		{
+			// Container_Olive: Sun-Bleached Mustard Gold
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 2, 0.40f);
+		}
+		else if (i == 3)
+		{
+			// Container_Tunnel_WallL: Carioca Mint Green
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 4, 0.35f);
+		}
+		else if (i == 4)
+		{
+			// Container_Tunnel_WallR: Tropical Coral Rose
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 3, 0.35f);
+		}
+		else
+		{
+			// Container_Tunnel_Roof: Reinforced Concrete Laje
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::MarineCastConcrete);
+		}
 	}
 
 	// 5. East Beco Retaining Walls & Brick Guardhouse
 	for (int32 i = 0; i < PipelineComponents.Num(); ++i)
 	{
-		const ECoastalSurfaceType Surf = (i < 3)
-			? ECoastalSurfaceType::FavelaCinder
-			: ((i == 8) ? ECoastalSurfaceType::MarineCastConcrete : ECoastalSurfaceType::FavelaBrick);
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(PipelineComponents[i], Surf);
+		UStaticMeshComponent* Comp = PipelineComponents[i];
+		if (!Comp) continue;
+
+		if (i == 1)
+		{
+			// Middle terrace wall: Carioca Mint Green painted stucco with exposed brick peeling
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 4, 0.50f);
+		}
+		else if (i < 3)
+		{
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::FavelaCinder);
+		}
+		else if (i == 3 || i == 4)
+		{
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::FavelaCobble);
+		}
+		else if (i == 5)
+		{
+			// Guardhouse back wall: Warm Terracotta
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 1, 0.35f);
+		}
+		else if (i == 6)
+		{
+			// Guardhouse left wall: Copacabana Turquoise
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 0, 0.35f);
+		}
+		else if (i == 7)
+		{
+			// Guardhouse right wall: Sun-Bleached Mustard Gold
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 2, 0.35f);
+		}
+		else
+		{
+			// Guardhouse roof: Concrete Laje
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::MarineCastConcrete);
+		}
 	}
 
 	// 6. Plaza Market Stall & Masonry Cover Barriers
 	for (int32 i = 0; i < BarrierComponents.Num(); ++i)
 	{
-		const ECoastalSurfaceType Surf = (i == 1)
-			? ECoastalSurfaceType::WeatheredPierTimber
-			: ((i % 2 == 0) ? ECoastalSurfaceType::FavelaBrick : ECoastalSurfaceType::FavelaCinder);
-		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(BarrierComponents[i], Surf);
+		UStaticMeshComponent* Comp = BarrierComponents[i];
+		if (!Comp) continue;
+
+		if (i == 0 || i == 1)
+		{
+			// Market stall counter & trim: Weathered Pier Timber
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::WeatheredPierTimber);
+		}
+		else if (i == 2)
+		{
+			// Barrier 1: Copacabana Turquoise
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 0, 0.35f);
+		}
+		else if (i == 3)
+		{
+			// Barrier 2: Sun-Bleached Mustard Gold
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 2, 0.35f);
+		}
+		else if (i == 4)
+		{
+			// Barrier 3: Warm Terracotta
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 1, 0.35f);
+		}
+		else if (i == 5)
+		{
+			// Barrier 4: Carioca Mint Green
+			UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(Comp, 4, 0.35f);
+		}
+		else
+		{
+			// Alpha / Bravo Exit Barriers
+			UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Comp, ECoastalSurfaceType::FavelaCobble);
+		}
 	}
 
 	// 7. Objectives

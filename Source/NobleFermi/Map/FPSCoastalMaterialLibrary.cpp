@@ -788,17 +788,75 @@ void FFPSFavelaEnvironmentKit::AddMesh(UInstancedStaticMeshComponent* ISM, const
 	ISM->SetCustomData(Idx, Custom, false);
 }
 
-static FLinearColor GetFavelaStuccoPalette(int32 PaletteIdx)
+FLinearColor UFPSCoastalMaterialLibrary::GetFavelaStuccoPalette(int32 PaletteIdx)
 {
 	switch (FMath::Abs(PaletteIdx) % 6)
 	{
-	case 0: return FLinearColor(0.28f, 0.80f, 0.88f, 1.0f); // Copacabana Turquoise / Cyan
-	case 1: return FLinearColor(0.95f, 0.50f, 0.30f, 1.0f); // Warm Terracotta Sienna
-	case 2: return FLinearColor(0.96f, 0.78f, 0.28f, 1.0f); // Sun-Bleached Mustard Gold
-	case 3: return FLinearColor(0.92f, 0.52f, 0.48f, 1.0f); // Faded Tropical Coral Rose
-	case 4: return FLinearColor(0.46f, 0.84f, 0.58f, 1.0f); // Carioca Mint Green
-	default: return FLinearColor(0.92f, 0.88f, 0.78f, 1.0f); // Aged Sun Plaster Cream
+	case 0: return FLinearColor(0.10f, 0.76f, 0.90f, 1.0f); // Copacabana Turquoise / Cyan
+	case 1: return FLinearColor(0.96f, 0.44f, 0.20f, 1.0f); // Warm Terracotta Sienna / Tangerine
+	case 2: return FLinearColor(0.98f, 0.78f, 0.16f, 1.0f); // Sun-Bleached Mustard Gold
+	case 3: return FLinearColor(0.94f, 0.36f, 0.46f, 1.0f); // Vibrant Tropical Coral Rose
+	case 4: return FLinearColor(0.18f, 0.82f, 0.48f, 1.0f); // Carioca Mint Green
+	default: return FLinearColor(0.94f, 0.90f, 0.78f, 1.0f); // Aged Sun Plaster Cream
 	}
+}
+
+void UFPSCoastalMaterialLibrary::ApplyFavelaSurfaceCustom(UStaticMeshComponent* MeshComp, ECoastalSurfaceType SurfaceType, const FLinearColor& Tint, float PeelAmount, int32 MaterialSlot)
+{
+	if (!MeshComp) return;
+
+	const TCHAR* FavMatName = TEXT("MI_Favela_Concrete");
+	switch (SurfaceType)
+	{
+	case ECoastalSurfaceType::FavelaStucco:
+		FavMatName = TEXT("MI_Favela_Stucco");
+		break;
+	case ECoastalSurfaceType::FavelaBrick:
+		FavMatName = TEXT("MI_Favela_Brick");
+		break;
+	case ECoastalSurfaceType::FavelaCinder:
+		FavMatName = TEXT("MI_Favela_Cinder");
+		break;
+	case ECoastalSurfaceType::FavelaCobble:
+		FavMatName = TEXT("MI_Favela_Cobble");
+		break;
+	case ECoastalSurfaceType::FavelaMetal:
+		FavMatName = TEXT("MI_Favela_Metal");
+		break;
+	case ECoastalSurfaceType::WeatheredPierTimber:
+		FavMatName = TEXT("MI_Favela_Wood");
+		break;
+	default:
+		FavMatName = TEXT("MI_Favela_Concrete");
+		break;
+	}
+
+	UMaterialInterface* ParentMat = LoadFavelaMaterial(FavMatName);
+	if (!ParentMat)
+	{
+		ParentMat = GetOrCreateCoastalMaterial(MeshComp, SurfaceType);
+	}
+	if (!ParentMat) return;
+
+	UMaterialInstanceDynamic* MID = Cast<UMaterialInstanceDynamic>(MeshComp->GetMaterial(MaterialSlot));
+	if (!MID || MID->Parent != ParentMat)
+	{
+		MID = UMaterialInstanceDynamic::Create(ParentMat, MeshComp);
+		MeshComp->SetMaterial(MaterialSlot, MID);
+	}
+	if (MID)
+	{
+		MID->SetVectorParameterValue(TEXT("Tint"), Tint);
+		MID->SetScalarParameterValue(TEXT("PeelAmount"), PeelAmount);
+	}
+
+	MeshComp->ComponentTags.AddUnique(FName(TEXT("Concrete")));
+}
+
+void UFPSCoastalMaterialLibrary::ApplyFavelaStuccoWithColor(UStaticMeshComponent* MeshComp, int32 PaletteIdx, float PeelAmount, int32 MaterialSlot)
+{
+	const FLinearColor Tint = GetFavelaStuccoPalette(PaletteIdx);
+	ApplyFavelaSurfaceCustom(MeshComp, ECoastalSurfaceType::FavelaStucco, Tint, PeelAmount, MaterialSlot);
 }
 
 void FFPSFavelaEnvironmentKit::AddRoofCorrugated(const FVector& RoofCenterTop, float LengthX, float WidthY, float YawDeg, float PitchDeg, int32 Seed, bool bAddWaterTank)
@@ -829,8 +887,20 @@ void FFPSFavelaEnvironmentKit::AddRoofCorrugated(const FVector& RoofCenterTop, f
 			const float ZLift = 12.0f + (cy % 2) * 2.5f + rx * 4.0f;
 
 			const FRotator SheetRot = (FQuat(BaseRot) * FQuat(FRotator(PitchDeg, JitterYaw, JitterRoll))).Rotator();
-			const float RustTint = Rng.FRandRange(0.84f, 1.08f);
-			const FLinearColor Tint(RustTint, RustTint * Rng.FRandRange(0.92f, 1.0f), RustTint * Rng.FRandRange(0.88f, 1.0f));
+
+			// Authentic Brazilian painted corrugated tin roof palette
+			static const FLinearColor RoofPalette[] = {
+				FLinearColor(0.92f, 0.94f, 0.96f, 1.0f), // Galvanized zinc silver
+				FLinearColor(0.10f, 0.48f, 0.95f, 1.0f), // Cobalt blue painted tin
+				FLinearColor(0.88f, 0.22f, 0.16f, 1.0f), // Oxide red painted tin
+				FLinearColor(0.18f, 0.68f, 0.38f, 1.0f), // Amazon moss green
+				FLinearColor(0.96f, 0.74f, 0.16f, 1.0f), // Saffron gold painted tin
+				FLinearColor(0.72f, 0.35f, 0.18f, 1.0f)  // Weathered rust orange
+			};
+			const int32 ColorChoice = (Seed + rx * 3 + cy * 5) % 6;
+			const FLinearColor BaseTint = RoofPalette[ColorChoice];
+			const float Jitter = Rng.FRandRange(0.88f, 1.12f);
+			const FLinearColor Tint(BaseTint.R * Jitter, BaseTint.G * Jitter, BaseTint.B * Jitter, 1.0f);
 
 			if (RoofSheetMesh)
 			{
@@ -858,16 +928,98 @@ void FFPSFavelaEnvironmentKit::AddRoofCorrugated(const FVector& RoofCenterTop, f
 		AddBox(CinderISM, ToWorld(FVector(BX, BY, 19.0f)), FVector(39.0f, 19.0f, 14.0f), FRotator(PitchDeg, Rng.FRandRange(0.0f, 180.0f), 0.0f));
 	}
 
-	// Iconic Brazilian bright-blue 1000L polyethylene rooftop water tank (caixa d'agua)
 	if (bAddWaterTank)
 	{
 		const FVector TankOffset(Rng.FRandRange(-LengthX * 0.22f, LengthX * 0.22f), Rng.FRandRange(-WidthY * 0.22f, WidthY * 0.22f), 16.0f);
-		AddBox(ConcreteISM, ToWorld(TankOffset + FVector(0.0f, 0.0f, 8.0f)), FVector(125.0f, 125.0f, 18.0f), BaseRot);
-		const FLinearColor TankBlue = (Seed % 3 == 0)
-			? FLinearColor(0.05f, 0.44f, 0.96f, 1.0f)
-			: FLinearColor(0.04f, 0.56f, 0.88f, 1.0f);
-		AddMesh(WaterTankISM, ToWorld(TankOffset + FVector(0.0f, 0.0f, 17.0f)), FRotator(0.0f, Rng.FRandRange(0.0f, 360.0f), 0.0f), FVector(1.08f, 1.08f, 1.08f), TankBlue);
+		AddWaterTank(ToWorld(TankOffset), YawDeg, Seed);
 	}
+}
+
+void FFPSFavelaEnvironmentKit::AddWaterTank(const FVector& Center, float YawDeg, int32 Seed)
+{
+	FRandomStream Rng(Seed * 5381 + 13);
+	const FRotator Rot(0.0f, YawDeg, 0.0f);
+
+	// Reinforced concrete base slab
+	AddBox(ConcreteISM, Center + FVector(0.0f, 0.0f, 8.0f), FVector(125.0f, 125.0f, 16.0f), Rot);
+
+	// Iconic Brazilian bright-blue 1000L polyethylene Fortlev water tank (caixa d'agua)
+	const FLinearColor TankBlue = (Seed % 2 == 0)
+		? FLinearColor(0.04f, 0.48f, 0.98f, 1.0f)
+		: FLinearColor(0.03f, 0.58f, 0.92f, 1.0f);
+
+	if (WaterTankMesh)
+	{
+		AddMesh(WaterTankISM, Center + FVector(0.0f, 0.0f, 18.0f), FRotator(0.0f, Rng.FRandRange(0.0f, 360.0f), 0.0f), FVector(1.10f, 1.10f, 1.10f), TankBlue);
+	}
+	else
+	{
+		AddBox(WaterTankISM, Center + FVector(0.0f, 0.0f, 65.0f), FVector(95.0f, 95.0f, 110.0f), Rot, TankBlue);
+	}
+
+	// Dark PVC top lid / inspection hatch
+	AddBox(DarkISM, Center + FVector(0.0f, 0.0f, 125.0f), FVector(48.0f, 48.0f, 8.0f), Rot);
+
+	// PVC water pipe drop line
+	AddBox(DarkISM, Center + Rot.RotateVector(FVector(50.0f, 0.0f, 45.0f)), FVector(6.0f, 6.0f, 85.0f), Rot);
+}
+
+void FFPSFavelaEnvironmentKit::AddBougainvilleaCluster(const FVector& BaseLoc, const FRotator& Rot, const FLinearColor& FlowerColor, int32 Count)
+{
+	if (!IvyISM || Count <= 0) return;
+	for (int32 i = 0; i < Count; ++i)
+	{
+		const float Spread = (i - (Count - 1) * 0.5f) * 36.0f;
+		const FVector Loc = BaseLoc + Rot.RotateVector(FVector(0.0f, Spread, -i * 18.0f));
+		const FRotator MeshRot = Rot + FRotator(FMath::FRandRange(-5.0f, 5.0f), FMath::FRandRange(-10.0f, 10.0f), FMath::FRandRange(-8.0f, 8.0f));
+		const FVector Scale(FMath::FRandRange(1.05f, 1.35f), FMath::FRandRange(1.10f, 1.45f), FMath::FRandRange(1.15f, 1.55f));
+		AddMesh(IvyISM, Loc, MeshRot, Scale, FlowerColor);
+	}
+}
+
+void FFPSFavelaEnvironmentKit::AddMarketCanopy(const FVector& Center, const FVector& SizeCm, const FRotator& Rot, const FLinearColor& CanopyColor, int32 Seed)
+{
+	FRandomStream Rng(Seed * 4789 + 23);
+	auto ToWorld = [&](const FVector& Local) -> FVector { return Center + Rot.RotateVector(Local); };
+
+	const float HalfX = SizeCm.X * 0.5f;
+	const float HalfY = SizeCm.Y * 0.5f;
+	const float PostH = SizeCm.Z;
+
+	// 4 Rough timber corner posts (caibros de eucalipto)
+	for (float dx : { -1.0f, 1.0f })
+	{
+		for (float dy : { -1.0f, 1.0f })
+		{
+			const FVector PostLoc(dx * (HalfX - 6.0f), dy * (HalfY - 6.0f), PostH * 0.5f);
+			AddBox(WoodISM, ToWorld(PostLoc), FVector(10.0f, 10.0f, PostH), Rot);
+		}
+	}
+
+	// Upper timber frame perimeter
+	AddBox(WoodISM, ToWorld(FVector(0.0f, -HalfY + 6.0f, PostH - 5.0f)), FVector(SizeCm.X, 10.0f, 10.0f), Rot);
+	AddBox(WoodISM, ToWorld(FVector(0.0f, HalfY - 6.0f, PostH - 5.0f)), FVector(SizeCm.X, 10.0f, 10.0f), Rot);
+	AddBox(WoodISM, ToWorld(FVector(-HalfX + 6.0f, 0.0f, PostH - 5.0f)), FVector(10.0f, SizeCm.Y, 10.0f), Rot);
+	AddBox(WoodISM, ToWorld(FVector(HalfX - 6.0f, 0.0f, PostH - 5.0f)), FVector(10.0f, SizeCm.Y, 10.0f), Rot);
+
+	// Slanted vibrant plastic tarp / canvas awning (lona de feira)
+	const float SlopePitch = 9.5f;
+	const FRotator TarpRot = (FQuat(Rot) * FQuat(FRotator(SlopePitch, 0.0f, 0.0f))).Rotator();
+	if (RoofSheetMesh)
+	{
+		AddMesh(RoofSheetISM, ToWorld(FVector(0.0f, 0.0f, PostH + 6.0f)), TarpRot, FVector(SizeCm.X / 240.0f, SizeCm.Y / 110.0f, 1.2f), CanopyColor);
+	}
+	else
+	{
+		AddBox(ConcreteISM, ToWorld(FVector(0.0f, 0.0f, PostH + 6.0f)), FVector(SizeCm.X + 20.0f, SizeCm.Y + 20.0f, 6.0f), TarpRot, CanopyColor);
+	}
+
+	// Timber market counter table beneath the canopy
+	AddBox(WoodISM, ToWorld(FVector(0.0f, 0.0f, 42.0f)), FVector(SizeCm.X * 0.75f, SizeCm.Y * 0.65f, 84.0f), Rot);
+
+	// Discarded car tires and timber fruit crates around the base
+	AddMesh(TireISM, ToWorld(FVector(HalfX - 25.0f, -HalfY - 20.0f, 12.0f)), FRotator(0.0f, Rng.FRandRange(0.0f, 360.0f), 0.0f), FVector(1.05f));
+	AddBox(WoodISM, ToWorld(FVector(-HalfX + 30.0f, HalfY + 25.0f, 18.0f)), FVector(52.0f, 38.0f, 36.0f), Rot + FRotator(0.0f, 15.0f, 0.0f));
 }
 
 void FFPSFavelaEnvironmentKit::AddShanty(const FVector& BaseCenter, float SizeX, float SizeY, float YawDeg, int32 NumStories, int32 Seed, bool bCantileverUpper, bool bHasBalcony, bool bAddWaterTank)
@@ -888,25 +1040,23 @@ void FFPSFavelaEnvironmentKit::AddShanty(const FVector& BaseCenter, float SizeX,
 		TopSX = SX;
 		TopSY = SY;
 
-		// Pick authentic wall material: Ground floors favor cinder block or raw brick; upper floors mix brick & peeling pastel stucco
-		const int32 MatChoice = (s == 0) ? ((Seed + s) % 3) : ((Seed + s * 3) % 5);
-		UInstancedStaticMeshComponent* WallISM = BrickISM;
-		FLinearColor WallTint = FLinearColor::White;
-		float PeelVal = 1.0f;
+		// Pick authentic wall material: 66% vibrant Santa Marta painted stucco, 17% exposed brick, 17% cinder block
+		const int32 MatChoice = (Seed + s * 7) % 6;
+		UInstancedStaticMeshComponent* WallISM = StuccoISM;
+		FLinearColor WallTint = UFPSCoastalMaterialLibrary::GetFavelaStuccoPalette(Seed + s * 5);
+		float PeelVal = Rng.FRandRange(0.22f, 0.42f);
 
 		if (MatChoice == 0)
 		{
 			WallISM = BrickISM;
+			WallTint = FLinearColor::White;
+			PeelVal = 0.0f;
 		}
 		else if (MatChoice == 1)
 		{
 			WallISM = CinderISM;
-		}
-		else
-		{
-			WallISM = StuccoISM;
-			WallTint = GetFavelaStuccoPalette(Seed + s * 5);
-			PeelVal = Rng.FRandRange(0.88f, 1.25f);
+			WallTint = FLinearColor::White;
+			PeelVal = 0.0f;
 		}
 
 		// Main masonry block
@@ -1158,15 +1308,36 @@ void UFPSCoastalMaterialLibrary::PopulateRochaVelhaFavela(AActor* MapActor, USce
 	Kit.AddPuddle(FVector(1550.0f, 180.0f, 0.0f), 360.0f, 220.0f, 9.0f);
 
 	// 2. Central 3-Story Favela Laje Watchtower Roof & Details (crowning the central tower at X=0, Y=0)
-	Kit.AddRoofCorrugated(FVector(0.0f, 0.0f, 735.0f), 430.0f, 430.0f, 0.0f, 7.5f, 77, true);
+	Kit.AddRoofCorrugated(FVector(0.0f, 0.0f, 735.0f), 430.0f, 430.0f, 0.0f, 7.5f, 77, false);
+	Kit.AddWaterTank(FVector(-85.0f, -85.0f, 735.0f), 0.0f, 901);
+	Kit.AddWaterTank(FVector(85.0f, 85.0f, 735.0f), 90.0f, 902);
+
 	// Corrugated tin awnings over the mid-level laje catwalks (Z = 365)
 	Kit.AddRoofCorrugated(FVector(0.0f, -360.0f, 368.0f), 380.0f, 210.0f, 0.0f, -9.0f, 78, false);
 	Kit.AddRoofCorrugated(FVector(0.0f, 360.0f, 368.0f), 380.0f, 210.0f, 0.0f, 9.0f, 79, false);
 
-	// Corrugated tin awnings over the West & East shanty blocks
-	Kit.AddRoofCorrugated(FVector(-200.0f, -1200.0f, 272.0f), 610.0f, 260.0f, 0.0f, 8.0f, 81, true);
-	Kit.AddRoofCorrugated(FVector(200.0f, 1400.0f, 225.0f), 430.0f, 330.0f, 180.0f, 8.5f, 82, true);
-	Kit.AddRoofCorrugated(FVector(180.0f, -220.0f, 155.0f), 340.0f, 240.0f, 15.0f, 7.0f, 83, false);
+	// Blooming Bougainvillea flower vines cascading from central catwalk corners down the concrete pylons
+	Kit.AddBougainvilleaCluster(FVector(-220.0f, -360.0f, 365.0f), FRotator(0.0f, 0.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f), 4);
+	Kit.AddBougainvilleaCluster(FVector(220.0f, -360.0f, 365.0f), FRotator(0.0f, 0.0f, 0.0f), FLinearColor(2.2f, 0.75f, 0.15f), 4);
+	Kit.AddBougainvilleaCluster(FVector(-220.0f, 360.0f, 365.0f), FRotator(0.0f, 180.0f, 0.0f), FLinearColor(1.6f, 0.10f, 1.95f), 4);
+	Kit.AddBougainvilleaCluster(FVector(220.0f, 360.0f, 365.0f), FRotator(0.0f, 180.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f), 4);
+
+	// Feira Livre Street Market Canopies (Vibrant Brazilian Yellow, Blue & Red Tarps)
+	Kit.AddMarketCanopy(FVector(180.0f, -220.0f, 0.0f), FVector(360.0f, 220.0f, 220.0f), FRotator(0.0f, 15.0f, 0.0f), FLinearColor(0.98f, 0.82f, 0.05f), 910);
+	Kit.AddMarketCanopy(FVector(-220.0f, 380.0f, 0.0f), FVector(320.0f, 200.0f, 210.0f), FRotator(0.0f, -20.0f, 0.0f), FLinearColor(0.08f, 0.45f, 0.95f), 911);
+	Kit.AddMarketCanopy(FVector(520.0f, 150.0f, 0.0f), FVector(280.0f, 190.0f, 200.0f), FRotator(0.0f, 40.0f, 0.0f), FLinearColor(0.92f, 0.12f, 0.15f), 912);
+
+	// Corrugated tin awnings & blue water tanks over West & East shanty blocks
+	Kit.AddRoofCorrugated(FVector(-200.0f, -1200.0f, 272.0f), 610.0f, 260.0f, 0.0f, 8.0f, 81, false);
+	Kit.AddWaterTank(FVector(-200.0f, -1200.0f, 262.0f), 0.0f, 920);
+	Kit.AddBougainvilleaCluster(FVector(100.0f, -1200.0f, 260.0f), FRotator(0.0f, 90.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f), 4);
+	Kit.AddBougainvilleaCluster(FVector(-500.0f, -1200.0f, 260.0f), FRotator(0.0f, -90.0f, 0.0f), FLinearColor(2.2f, 0.75f, 0.15f), 4);
+
+	Kit.AddRoofCorrugated(FVector(200.0f, 1400.0f, 225.0f), 430.0f, 330.0f, 180.0f, 8.5f, 82, false);
+	Kit.AddWaterTank(FVector(200.0f, 1400.0f, 215.0f), 0.0f, 925);
+	Kit.AddBougainvilleaCluster(FVector(200.0f, 1550.0f, 210.0f), FRotator(0.0f, 0.0f, 0.0f), FLinearColor(1.6f, 0.10f, 1.95f), 5);
+	Kit.AddBougainvilleaCluster(FVector(-600.0f, 1800.0f, 140.0f), FRotator(0.0f, 0.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f), 4);
+	Kit.AddBougainvilleaCluster(FVector(600.0f, 1800.0f, 140.0f), FRotator(0.0f, 0.0f, 0.0f), FLinearColor(2.2f, 0.75f, 0.15f), 4);
 
 	// 3. Multi-Story Favela Shanties flanking West Beco, East Beco, and Stepped North/South Hillsides
 	// West Flank Shanties (facing +Y toward the central plaza)
@@ -1317,6 +1488,18 @@ void UFPSCoastalMaterialLibrary::PopulateBaiaBravaFavela(AActor* MapActor, UScen
 	Kit.AddBananaCluster(FVector(-700.0f, 1850.0f, 0.0f), 3, 506);
 	Kit.AddBananaCluster(FVector(680.0f, 950.0f, 0.0f), 4, 507);
 	Kit.AddBananaCluster(FVector(-680.0f, 950.0f, 0.0f), 4, 508);
+
+	// Vibrant Feira Livre Market Canopies along the Coastal Avenue
+	Kit.AddMarketCanopy(FVector(560.0f, 3200.0f, 0.0f), FVector(240.0f, 180.0f, 220.0f), FRotator(0.0f, -85.0f, 0.0f), FLinearColor(0.95f, 0.72f, 0.08f, 1.0f), 511);
+	Kit.AddMarketCanopy(FVector(-560.0f, 2200.0f, 0.0f), FVector(260.0f, 190.0f, 220.0f), FRotator(0.0f, 95.0f, 0.0f), FLinearColor(0.08f, 0.42f, 0.88f, 1.0f), 512);
+	Kit.AddMarketCanopy(FVector(580.0f, 1200.0f, 0.0f), FVector(250.0f, 185.0f, 220.0f), FRotator(0.0f, -90.0f, 0.0f), FLinearColor(0.88f, 0.16f, 0.18f, 1.0f), 513);
+
+	// Cascading Magenta Bougainvillea Clusters framing shanty roofs & seawall retaining walls
+	Kit.AddBougainvilleaCluster(FVector(960.0f, 3350.0f, 270.0f), FRotator(-15.0f, 180.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f, 1.0f), 28);
+	Kit.AddBougainvilleaCluster(FVector(-960.0f, 2450.0f, 270.0f), FRotator(-15.0f, 0.0f, 0.0f), FLinearColor(1.6f, 0.10f, 1.95f, 1.0f), 32);
+	Kit.AddBougainvilleaCluster(FVector(960.0f, 1550.0f, 270.0f), FRotator(-15.0f, 180.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f, 1.0f), 26);
+	Kit.AddBougainvilleaCluster(FVector(720.0f, -480.0f, 430.0f), FRotator(-20.0f, 90.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f, 1.0f), 35);
+	Kit.AddBougainvilleaCluster(FVector(-720.0f, -480.0f, 430.0f), FRotator(-20.0f, 90.0f, 0.0f), FLinearColor(1.6f, 0.10f, 1.95f, 1.0f), 35);
 
 	// 4. Utility Poles & Swaying Overhead Catenary Electrical Web along the Coastal Avenue
 	const FVector CP_E1 = Kit.AddUtilityPole(FVector(580.0f, 3750.0f, 0.0f), 640.0f, 90.0f, true);

@@ -769,6 +769,23 @@ void AFPSCharacter::Tick(float DeltaTime)
 			{
 				Weapon->SetActorHiddenInGame(false);
 				Weapon->SetActorScale3D(FVector(1.0f, 1.0f, 1.0f));
+
+				const FVector HandR_Pos = MeshComp->GetBoneLocation(FName(TEXT("hand_r")), EBoneSpaces::WorldSpace);
+				const FVector HandL_Pos = MeshComp->GetBoneLocation(FName(TEXT("hand_l")), EBoneSpaces::WorldSpace);
+				FVector BarrelDir = (HandL_Pos - HandR_Pos).GetSafeNormal();
+				if (!BarrelDir.IsNearlyZero())
+				{
+					const FVector CharUp = GetActorUpVector();
+					FVector RifleRight = FVector::CrossProduct(CharUp, BarrelDir).GetSafeNormal();
+					if (RifleRight.IsNearlyZero())
+					{
+						RifleRight = GetActorRightVector();
+					}
+					const FVector RifleUp = FVector::CrossProduct(BarrelDir, RifleRight).GetSafeNormal();
+					const FQuat RifleWorldQuat = FRotationMatrix::MakeFromXZ(BarrelDir, RifleUp).ToQuat();
+
+					Weapon->SetActorLocationAndRotation(HandR_Pos, RifleWorldQuat);
+				}
 			}
 		}
 

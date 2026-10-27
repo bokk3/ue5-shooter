@@ -588,22 +588,17 @@ void AFPSWeaponBase::Tick(float DeltaTime)
 	USceneComponent* AttachParentComp = GetRootComponent() ? GetRootComponent()->GetAttachParent() : nullptr;
 	const bool bIsAttachedToMesh = (AttachParentComp && AttachParentComp->IsA<USkeletalMeshComponent>());
 
-	FVector BaseLoc;
-	FRotator BaseRot;
-
 	if (bIsAttachedToMesh)
 	{
-		BaseLoc = ThirdPersonRelativeLocation;
-		BaseRot = ThirdPersonRelativeRotation;
-	}
-	else
-	{
-		BaseLoc = FMath::Lerp(HipfireRelativeLocation, ADSRelativeLocation, CurrentADSAlpha);
-		BaseRot = FMath::Lerp(HipfireRelativeRotation, ADSRelativeRotation, CurrentADSAlpha);
+		// 3rd-person tactical weapon orientation and dual-hand grip are pinned authoritatively by AFPSCharacter::Tick
+		return;
 	}
 
+	const FVector BaseLoc = FMath::Lerp(HipfireRelativeLocation, ADSRelativeLocation, CurrentADSAlpha);
+	const FRotator BaseRot = FMath::Lerp(HipfireRelativeRotation, ADSRelativeRotation, CurrentADSAlpha);
+
 	const FVector FinalLoc = BaseLoc + RecoilOffsetLoc + ReloadOffsetLoc;
-	const FRotator FinalRot = BaseRot + RecoilOffsetRot + ReloadOffsetRot + (bIsAttachedToMesh ? FRotator::ZeroRotator : CurrentSwayRot);
+	const FRotator FinalRot = BaseRot + RecoilOffsetRot + ReloadOffsetRot + CurrentSwayRot;
 
 	SetActorRelativeLocation(FinalLoc);
 	SetActorRelativeRotation(FinalRot);

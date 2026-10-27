@@ -79,6 +79,9 @@ struct NOBLEFERMI_API FFPSFavelaEnvironmentKit
 	void AddMesh(UInstancedStaticMeshComponent* ISM, const FVector& Loc, const FRotator& Rot, const FVector& Scale, const FLinearColor& Tint = FLinearColor::White, float Peel = 1.0f, float BaseZ = 0.0f);
 
 	void AddRoofCorrugated(const FVector& RoofCenterTop, float LengthX, float WidthY, float YawDeg, float PitchDeg, int32 Seed, bool bAddWaterTank = true);
+	void AddWaterTank(const FVector& Center, float YawDeg, int32 Seed);
+	void AddBougainvilleaCluster(const FVector& BaseLoc, const FRotator& Rot, const FLinearColor& FlowerColor, int32 Count = 3);
+	void AddMarketCanopy(const FVector& Center, const FVector& SizeCm, const FRotator& Rot, const FLinearColor& CanopyColor, int32 Seed);
 	void AddShanty(const FVector& BaseCenter, float SizeX, float SizeY, float YawDeg, int32 NumStories, int32 Seed, bool bCantileverUpper = true, bool bHasBalcony = true, bool bAddWaterTank = true);
 	void AddDrainageGutter(const FVector& StartXY, const FVector& EndXY, float GroundZ, int32 Seed);
 	void AddPuddle(const FVector& CenterXY, float LengthX, float WidthY, float YawDeg, float GroundZ = 0.0f);
@@ -109,6 +112,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Coastal Materials")
 	static void ApplyCoastalSurfaceToMesh(UStaticMeshComponent* MeshComp, ECoastalSurfaceType SurfaceType, int32 MaterialSlot = 0, FVector2D WindDirection = FVector2D(1.0f, 0.0f));
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Coastal Materials")
+	static void ApplyFavelaStuccoWithColor(UStaticMeshComponent* MeshComp, int32 PaletteIdx, float PeelAmount = 0.35f, int32 MaterialSlot = 0);
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Coastal Materials")
+	static void ApplyFavelaSurfaceCustom(UStaticMeshComponent* MeshComp, ECoastalSurfaceType SurfaceType, const FLinearColor& Tint, float PeelAmount = 0.0f, int32 MaterialSlot = 0);
+
+	static FLinearColor GetFavelaStuccoPalette(int32 PaletteIdx);
 
 	/** Loads a cooked Favela Material Instance by short name (e.g. "MI_Favela_Brick") */
 	static UMaterialInterface* LoadFavelaMaterial(const TCHAR* MaterialName);
