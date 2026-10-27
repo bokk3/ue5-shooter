@@ -199,7 +199,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	// Full tactical operator mesh: visible to local owner
 	GetMesh()->SetOwnerNoSee(false);
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -96.0f));
-	GetMesh()->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
+	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 	GetMesh()->SetCastShadow(true);
 	GetMesh()->bCastDynamicShadow = true;
 
@@ -430,7 +430,7 @@ void AFPSCharacter::BeginPlay()
 			AnimBlueprintClass = LoadClass<UAnimInstance>(nullptr, TEXT("/Game/Characters/BaseMale/ABP_BaseMale.ABP_BaseMale_C"));
 		}
 
-		GetMesh()->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
+		GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 		GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		if (AnimLowReady)
 		{
@@ -960,8 +960,6 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 
 	if (FPSMovementComponent && FPSMovementComponent->IsBallisticDiving())
 	{
-		// Compute dive direction relative to current character aim yaw so the 21-bone mesh tilts 75 deg into the world dive vector
-		// while allowing full 360-degree aiming & firing mid-air!
 		const FVector DiveDir2D = FPSMovementComponent->GetBallisticDiveDirection().GetSafeNormal2D();
 		const FVector CharForward2D = GetActorForwardVector().GetSafeNormal2D();
 		const FVector CharRight2D = GetActorRightVector().GetSafeNormal2D();
@@ -969,36 +967,31 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 		const float ForwardDot = FVector::DotProduct(DiveDir2D, CharForward2D);
 		const float RightDot = FVector::DotProduct(DiveDir2D, CharRight2D);
 
-		// Note: Mesh has a base Yaw of -90 deg (so local +Y is character Forward, local +X is character Right)
-		// In Unreal FRotator(Pitch, Yaw, Roll) with Yaw = -90:
-		// Roll tilts the character forward/backward along their facing axis, Pitch tilts them side-to-side!
 		const float DiveTiltDeg = FPSMovementComponent->IsInDiveLandingSlide() ? 78.0f : 72.0f;
-		const float TargetRoll = ForwardDot * DiveTiltDeg;
-		const float TargetPitch = -RightDot * DiveTiltDeg;
+		const float TargetRoll = -ForwardDot * DiveTiltDeg;
+		const float TargetPitch = RightDot * DiveTiltDeg;
 
 		TargetMeshRot = FRotator(TargetPitch, -90.0f, TargetRoll);
 		TargetZOffset = FPSMovementComponent->IsInDiveLandingSlide() ? -68.0f : -58.0f;
 	}
 	else if (FPSMovementComponent && FPSMovementComponent->IsSliding())
 	{
-		// Tactical knee slide: Reclined torso, mesh aligned with reduced slide capsule
 		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
-		TargetMeshRot = FRotator(0.0f, -90.0f, -18.0f + FMath::Clamp(-AimPitch * 0.25f, -15.0f, 15.0f));
+		TargetMeshRot = FRotator(0.0f, -90.0f, 18.0f + FMath::Clamp(AimPitch * 0.25f, -15.0f, 15.0f));
 		TargetZOffset = -42.0f;
 	}
 	else if (FPSMovementComponent && FPSMovementComponent->IsCrouching())
 	{
-		// Crouched: Capsule half-height drops to 48 cm, mesh Z-offset -48 cm maintains ground contact
 		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
-		TargetMeshRot = FRotator(0.0f, -90.0f, 6.0f + FMath::Clamp(-AimPitch * 0.35f, -20.0f, 20.0f));
+		TargetMeshRot = FRotator(0.0f, -90.0f, -6.0f + FMath::Clamp(AimPitch * 0.35f, -20.0f, 20.0f));
 		TargetZOffset = -48.0f;
 	}
 	else
 	{
-		// Standing posture: Full upper-torso pitch aiming
+		// Standing posture: Forward yaw = +90 deg strictly maintained
 		const float RawPitch = bIsTacticalBot ? BotAimRotation.Pitch : GetControlRotation().Pitch;
 		const float AimPitch = FRotator::NormalizeAxis(RawPitch);
-		TargetMeshRot = FRotator(0.0f, -90.0f, FMath::Clamp(-AimPitch * 0.55f, -42.0f, 42.0f));
+		TargetMeshRot = FRotator(0.0f, -90.0f, FMath::Clamp(AimPitch * 0.55f, -42.0f, 42.0f));
 		TargetZOffset = -96.0f;
 	}
 

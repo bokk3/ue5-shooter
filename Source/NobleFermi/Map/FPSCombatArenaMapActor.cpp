@@ -118,9 +118,9 @@ void AFPSCombatArenaMapActor::ConstructPerimeter(UStaticMesh* CubeMesh, UMateria
 	};
 
 	// 4 Hillside Retaining Masonry Walls (60m perimeter, 3.2m high so hillside shanties rise above them!)
-	AddWall(TEXT("Wall_North"), FVector(3000.0f, 0.0f, 160.0f), FVector(1.0f, 60.0f, 3.2f));
-	AddWall(TEXT("Wall_South"), FVector(-3000.0f, 0.0f, 160.0f), FVector(1.0f, 60.0f, 3.2f));
-	AddWall(TEXT("Wall_East"), FVector(0.0f, 3000.0f, 160.0f), FVector(60.0f, 1.0f, 3.2f));
+	AddWall(TEXT("Wall_North"), FVector(6200.0f, 0.0f, 1200.0f), FVector(1.0f, 60.0f, 24.0f));
+	AddWall(TEXT("Wall_South"), FVector(-3200.0f, 0.0f, 300.0f), FVector(1.0f, 60.0f, 6.0f));
+	AddWall(TEXT("Wall_East"), FVector(0.0f, 4200.0f, 600.0f), FVector(60.0f, 1.0f, 12.0f));
 	AddWall(TEXT("Wall_West"), FVector(0.0f, -3000.0f, 160.0f), FVector(60.0f, 1.0f, 3.2f));
 }
 

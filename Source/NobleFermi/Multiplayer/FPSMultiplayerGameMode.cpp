@@ -197,6 +197,11 @@ void AFPSMultiplayerGameMode::BeginPlay()
 
 void AFPSMultiplayerGameMode::SpawnInitialTacticalBots()
 {
+	if (FParse::Param(FCommandLine::Get(), TEXT("TakeGameplayShot")))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] Suppressing bot spawns during -TakeGameplayShot automated capture."));
+		return;
+	}
 	for (int32 i = 0; i < TargetTacticalBotCount; ++i)
 	{
 		SpawnSingleTacticalBot(i);

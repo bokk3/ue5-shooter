@@ -99,7 +99,7 @@ def import_mesh(fname):
     opts.import_textures = False
     opts.static_mesh_import_data.combine_meshes = True
     opts.static_mesh_import_data.generate_lightmap_u_vs = False
-    opts.static_mesh_import_data.auto_generate_collision = name in ("SM_Favela_RoofSheet", "SM_Favela_WaterTank", "SM_Favela_Tire")
+    opts.static_mesh_import_data.auto_generate_collision = name in ("SM_Favela_RoofSheet", "SM_Favela_WaterTank", "SM_Favela_Tire", "SM_Favela_RebarColumn", "SM_Favela_WindowAC", "SM_Favela_SatelliteDish", "SM_Favela_TrashBags")
     task.options = opts
     asset_tools.import_asset_tasks([task])
     mesh = eal.load_asset(MESH_DST + "/" + name)
@@ -530,6 +530,7 @@ make_mi("MI_Favela_Dark", m_surface, surf("Concrete"), {"TileSize": 200.0, "Grim
 make_mi("MI_Favela_Weeds", m_foliage, {"LeafTex": T("T_Weeds_BC")}, {"WindStrength": 4.0})
 make_mi("MI_Favela_Ivy", m_foliage, {"LeafTex": T("T_Ivy_BC")}, {"WindStrength": 1.2, "WindSpeed": 1.4})
 make_mi("MI_Favela_Banana", m_foliage, {"LeafTex": T("T_Banana_BC")}, {"WindStrength": 14.0, "WindSpeed": 0.8})
+make_mi("MI_Favela_PalmFan", m_foliage, {"LeafTex": T("T_Banana_BC")}, {"WindStrength": 7.0, "WindSpeed": 0.9})
 make_mi("MI_Favela_Cable", m_cable, None, {"SwayAmplitude": 7.0})
 
 # Default material slots on the meshes
@@ -541,6 +542,11 @@ slot_map = {
     "SM_Favela_Banana": "MI_Favela_Banana",
     "SM_Favela_Tire": "MI_Favela_Rubber",
     "SM_Favela_WaterTank": "MI_Favela_Plastic",
+    "SM_Favela_PalmFan": "MI_Favela_PalmFan",
+    "SM_Favela_WindowAC": "MI_Favela_Metal",
+    "SM_Favela_SatelliteDish": "MI_Favela_Metal",
+    "SM_Favela_RebarColumn": "MI_Favela_Concrete",
+    "SM_Favela_TrashBags": "MI_Favela_Plastic",
 }
 for mesh_name, mi_name in slot_map.items():
     mesh = meshes.get(mesh_name)

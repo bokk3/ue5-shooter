@@ -51,8 +51,13 @@ struct NOBLEFERMI_API FFPSFavelaEnvironmentKit
 	UStaticMesh* WeedsMesh = nullptr;
 	UStaticMesh* IvyMesh = nullptr;
 	UStaticMesh* BananaMesh = nullptr;
+	UStaticMesh* PalmFanMesh = nullptr;
 	UStaticMesh* TireMesh = nullptr;
 	UStaticMesh* WaterTankMesh = nullptr;
+	UStaticMesh* WindowACMesh = nullptr;
+	UStaticMesh* SatelliteDishMesh = nullptr;
+	UStaticMesh* RebarColumnMesh = nullptr;
+	UStaticMesh* TrashBagsMesh = nullptr;
 
 	UInstancedStaticMeshComponent* BrickISM = nullptr;
 	UInstancedStaticMeshComponent* CinderISM = nullptr;
@@ -71,7 +76,12 @@ struct NOBLEFERMI_API FFPSFavelaEnvironmentKit
 	UInstancedStaticMeshComponent* WeedsISM = nullptr;
 	UInstancedStaticMeshComponent* IvyISM = nullptr;
 	UInstancedStaticMeshComponent* BananaISM = nullptr;
+	UInstancedStaticMeshComponent* PalmFanISM = nullptr;
 	UInstancedStaticMeshComponent* CableISM = nullptr;
+	UInstancedStaticMeshComponent* WindowACISM = nullptr;
+	UInstancedStaticMeshComponent* SatelliteDishISM = nullptr;
+	UInstancedStaticMeshComponent* RebarColumnISM = nullptr;
+	UInstancedStaticMeshComponent* TrashBagsISM = nullptr;
 
 	void Init(AActor* InOwner, USceneComponent* InRoot);
 
@@ -90,6 +100,12 @@ struct NOBLEFERMI_API FFPSFavelaEnvironmentKit
 	void AddCableBundle(const FVector& A, const FVector& B, int32 NumStrands, float BaseSagCm, int32 Seed);
 	void AddWeedLine(const FVector& Start, const FVector& End, int32 Count, int32 Seed, float SpreadCm = 28.0f);
 	void AddBananaCluster(const FVector& BaseLoc, int32 Count, int32 Seed);
+	void AddPalmCluster(const FVector& BaseLoc, int32 Count, int32 Seed);
+	void AddEscadaria(const FVector& StartLoc, const FVector& EndLoc, float WidthCm, int32 NumSteps);
+	void AddRetainingWall(const FVector& Center, const FVector& SizeCm, const FRotator& Rot, bool bWithWeepHoles = true);
+	void AddTrashPile(const FVector& Loc, float YawDeg, float Scale = 1.0f);
+	void AddWindowAC(const FVector& WindowLoc, const FRotator& WallRot);
+	void AddSatelliteDish(const FVector& RoofLoc, float YawDeg);
 };
 
 UCLASS()
