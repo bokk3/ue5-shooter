@@ -225,58 +225,19 @@ void AFPSWeaponBase::BeginPlay()
 		}
 	}
 
-	const bool bIsAK47 = (WeaponID == FName(TEXT("AK47")));
-	if (bIsAK47 && AK47StaticMesh && AK47StaticMesh->GetStaticMesh())
+	// Hide low-poly blockout mesh and use high-detail procedural Kalashnikov assault rifle
+	if (AK47StaticMesh)
 	{
-		UMaterialInterface* SteelMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
-		UMaterialInterface* WoodMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"));
-		UMaterialInterface* BakeMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"));
-		if (SteelMat) AK47StaticMesh->SetMaterial(0, SteelMat);
-		if (WoodMat) AK47StaticMesh->SetMaterial(1, WoodMat);
-		if (BakeMat) AK47StaticMesh->SetMaterial(2, BakeMat);
-
-		// Ensure sockets exist on SM_AK47 static mesh at runtime
-		if (UStaticMesh* SM = AK47StaticMesh->GetStaticMesh())
-		{
-			auto EnsureStaticSocket = [SM](FName SocketName, const FVector& Loc, const FRotator& Rot)
-			{
-				if (!SM->FindSocket(SocketName))
-				{
-					UStaticMeshSocket* NewSocket = NewObject<UStaticMeshSocket>(SM);
-					if (NewSocket)
-					{
-						NewSocket->SocketName = SocketName;
-						NewSocket->RelativeLocation = Loc;
-						NewSocket->RelativeRotation = Rot;
-						NewSocket->SetFlags(RF_Public | RF_Standalone);
-						NewSocket->AddToRoot();
-						SM->AddSocket(NewSocket);
-					}
-				}
-			};
-
-			EnsureStaticSocket(FName(TEXT("weapon_l_ik")), FVector(2.6f, -17.5f, -2.6f), FRotator::ZeroRotator);
-			EnsureStaticSocket(FName(TEXT("Muzzle_Flash_Socket")), FVector(0.0f, -52.0f, 2.4f), FRotator(0.0f, -90.0f, 0.0f));
-			EnsureStaticSocket(FName(TEXT("Ejection_Port_Socket")), FVector(2.2f, -4.0f, 2.5f), FRotator::ZeroRotator);
-		}
-
-		AK47StaticMesh->SetVisibility(true);
-		if (CarbineProcMesh) CarbineProcMesh->SetVisibility(false);
+		AK47StaticMesh->SetVisibility(false);
+		AK47StaticMesh->SetHiddenInGame(true);
 	}
-	else
+	if (CarbineProcMesh)
 	{
-		if (AK47StaticMesh)
-		{
-			AK47StaticMesh->SetVisibility(false);
-		}
-		if (CarbineProcMesh)
-		{
-			CarbineProcMesh->SetVisibility(true, true);
-			CarbineProcMesh->SetHiddenInGame(false);
-			CarbineProcMesh->SetOnlyOwnerSee(false);
-			CarbineProcMesh->SetOwnerNoSee(false);
-			CarbineProcMesh->SetCastShadow(true);
-		}
+		CarbineProcMesh->SetVisibility(true, true);
+		CarbineProcMesh->SetHiddenInGame(false);
+		CarbineProcMesh->SetOnlyOwnerSee(false);
+		CarbineProcMesh->SetOwnerNoSee(false);
+		CarbineProcMesh->SetCastShadow(true);
 	}
 
 	// Hide legacy basic shape static mesh components to avoid rendering duplicate or empty shapes
@@ -370,7 +331,9 @@ void AFPSWeaponBase::BuildProceduralCarbineGeometry()
 
 	CarbineProcMesh->ClearAllMeshSections();
 
-	// Section 0: Main Carbine Metal & Polymer Components
+	// =========================================================================
+	// SECTION 0: Blued Gunmetal Carbon Steel Components (Milled Receiver, Barrel, Sights)
+	// =========================================================================
 	TArray<FVector> Vertices0;
 	TArray<int32> Triangles0;
 	TArray<FVector> Normals0;
@@ -378,61 +341,69 @@ void AFPSWeaponBase::BuildProceduralCarbineGeometry()
 	TArray<FColor> Colors0;
 	TArray<FProcMeshTangent> Tangents0;
 
-	// 1. Lower & Upper Receiver (22cm x 3.8cm x 5.6cm)
+	// 1. Lower Receiver Housing (origin at pistol grip contact point)
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(4.0f, 0.0f, 0.0f), FVector(11.0f, 1.9f, 2.8f), FRotator::ZeroRotator, FColor(45, 48, 52, 255));
+		FVector(4.5f, 0.0f, -0.6f), FVector(12.5f, 1.8f, 2.2f), FRotator::ZeroRotator, FColor(28, 30, 32, 255));
 
-	// 2. Picatinny Top Rail (36cm x 2.4cm x 0.8cm)
+	// 2. Stamped Ribbed Steel Dust Cover (curved upper housing)
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(10.0f, 0.0f, 3.2f), FVector(18.0f, 1.2f, 0.4f), FRotator::ZeroRotator, FColor(28, 28, 30, 255));
+		FVector(2.8f, 0.0f, 2.2f), FVector(10.8f, 1.7f, 1.4f), FRotator::ZeroRotator, FColor(34, 36, 40, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(2.8f, 0.0f, 3.2f), FVector(9.5f, 1.2f, 0.6f), FRotator::ZeroRotator, FColor(26, 28, 30, 255));
 
-	// 3. M-LOK Handguard (20cm x 4.2cm x 4.6cm)
+	// 3. Bolt Carrier & Right Charging Handle
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(25.0f, 0.0f, 0.2f), FVector(10.0f, 2.1f, 2.3f), FRotator::ZeroRotator, FColor(38, 40, 42, 255));
+		FVector(3.2f, 1.9f, 1.8f), FVector(1.4f, 0.9f, 0.45f), FRotator(0.0f, 15.0f, 0.0f), FColor(45, 48, 52, 255));
+	// Fire Selector Switch (right side)
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(0.5f, 1.95f, 0.2f), FVector(3.6f, 0.2f, 0.5f), FRotator(-16.0f, 0.0f, 0.0f), FColor(24, 26, 28, 255));
 
-	// 4. Barrel (38cm long x 1.6cm diameter)
+	// 4. Trigger Guard & Curved Steel Trigger
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(28.0f, 0.0f, 0.3f), FVector(19.0f, 0.8f, 0.8f), FRotator::ZeroRotator, FColor(32, 34, 38, 255));
+		FVector(1.8f, 0.0f, -3.8f), FVector(3.2f, 0.45f, 0.25f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(2.2f, 0.0f, -2.6f), FVector(0.5f, 0.25f, 1.0f), FRotator(-20.0f, 0.0f, 0.0f), FColor(40, 42, 45, 255));
 
-	// 5. Muzzle Brake / Compensator (4cm x 2.4cm x 2.4cm)
+	// 5. Gas Tube & Stepped Barrel
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(48.5f, 0.0f, 0.3f), FVector(2.0f, 1.2f, 1.2f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
+		FVector(21.5f, 0.0f, 2.2f), FVector(8.5f, 0.95f, 0.95f), FRotator::ZeroRotator, FColor(30, 32, 35, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(34.0f, 0.0f, 0.6f), FVector(17.5f, 0.85f, 0.85f), FRotator::ZeroRotator, FColor(26, 28, 30, 255));
+	// Gas Block & Bayonet Lug
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(36.5f, 0.0f, 1.5f), FVector(2.0f, 0.95f, 1.8f), FRotator::ZeroRotator, FColor(24, 25, 28, 255));
 
-	// 6. Ergonomic Pistol Grip (angled -18 deg)
+	// 6. Iconic 45-Degree Slanted AKM Muzzle Compensator
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(-1.5f, 0.0f, -6.5f), FVector(2.1f, 1.6f, 6.0f), FRotator(-18.0f, 0.0f, 0.0f), FColor(30, 32, 34, 255));
+		FVector(52.8f, 0.0f, 0.6f), FVector(1.8f, 1.05f, 1.05f), FRotator(0.0f, 0.0f, 0.0f), FColor(20, 22, 24, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(53.6f, 0.0f, 1.2f), FVector(0.8f, 0.95f, 0.4f), FRotator(-40.0f, 0.0f, 0.0f), FColor(16, 18, 20, 255));
 
-	// 7. Buffer Tube & Buttstock
+	// 7. Hooded Front Sight Tower & Rear Tangent Leaf Sight
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(-15.0f, 0.0f, 0.8f), FVector(8.0f, 1.3f, 1.3f), FRotator::ZeroRotator, FColor(28, 28, 30, 255));
+		FVector(48.5f, 0.0f, 2.2f), FVector(1.2f, 0.8f, 2.2f), FRotator::ZeroRotator, FColor(22, 24, 26, 255));
+	// Circular Front Sight Protective Ears
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(-20.0f, 0.0f, -1.0f), FVector(6.0f, 1.8f, 6.5f), FRotator(-4.0f, 0.0f, 0.0f), FColor(32, 32, 35, 255));
+		FVector(48.5f, -0.75f, 3.6f), FVector(1.0f, 0.2f, 1.2f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(48.5f, 0.75f, 3.6f), FVector(1.0f, 0.2f, 1.2f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(48.5f, 0.0f, 3.5f), FVector(0.35f, 0.35f, 1.0f), FRotator::ZeroRotator, FColor(18, 18, 20, 255));
+	// Rear Tangent Sight Block & Leaf
+	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
+		FVector(13.2f, 0.0f, 3.2f), FVector(3.2f, 0.9f, 0.85f), FRotator::ZeroRotator, FColor(24, 25, 28, 255));
 
-	// 8. Curved 30-round Banana Magazine
+	// 8. Steel Buttplate & Rear Trunnion
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(8.0f, 0.0f, -6.0f), FVector(3.2f, 1.25f, 4.0f), FRotator(4.0f, 0.0f, 0.0f), FColor(30, 30, 32, 255));
+		FVector(-8.6f, 0.0f, 0.2f), FVector(2.4f, 1.5f, 1.8f), FRotator::ZeroRotator, FColor(28, 30, 32, 255));
 	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(8.6f, 0.0f, -13.0f), FVector(3.2f, 1.2f, 4.5f), FRotator(12.0f, 0.0f, 0.0f), FColor(26, 26, 28, 255));
-	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(9.8f, 0.0f, -17.5f), FVector(3.6f, 1.35f, 0.5f), FRotator(12.0f, 0.0f, 0.0f), FColor(18, 18, 20, 255));
-
-	// 9. Reflex Sight Mount & Hood
-	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(5.0f, 0.0f, 4.2f), FVector(3.5f, 1.3f, 0.6f), FRotator::ZeroRotator, FColor(24, 24, 26, 255));
-	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(5.0f, -1.5f, 6.8f), FVector(2.5f, 0.3f, 2.0f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
-	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(5.0f, 1.5f, 6.8f), FVector(2.5f, 0.3f, 2.0f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
-	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(5.0f, 0.0f, 8.8f), FVector(2.5f, 1.8f, 0.4f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
-
-	// 10. Front Iron Sight Post
-	AddBoxToProcMeshBuffers(Vertices0, Triangles0, Normals0, UVs0, Colors0,
-		FVector(33.0f, 0.0f, 4.6f), FVector(0.8f, 0.6f, 1.5f), FRotator::ZeroRotator, FColor(24, 24, 26, 255));
+		FVector(-28.2f, 0.0f, -1.8f), FVector(0.8f, 1.65f, 6.2f), FRotator(-4.0f, 0.0f, 0.0f), FColor(22, 24, 26, 255));
 
 	CarbineProcMesh->CreateMeshSection(0, Vertices0, Triangles0, Normals0, UVs0, Colors0, Tangents0, false);
 
-	// Section 1: Emissive Optics (Red Dot & Tritium Night-Sight)
+	// =========================================================================
+	// SECTION 1: Russian Birch Wood Furniture (Upper & Lower Handguard, Buttstock, Grip)
+	// =========================================================================
 	TArray<FVector> Vertices1;
 	TArray<int32> Triangles1;
 	TArray<FVector> Normals1;
@@ -440,17 +411,72 @@ void AFPSWeaponBase::BuildProceduralCarbineGeometry()
 	TArray<FColor> Colors1;
 	TArray<FProcMeshTangent> Tangents1;
 
-	// Reflex Red Dot (Center of hood at Z = 6.8cm)
+	// 1. Contoured Lower Handguard with Palm Swell
 	AddBoxToProcMeshBuffers(Vertices1, Triangles1, Normals1, UVs1, Colors1,
-		FVector(5.0f, 0.0f, 6.8f), FVector(0.4f, 0.4f, 0.4f), FRotator::ZeroRotator, FColor(255, 30, 30, 255));
+		FVector(21.8f, 0.0f, -0.6f), FVector(9.2f, 1.85f, 1.6f), FRotator::ZeroRotator, FColor(135, 75, 35, 255));
+	// Upper Handguard around Gas Tube with Cooling Vents
+	AddBoxToProcMeshBuffers(Vertices1, Triangles1, Normals1, UVs1, Colors1,
+		FVector(21.0f, 0.0f, 2.1f), FVector(7.8f, 1.6f, 1.2f), FRotator::ZeroRotator, FColor(140, 80, 38, 255));
 
-	// Tritium Pip on front sight (Z = 6.2cm)
+	// 2. Contoured Russian Birch Buttstock with Comb
 	AddBoxToProcMeshBuffers(Vertices1, Triangles1, Normals1, UVs1, Colors1,
-		FVector(33.0f, 0.0f, 6.2f), FVector(0.3f, 0.3f, 0.3f), FRotator::ZeroRotator, FColor(50, 255, 50, 255));
+		FVector(-18.5f, 0.0f, -0.8f), FVector(8.8f, 1.6f, 4.6f), FRotator(-3.5f, 0.0f, 0.0f), FColor(130, 70, 32, 255));
+	AddBoxToProcMeshBuffers(Vertices1, Triangles1, Normals1, UVs1, Colors1,
+		FVector(-16.0f, 0.0f, 0.8f), FVector(6.0f, 1.4f, 1.6f), FRotator(0.0f, 0.0f, 0.0f), FColor(138, 76, 36, 255));
+
+	// 3. Ergonomic Contoured Pistol Grip with Finger Ridges
+	AddBoxToProcMeshBuffers(Vertices1, Triangles1, Normals1, UVs1, Colors1,
+		FVector(-1.8f, 0.0f, -6.8f), FVector(2.1f, 1.5f, 5.8f), FRotator(-19.0f, 0.0f, 0.0f), FColor(125, 65, 30, 255));
 
 	CarbineProcMesh->CreateMeshSection(1, Vertices1, Triangles1, Normals1, UVs1, Colors1, Tangents1, false);
 
-	// Apply Materials
+	// =========================================================================
+	// SECTION 2: Iconic 7.62x39mm Curved 30-Round Banana Magazine
+	// =========================================================================
+	TArray<FVector> Vertices2;
+	TArray<int32> Triangles2;
+	TArray<FVector> Normals2;
+	TArray<FVector2D> UVs2;
+	TArray<FColor> Colors2;
+	TArray<FProcMeshTangent> Tangents2;
+
+	// Curved Segment 1: Upper Mag Well
+	AddBoxToProcMeshBuffers(Vertices2, Triangles2, Normals2, UVs2, Colors2,
+		FVector(8.5f, 0.0f, -5.5f), FVector(3.2f, 1.25f, 3.8f), FRotator(5.0f, 0.0f, 0.0f), FColor(45, 28, 18, 255));
+	// Curved Segment 2: Mid Arc
+	AddBoxToProcMeshBuffers(Vertices2, Triangles2, Normals2, UVs2, Colors2,
+		FVector(9.8f, 0.0f, -12.2f), FVector(3.3f, 1.2f, 3.8f), FRotator(15.0f, 0.0f, 0.0f), FColor(42, 26, 16, 255));
+	// Curved Segment 3: Lower Base Arc
+	AddBoxToProcMeshBuffers(Vertices2, Triangles2, Normals2, UVs2, Colors2,
+		FVector(12.2f, 0.0f, -18.6f), FVector(3.4f, 1.15f, 3.5f), FRotator(25.0f, 0.0f, 0.0f), FColor(38, 24, 15, 255));
+	// Steel Magazine Floorplate
+	AddBoxToProcMeshBuffers(Vertices2, Triangles2, Normals2, UVs2, Colors2,
+		FVector(14.2f, 0.0f, -22.2f), FVector(3.8f, 1.25f, 0.5f), FRotator(25.0f, 0.0f, 0.0f), FColor(22, 24, 26, 255));
+	// Horizontal Strengthening Ribs
+	AddBoxToProcMeshBuffers(Vertices2, Triangles2, Normals2, UVs2, Colors2,
+		FVector(9.2f, 0.0f, -8.5f), FVector(3.4f, 1.35f, 0.35f), FRotator(8.0f, 0.0f, 0.0f), FColor(48, 30, 20, 255));
+	AddBoxToProcMeshBuffers(Vertices2, Triangles2, Normals2, UVs2, Colors2,
+		FVector(10.8f, 0.0f, -15.0f), FVector(3.5f, 1.3f, 0.35f), FRotator(18.0f, 0.0f, 0.0f), FColor(48, 30, 20, 255));
+
+	CarbineProcMesh->CreateMeshSection(2, Vertices2, Triangles2, Normals2, UVs2, Colors2, Tangents2, false);
+
+	// =========================================================================
+	// SECTION 3: High-Visibility Tritium Night-Sight Pip
+	// =========================================================================
+	TArray<FVector> Vertices3;
+	TArray<int32> Triangles3;
+	TArray<FVector> Normals3;
+	TArray<FVector2D> UVs3;
+	TArray<FColor> Colors3;
+	TArray<FProcMeshTangent> Tangents3;
+
+	// Center Glowing Tritium Pip on Front Sight
+	AddBoxToProcMeshBuffers(Vertices3, Triangles3, Normals3, UVs3, Colors3,
+		FVector(48.5f, 0.0f, 4.3f), FVector(0.25f, 0.25f, 0.35f), FRotator::ZeroRotator, FColor(50, 255, 80, 255));
+
+	CarbineProcMesh->CreateMeshSection(3, Vertices3, Triangles3, Normals3, UVs3, Colors3, Tangents3, false);
+
+	// Apply PBR Materials to All Sections
 	UMaterialInterface* BaseMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	if (!BaseMat)
 	{
@@ -458,22 +484,40 @@ void AFPSWeaponBase::BuildProceduralCarbineGeometry()
 	}
 	if (BaseMat)
 	{
-		UMaterialInstanceDynamic* BodyMID = CarbineProcMesh->CreateDynamicMaterialInstance(0, BaseMat);
-		if (BodyMID)
+		// Slot 0: Blued Gunmetal Carbon Steel
+		if (UMaterialInstanceDynamic* SteelMID = CarbineProcMesh->CreateDynamicMaterialInstance(0, BaseMat))
 		{
-			BodyMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.06f, 0.065f, 0.075f, 1.0f));
-			BodyMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.06f, 0.065f, 0.075f, 1.0f));
-			BodyMID->SetScalarParameterValue(TEXT("Roughness"), 0.45f);
-			BodyMID->SetScalarParameterValue(TEXT("Metallic"), 0.75f);
+			SteelMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.045f, 0.048f, 0.052f, 1.0f));
+			SteelMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.045f, 0.048f, 0.052f, 1.0f));
+			SteelMID->SetScalarParameterValue(TEXT("Roughness"), 0.35f);
+			SteelMID->SetScalarParameterValue(TEXT("Metallic"), 0.95f);
 		}
 
-		UMaterialInstanceDynamic* DotMID = CarbineProcMesh->CreateDynamicMaterialInstance(1, BaseMat);
-		if (DotMID)
+		// Slot 1: Russian Birch Wood Furniture
+		if (UMaterialInstanceDynamic* WoodMID = CarbineProcMesh->CreateDynamicMaterialInstance(1, BaseMat))
 		{
-			DotMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(15.0f, 0.05f, 0.05f, 1.0f));
-			DotMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(15.0f, 0.05f, 0.05f, 1.0f));
-			DotMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(15.0f, 0.05f, 0.05f, 1.0f));
-			DotMID->SetScalarParameterValue(TEXT("Emissive"), 10.0f);
+			WoodMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.38f, 0.18f, 0.07f, 1.0f));
+			WoodMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.38f, 0.18f, 0.07f, 1.0f));
+			WoodMID->SetScalarParameterValue(TEXT("Roughness"), 0.52f);
+			WoodMID->SetScalarParameterValue(TEXT("Metallic"), 0.05f);
+		}
+
+		// Slot 2: Authentic Bakelite / Steel Ribbed Magazine
+		if (UMaterialInstanceDynamic* MagMID = CarbineProcMesh->CreateDynamicMaterialInstance(2, BaseMat))
+		{
+			MagMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.24f, 0.11f, 0.05f, 1.0f));
+			MagMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.24f, 0.11f, 0.05f, 1.0f));
+			MagMID->SetScalarParameterValue(TEXT("Roughness"), 0.40f);
+			MagMID->SetScalarParameterValue(TEXT("Metallic"), 0.30f);
+		}
+
+		// Slot 3: High-Intensity Glowing Tritium Pip
+		if (UMaterialInstanceDynamic* PipMID = CarbineProcMesh->CreateDynamicMaterialInstance(3, BaseMat))
+		{
+			PipMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.1f, 16.0f, 0.2f, 1.0f));
+			PipMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.1f, 16.0f, 0.2f, 1.0f));
+			PipMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.1f, 16.0f, 0.2f, 1.0f));
+			PipMID->SetScalarParameterValue(TEXT("Emissive"), 12.0f);
 		}
 	}
 }
@@ -596,6 +640,23 @@ void AFPSWeaponBase::Tick(float DeltaTime)
 
 	const FVector BaseLoc = FMath::Lerp(HipfireRelativeLocation, ADSRelativeLocation, CurrentADSAlpha);
 	const FRotator BaseRot = FMath::Lerp(HipfireRelativeRotation, ADSRelativeRotation, CurrentADSAlpha);
+
+	// Recoil Spring-Back Recovery: When not actively firing, smoothly spring the camera pitch back
+	if (CurrentState != EFPSWeaponState::Firing && FMath::Abs(AccumulatedPitchRecoil) > 0.005f)
+	{
+		APlayerController* PC = Cast<APlayerController>(PawnOwner ? PawnOwner->GetController() : nullptr);
+		if (PC)
+		{
+			const float RecoverStep = FMath::FInterpTo(AccumulatedPitchRecoil, 0.0f, DeltaTime, RecoilRecoverySpeed);
+			const float DeltaPitch = AccumulatedPitchRecoil - RecoverStep;
+			PC->AddPitchInput(-DeltaPitch);
+			AccumulatedPitchRecoil = RecoverStep;
+		}
+		else
+		{
+			AccumulatedPitchRecoil = 0.0f;
+		}
+	}
 
 	const FVector FinalLoc = BaseLoc + RecoilOffsetLoc + ReloadOffsetLoc;
 	const FRotator FinalRot = BaseRot + RecoilOffsetRot + ReloadOffsetRot + CurrentSwayRot;
@@ -885,18 +946,19 @@ void AFPSWeaponBase::FireShot()
 
 			// Apply camera recoil kick (scaled by Gunsmith attachment modifiers)
 			float RecoilMod = GunsmithComponent ? GunsmithComponent->GetTotalRecoilMultiplier() : 1.0f;
-			float PitchKick = -RecoilPitchKick * (bIsAimingDownSights ? 0.6f : 1.0f) * RecoilMod;
+			float PitchKick = -RecoilPitchKick * (bIsAimingDownSights ? 0.5f : 1.0f) * RecoilMod;
 			float YawKick = FMath::RandRange(-RecoilYawSpread, RecoilYawSpread) * RecoilMod;
 			if (PC)
 			{
 				PC->AddPitchInput(PitchKick);
 				PC->AddYawInput(YawKick);
+				AccumulatedPitchRecoil += PitchKick;
 			}
 
 			// Procedural physical weapon recoil kick
-			const float ADSRecoilDamp = bIsAimingDownSights ? 0.6f : 1.0f;
-			RecoilOffsetLoc += FVector(-2.0f * ADSRecoilDamp * RecoilMod, FMath::RandRange(-0.15f, 0.15f) * RecoilMod, 0.5f * ADSRecoilDamp * RecoilMod);
-			RecoilOffsetRot += FRotator(FMath::RandRange(1.8f, 2.8f) * ADSRecoilDamp * RecoilMod, FMath::RandRange(-0.6f, 0.6f) * RecoilMod, FMath::RandRange(-0.8f, 0.8f) * RecoilMod);
+			const float ADSRecoilDamp = bIsAimingDownSights ? 0.45f : 1.0f;
+			RecoilOffsetLoc += FVector(-1.2f * ADSRecoilDamp * RecoilMod, FMath::RandRange(-0.08f, 0.08f) * RecoilMod, 0.35f * ADSRecoilDamp * RecoilMod);
+			RecoilOffsetRot += FRotator(FMath::RandRange(1.2f, 1.8f) * ADSRecoilDamp * RecoilMod, FMath::RandRange(-0.3f, 0.3f) * RecoilMod, FMath::RandRange(-0.4f, 0.4f) * RecoilMod);
 		}
 	}
 

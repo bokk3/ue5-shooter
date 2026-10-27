@@ -314,17 +314,15 @@ void UFPSAnimInstance::NativePostEvaluateAnimation()
 		return;
 	}
 
-	// 1. Full Lower-Body 21-Bone Locomotion (Walk, Run, Sprint, Crouch, Dive, Slide, Menu Grounded Stance)
-	ApplyLowerBodyLocomotion(SpaceBases);
-
-	// 2. Thoracic Spine Pitch, Torso Yaw & Breathing Oscillation
-	ApplySpineAimPitchAndTwist(SpaceBases);
-
-	// 3. Right Arm Rifle Shoulder-Ready / Low-Ready / ADS Solver
-	SolveRightArmRifleIK(SpaceBases);
-
-	// 4. Left Arm Foregrip Two-Bone IK Solver Locking to Carbine Handguard
-	SolveLeftHandTwoBoneIK(SpaceBases);
+	// In-game character uses authoritative mocap animation sequences on SingleNode mode.
+	// Only apply procedural posture IK when in menu diorama preview.
+	if (bIsMenuPreview)
+	{
+		ApplyLowerBodyLocomotion(SpaceBases);
+		ApplySpineAimPitchAndTwist(SpaceBases);
+		SolveRightArmRifleIK(SpaceBases);
+		SolveLeftHandTwoBoneIK(SpaceBases);
+	}
 }
 
 void UFPSAnimInstance::ApplyLowerBodyLocomotion(TArray<FTransform>& SpaceBases)

@@ -39,12 +39,37 @@ void UFPSHealthComponent::ApplyDamage(float BaseDamage, AActor* InstigatorActor,
 
 	TimeSinceLastDamage = 0.0f;
 
-	// Anatomical human bone multiplier calculation
-	const float BoneMultiplier = FFPSHumanSkeleton::GetDamageMultiplierForBone(HitInfo.BoneName);
-	float FinalDamage = BaseDamage * BoneMultiplier;
+	// Anatomical human bone or capsule hit multiplier calculation
+	float BoneMultiplier = 1.0f;
+	bool bIsHeadshot = false;
+	bool bIsArmorPlateHit = false;
 
-	const bool bIsHeadshot = (FFPSHumanSkeleton::GetDamageZoneForBone(HitInfo.BoneName) == EFPSBodyDamageZone::Head);
-	const bool bIsArmorPlateHit = FFPSHumanSkeleton::IsBoneArmorProtected(HitInfo.BoneName);
+	if (HitInfo.BoneName != NAME_None)
+	{
+		BoneMultiplier = FFPSHumanSkeleton::GetDamageMultiplierForBone(HitInfo.BoneName);
+		bIsHeadshot = (FFPSHumanSkeleton::GetDamageZoneForBone(HitInfo.BoneName) == EFPSBodyDamageZone::Head);
+		bIsArmorPlateHit = FFPSHumanSkeleton::IsBoneArmorProtected(HitInfo.BoneName);
+	}
+	else
+	{
+		// Height-based evaluation when hit on the capsule or without skeletal bone data
+		const float RelativeHitZ = HitInfo.ImpactPoint.Z - (GetOwner() ? GetOwner()->GetActorLocation().Z : 0.0f);
+		if (RelativeHitZ > 55.0f)
+		{
+			BoneMultiplier = 2.0f; // Headshot
+			bIsHeadshot = true;
+		}
+		else if (RelativeHitZ > 15.0f)
+		{
+			BoneMultiplier = 1.0f; // Chest / Torso armor
+			bIsArmorPlateHit = true;
+		}
+		else
+		{
+			BoneMultiplier = 0.85f; // Limbs
+		}
+	}
+	float FinalDamage = BaseDamage * BoneMultiplier;
 
 	// Tactical Body Armor: Chest plate absorbs 40% more bullet damage before health penetration
 	if (bIsArmorPlateHit && CurrentShield > 0.0f)

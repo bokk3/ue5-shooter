@@ -245,15 +245,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Stealth")
 	bool bIsSuppressed = false;
 
-	// Recoil & Bloom Tuning
+	// Recoil & Bloom Tuning (Calibrated to AAA tactical shooter handling with spring-back recovery)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Recoil")
-	float RecoilPitchKick = 1.2f;
+	float RecoilPitchKick = 0.32f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Recoil")
-	float RecoilYawSpread = 0.4f;
+	float RecoilYawSpread = 0.10f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Recoil")
-	float RecoilRecoverySpeed = 6.0f;
+	float RecoilRecoverySpeed = 16.0f;
+
+	UPROPERTY(Transient)
+	float AccumulatedPitchRecoil = 0.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Bloom")
 	float HipfireMinSpread = 1.5f;

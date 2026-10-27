@@ -199,7 +199,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	// Full tactical operator mesh: visible to local owner
 	GetMesh()->SetOwnerNoSee(false);
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -96.0f));
-	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	GetMesh()->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 	GetMesh()->SetCastShadow(true);
 	GetMesh()->bCastDynamicShadow = true;
 
@@ -214,8 +214,9 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 		GetMesh()->SetMaterial(0, BaseBodyMatFinder.Object);
 	}
 
-	// Ballistic collision routing: root movement capsule ignores visibility trace so bullet line traces strike anatomical bone capsules directly
-	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+	// Ballistic collision routing: movement capsule blocks visibility trace so bullet line traces register reliably
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetMesh()->SetCollisionObjectType(ECC_Pawn);
@@ -271,7 +272,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	PlateCarrierProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("PlateCarrierProcMesh"));
 	PlateCarrierProcMesh->SetupAttachment(GetCapsuleComponent());
 	PlateCarrierProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 28.0f));
-	PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 	PlateCarrierProcMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	PlateCarrierProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PlateCarrierProcMesh->SetCastShadow(true);
@@ -285,7 +286,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	BallisticHelmetProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("BallisticHelmetProcMesh"));
 	BallisticHelmetProcMesh->SetupAttachment(GetCapsuleComponent());
 	BallisticHelmetProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
-	BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 	BallisticHelmetProcMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	BallisticHelmetProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BallisticHelmetProcMesh->SetCastShadow(true);
@@ -429,16 +430,13 @@ void AFPSCharacter::BeginPlay()
 			AnimBlueprintClass = LoadClass<UAnimInstance>(nullptr, TEXT("/Game/Characters/BaseMale/ABP_BaseMale.ABP_BaseMale_C"));
 		}
 
-		GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
-		if (AnimBlueprintClass)
+		GetMesh()->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
+		GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		if (AnimLowReady)
 		{
-			GetMesh()->SetAnimInstanceClass(AnimBlueprintClass);
+			GetMesh()->SetAnimation(AnimLowReady);
+			GetMesh()->Play(true);
 		}
-		else
-		{
-			GetMesh()->SetAnimInstanceClass(UFPSAnimInstance::StaticClass());
-		}
-		GetMesh()->InitAnim(true);
 
 		UMaterialInterface* CurrentMat = GetMesh()->GetMaterial(0);
 		if (!CurrentMat || !CurrentMat->GetName().Contains(TEXT("M_Operator_BaseBody")))
@@ -494,7 +492,7 @@ void AFPSCharacter::BeginPlay()
 		{
 			PlateCarrierProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 			PlateCarrierProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 28.0f));
-			PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+			PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 			PlateCarrierProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 			PlateCarrierProcMesh->SetCastShadow(false);
 			PlateCarrierProcMesh->SetHiddenInGame(true);
@@ -505,7 +503,7 @@ void AFPSCharacter::BeginPlay()
 		{
 			BallisticHelmetProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 			BallisticHelmetProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
-			BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+			BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 			BallisticHelmetProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 			BallisticHelmetProcMesh->SetCastShadow(false);
 			BallisticHelmetProcMesh->SetHiddenInGame(true);
@@ -773,19 +771,21 @@ void AFPSCharacter::Tick(float DeltaTime)
 				const FVector HandR_Pos = MeshComp->GetBoneLocation(FName(TEXT("hand_r")), EBoneSpaces::WorldSpace);
 				const FVector HandL_Pos = MeshComp->GetBoneLocation(FName(TEXT("hand_l")), EBoneSpaces::WorldSpace);
 				FVector BarrelDir = (HandL_Pos - HandR_Pos).GetSafeNormal();
-				if (!BarrelDir.IsNearlyZero())
+				const float HandDist = FVector::Dist(HandR_Pos, HandL_Pos);
+				if (HandDist < 15.0f || HandDist > 55.0f || BarrelDir.IsNearlyZero())
 				{
-					const FVector CharUp = GetActorUpVector();
-					FVector RifleRight = FVector::CrossProduct(CharUp, BarrelDir).GetSafeNormal();
-					if (RifleRight.IsNearlyZero())
-					{
-						RifleRight = GetActorRightVector();
-					}
-					const FVector RifleUp = FVector::CrossProduct(BarrelDir, RifleRight).GetSafeNormal();
-					const FQuat RifleWorldQuat = FRotationMatrix::MakeFromXZ(BarrelDir, RifleUp).ToQuat();
-
-					Weapon->SetActorLocationAndRotation(HandR_Pos, RifleWorldQuat);
+					BarrelDir = GetActorForwardVector();
 				}
+				const FVector CharUp = GetActorUpVector();
+				FVector RifleRight = FVector::CrossProduct(CharUp, BarrelDir).GetSafeNormal();
+				if (RifleRight.IsNearlyZero())
+				{
+					RifleRight = GetActorRightVector();
+				}
+				const FVector RifleUp = FVector::CrossProduct(BarrelDir, RifleRight).GetSafeNormal();
+				const FQuat RifleWorldQuat = FRotationMatrix::MakeFromXZ(BarrelDir, RifleUp).ToQuat();
+
+				Weapon->SetActorLocationAndRotation(HandR_Pos, RifleWorldQuat);
 			}
 		}
 
@@ -1590,17 +1590,11 @@ void AFPSCharacter::UpdateLocomotionAnimation(float DeltaTime)
 		}
 	}
 
-	// When running Animation Blueprint, UFPSAnimInstance drives blending and procedural Two-Bone IK deterministically
-	if (UFPSAnimInstance* AnimInst = Cast<UFPSAnimInstance>(GetMesh()->GetAnimInstance()))
-	{
-		// AnimInstance is actively running NativeUpdateAnimation and NativePostEvaluateAnimation
-		return;
-	}
-
-	// Fallback to single-node animation if AnimInstance is not active
+	// Authoritative high-quality mocap locomotion animation playback
 	if (TargetAnim && TargetAnim != CurrentLocomotionAnim)
 	{
 		CurrentLocomotionAnim = TargetAnim;
+		GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		GetMesh()->SetAnimation(TargetAnim);
 		GetMesh()->SetPlayRate(PlayRate);
 		GetMesh()->Play(true);
@@ -2705,7 +2699,7 @@ void AFPSCharacter::RedeployOperator()
 	{
 		PlateCarrierProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 		PlateCarrierProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 28.0f));
-		PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 		PlateCarrierProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 		PlateCarrierProcMesh->SetVisibility(true, true);
 	}
@@ -2713,7 +2707,7 @@ void AFPSCharacter::RedeployOperator()
 	{
 		BallisticHelmetProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 		BallisticHelmetProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
-		BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 		BallisticHelmetProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 		BallisticHelmetProcMesh->SetVisibility(true, true);
 	}
@@ -2838,3 +2832,16 @@ void AFPSCharacter::BuildProceduralTacticalGear()
 	}
 }
 
+float AFPSCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
+{
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	if (HealthComponent && !bIsDead && ActualDamage > 0.0f)
+	{
+		FHitResult DummyHit;
+		DummyHit.ImpactPoint = GetActorLocation() + FVector(0.0f, 0.0f, 30.0f);
+		DummyHit.BoneName = NAME_None;
+		AActor* InstigatorPawn = EventInstigator ? EventInstigator->GetPawn() : DamageCauser;
+		HealthComponent->ApplyDamage(ActualDamage, InstigatorPawn, DummyHit);
+	}
+	return ActualDamage;
+}
