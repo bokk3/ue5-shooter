@@ -172,15 +172,15 @@ void AFPSCoastalOperationsMapActor::BeginPlay()
 		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Ladder, ECoastalSurfaceType::FavelaMetal);
 	}
 
-	// 8. Coastal hillside embankments & masonry berms
+	// 8. Coastal hillside embankments & sand dunes
 	for (int32 i = 0; i < DuneComponents.Num(); ++i)
 	{
 		UStaticMeshComponent* Dune = DuneComponents[i];
 		if (!Dune) continue;
 		const FString DName = Dune->GetName();
 		const ECoastalSurfaceType Surf = DName.Contains(TEXT("Cover"))
-			? ECoastalSurfaceType::FavelaBrick
-			: ECoastalSurfaceType::FavelaDirt;
+			? ECoastalSurfaceType::MarineCastConcrete
+			: ECoastalSurfaceType::FineBeachSand;
 		UFPSCoastalMaterialLibrary::ApplyCoastalSurfaceToMesh(Dune, Surf);
 		Dune->ComponentTags.AddUnique(FName("Surface_Sand_Dune"));
 	}
@@ -509,33 +509,33 @@ void AFPSCoastalOperationsMapActor::ConstructCoastalDunes(UStaticMesh* CubeMesh,
 
 	// IMPORTANT: Yaw = 90.0f orients Local +X along World +Y (Sea-to-Land), so Pitch tilts the slope along Y
 	// while the 46m ridge width (Scale.Y) stays 100% horizontal along X!
-	// 1. Primary Fore-Dune Ridge (Y = +1400 to +3000, Crest Height = 260cm, Central Breach at X = -500..+500)
-	AddDune(TEXT("Dune_Fore_Stoss_W"), FVector(-2900.0f, 1750.0f, 100.0f), FRotator(12.0f, 90.0f, 0.0f), FVector(13.5f, 46.0f, 0.8f), false);
-	AddDune(TEXT("Dune_Fore_Stoss_E"), FVector(2900.0f, 1750.0f, 100.0f), FRotator(12.0f, 90.0f, 0.0f), FVector(13.5f, 46.0f, 0.8f), false);
+	// 1. Primary Fore-Dune Ridge on Outer Flanks (Y = +1400 to +3000, Crest Height = 200cm, leaving X = -2000..+2000 Favela Avenue clear!)
+	AddDune(TEXT("Dune_Fore_Stoss_W"), FVector(-3800.0f, 1750.0f, 80.0f), FRotator(12.0f, 90.0f, 0.0f), FVector(10.0f, 18.0f, 0.6f), false);
+	AddDune(TEXT("Dune_Fore_Stoss_E"), FVector(3800.0f, 1750.0f, 80.0f), FRotator(12.0f, 90.0f, 0.0f), FVector(10.0f, 18.0f, 0.6f), false);
 
-	AddDune(TEXT("Dune_Fore_Crest_W"), FVector(-2900.0f, 2420.0f, 125.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.2f, 46.0f, 2.5f), false);
-	AddDune(TEXT("Dune_Fore_Crest_E"), FVector(2900.0f, 2420.0f, 125.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.2f, 46.0f, 2.5f), false);
+	AddDune(TEXT("Dune_Fore_Crest_W"), FVector(-3800.0f, 2420.0f, 100.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.0f, 18.0f, 1.8f), false);
+	AddDune(TEXT("Dune_Fore_Crest_E"), FVector(3800.0f, 2420.0f, 100.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.0f, 18.0f, 1.8f), false);
 
-	AddDune(TEXT("Dune_Fore_Slip_W"), FVector(-2900.0f, 2760.0f, 100.0f), FRotator(-26.0f, 90.0f, 0.0f), FVector(6.2f, 46.0f, 0.8f), true);
-	AddDune(TEXT("Dune_Fore_Slip_E"), FVector(2900.0f, 2760.0f, 100.0f), FRotator(-26.0f, 90.0f, 0.0f), FVector(6.2f, 46.0f, 0.8f), true);
+	AddDune(TEXT("Dune_Fore_Slip_W"), FVector(-3800.0f, 2760.0f, 80.0f), FRotator(-24.0f, 90.0f, 0.0f), FVector(5.0f, 18.0f, 0.6f), true);
+	AddDune(TEXT("Dune_Fore_Slip_E"), FVector(3800.0f, 2760.0f, 80.0f), FRotator(-24.0f, 90.0f, 0.0f), FVector(5.0f, 18.0f, 0.6f), true);
 
-	// 2. Secondary Transverse Dune Ridge (Inland Backdrop behind Flag A & Alpha Spawns, Y = +4600 to +5800)
-	AddDune(TEXT("Dune_Trans_Stoss_W"), FVector(-2700.0f, 4950.0f, 120.0f), FRotator(13.5f, 90.0f, 0.0f), FVector(12.0f, 44.0f, 0.9f), false);
-	AddDune(TEXT("Dune_Trans_Stoss_E"), FVector(2700.0f, 4950.0f, 120.0f), FRotator(13.5f, 90.0f, 0.0f), FVector(12.0f, 44.0f, 0.9f), false);
+	// 2. Secondary Transverse Dunes on Far Flanks
+	AddDune(TEXT("Dune_Trans_Stoss_W"), FVector(-4200.0f, 4950.0f, 90.0f), FRotator(12.0f, 90.0f, 0.0f), FVector(10.0f, 16.0f, 0.6f), false);
+	AddDune(TEXT("Dune_Trans_Stoss_E"), FVector(4200.0f, 4950.0f, 90.0f), FRotator(12.0f, 90.0f, 0.0f), FVector(10.0f, 16.0f, 0.6f), false);
 
-	AddDune(TEXT("Dune_Trans_Crest_W"), FVector(-2700.0f, 5520.0f, 145.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.4f, 44.0f, 2.9f), false);
-	AddDune(TEXT("Dune_Trans_Crest_E"), FVector(2700.0f, 5520.0f, 145.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.4f, 44.0f, 2.9f), false);
+	AddDune(TEXT("Dune_Trans_Crest_W"), FVector(-4200.0f, 5520.0f, 110.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.0f, 16.0f, 2.0f), false);
+	AddDune(TEXT("Dune_Trans_Crest_E"), FVector(4200.0f, 5520.0f, 110.0f), FRotator(0.0f, 90.0f, 0.0f), FVector(2.0f, 16.0f, 2.0f), false);
 
-	AddDune(TEXT("Dune_Trans_Slip_W"), FVector(-2700.0f, 5760.0f, 115.0f), FRotator(-28.0f, 90.0f, 0.0f), FVector(5.5f, 44.0f, 0.8f), true);
-	AddDune(TEXT("Dune_Trans_Slip_E"), FVector(2700.0f, 5760.0f, 115.0f), FRotator(-28.0f, 90.0f, 0.0f), FVector(5.5f, 44.0f, 0.8f), true);
+	AddDune(TEXT("Dune_Trans_Slip_W"), FVector(-4200.0f, 5760.0f, 90.0f), FRotator(-24.0f, 90.0f, 0.0f), FVector(4.5f, 16.0f, 0.6f), true);
+	AddDune(TEXT("Dune_Trans_Slip_E"), FVector(4200.0f, 5760.0f, 90.0f), FRotator(-24.0f, 90.0f, 0.0f), FVector(4.5f, 16.0f, 0.6f), true);
 
-	// 3. Avenue Flank Brick Retaining Walls (leaving central cobblestone avenue clear for sightlines)
-	AddDune(TEXT("Dune_Basin_Cover_W"), FVector(-1580.0f, 3650.0f, 55.0f), FRotator(0.0f, 12.0f, 0.0f), FVector(4.2f, 1.2f, 1.1f), false);
-	AddDune(TEXT("Dune_Basin_Cover_E"), FVector(1580.0f, 3650.0f, 55.0f), FRotator(0.0f, -12.0f, 0.0f), FVector(4.2f, 1.2f, 1.1f), false);
+	// 3. Avenue Flank Low Masonry Curbs (outside avenue at X = +/- 1450)
+	AddDune(TEXT("Dune_Basin_Cover_W"), FVector(-1450.0f, 3650.0f, 45.0f), FRotator(0.0f, 0.0f, 0.0f), FVector(1.2f, 3.2f, 0.9f), false);
+	AddDune(TEXT("Dune_Basin_Cover_E"), FVector(1450.0f, 3650.0f, 45.0f), FRotator(0.0f, 0.0f, 0.0f), FVector(1.2f, 3.2f, 0.9f), false);
 
-	// 4. Barchanoid Parabolic Dunes (West & East Flank Overwatches)
-	AddDune(TEXT("Dune_Peak_West"), FVector(-4600.0f, 3800.0f, 110.0f), FRotator(10.0f, 65.0f, 0.0f), FVector(14.0f, 12.0f, 2.4f), false);
-	AddDune(TEXT("Dune_Peak_East"), FVector(4600.0f, 3800.0f, 110.0f), FRotator(10.0f, 115.0f, 0.0f), FVector(14.0f, 12.0f, 2.4f), false);
+	// 4. Barchanoid Parabolic Dunes (West & East Outer Perimeter Overwatches)
+	AddDune(TEXT("Dune_Peak_West"), FVector(-4800.0f, 3800.0f, 100.0f), FRotator(10.0f, 65.0f, 0.0f), FVector(12.0f, 10.0f, 2.0f), false);
+	AddDune(TEXT("Dune_Peak_East"), FVector(4800.0f, 3800.0f, 100.0f), FRotator(10.0f, 115.0f, 0.0f), FVector(12.0f, 10.0f, 2.0f), false);
 }
 
 void AFPSCoastalOperationsMapActor::ConstructPerimeterBoundaries(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat)
@@ -572,7 +572,7 @@ void AFPSCoastalOperationsMapActor::ConstructObjectives(UStaticMesh* CylinderMes
 		if (CylinderMesh) Flag->SetStaticMesh(CylinderMesh);
 		if (BaseMat) Flag->SetMaterial(0, BaseMat);
 		Flag->SetRelativeLocation(Loc);
-		Flag->SetRelativeScale3D(FVector(3.2f, 3.2f, 0.25f)); // 3.2m domination capture circle
+		Flag->SetRelativeScale3D(FVector(3.2f, 3.2f, 0.03f)); // 3.2m domination capture circle
 		Flag->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 		Flag->ComponentTags.Add(FName("Objective"));
 		Flag->ComponentTags.Add(FlagTag);
@@ -580,7 +580,7 @@ void AFPSCoastalOperationsMapActor::ConstructObjectives(UStaticMesh* CylinderMes
 	};
 
 	// Flag A: Backcountry Dune Interdune Basin
-	AddObjective(TEXT("Flag_Base_A"), FVector(0.0f, 4000.0f, 15.0f), FName("FlagA"));
+	AddObjective(TEXT("Flag_Base_A"), FVector(0.0f, 4000.0f, 3.5f), FName("FlagA"));
 
 	// Flag B: Seawall Dike Crest Roadway (Central King-of-the-Hill at Z = 420cm)
 	AddObjective(TEXT("Flag_Base_B"), FVector(0.0f, -720.0f, 425.0f), FName("FlagB"));
@@ -611,12 +611,12 @@ void AFPSCoastalOperationsMapActor::SpawnTacticalPlayerStarts()
 	};
 
 	// -------------------------------------------------------------------------
-	// 4 Task Force Alpha Spawns (Interdune Basin near Flag A, Z = 115cm for 96cm capsule clearance)
+	// 4 Task Force Alpha Spawns (Avenue Promenade overlooking Baia Brava Bay, Z = 115cm)
 	// -------------------------------------------------------------------------
-	CreateStart(FVector(-1200.0f, 4100.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
-	CreateStart(FVector(-400.0f, 4250.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
-	CreateStart(FVector(400.0f, 4250.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
-	CreateStart(FVector(1200.0f, 4100.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(-320.0f, 4350.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(-100.0f, 4420.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(100.0f, 4420.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
+	CreateStart(FVector(320.0f, 4350.0f, 115.0f), FRotator(0.0f, -90.0f, 0.0f), FName("TeamAlpha"));
 
 	// -------------------------------------------------------------------------
 	// 4 OpFor Bravo Spawns (Maritime Pier / Seawall Abutment near Flag C, Z = 115cm)

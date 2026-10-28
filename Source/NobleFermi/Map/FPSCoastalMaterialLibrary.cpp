@@ -1034,14 +1034,7 @@ void FFPSFavelaEnvironmentKit::AddMarketCanopy(const FVector& Center, const FVec
 	// Slanted vibrant plastic tarp / canvas awning (lona de feira)
 	const float SlopePitch = 9.5f;
 	const FRotator TarpRot = (FQuat(Rot) * FQuat(FRotator(SlopePitch, 0.0f, 0.0f))).Rotator();
-	if (RoofSheetMesh)
-	{
-		AddMesh(RoofSheetISM, ToWorld(FVector(0.0f, 0.0f, PostH + 6.0f)), TarpRot, FVector(SizeCm.X / 240.0f, SizeCm.Y / 110.0f, 1.2f), CanopyColor);
-	}
-	else
-	{
-		AddBox(ConcreteISM, ToWorld(FVector(0.0f, 0.0f, PostH + 6.0f)), FVector(SizeCm.X + 20.0f, SizeCm.Y + 20.0f, 6.0f), TarpRot, CanopyColor);
-	}
+	AddBox(StuccoISM ? StuccoISM : ConcreteISM, ToWorld(FVector(0.0f, 0.0f, PostH + 6.0f)), FVector(SizeCm.X + 20.0f, SizeCm.Y + 20.0f, 5.0f), TarpRot, CanopyColor);
 
 	// Timber market counter table beneath the canopy
 	AddBox(WoodISM, ToWorld(FVector(0.0f, 0.0f, 42.0f)), FVector(SizeCm.X * 0.75f, SizeCm.Y * 0.65f, 84.0f), Rot);
@@ -1644,101 +1637,281 @@ void UFPSCoastalMaterialLibrary::PopulateBaiaBravaFavela(AActor* MapActor, UScen
 	FFPSFavelaEnvironmentKit Kit;
 	Kit.Init(MapActor, RootComp);
 
-	// 1. Cobblestone Waterfront Avenue, Cracked Asphalt Lanes, Drainage Sluices & Puddles (from Alpha Spawn Y=+4300 to Seawall Y=+100)
-	Kit.AddBox(Kit.CobbleISM, FVector(0.0f, 2500.0f, 1.5f), FVector(1650.0f, 3800.0f, 3.0f));
-	Kit.AddBox(Kit.AsphaltISM, FVector(0.0f, 2500.0f, 2.2f), FVector(620.0f, 3600.0f, 3.2f));
-	Kit.AddBox(Kit.DirtISM, FVector(-1150.0f, 2500.0f, 1.2f), FVector(700.0f, 3600.0f, 2.4f));
-	Kit.AddBox(Kit.DirtISM, FVector(1150.0f, 2500.0f, 1.2f), FVector(700.0f, 3600.0f, 2.4f));
+	// =========================================================================================
+	// 1. GROUND ARTIFACTS: Cobblestone Avenue, Weathered Asphalt, Red Clay Shoulders & Gutters
+	// =========================================================================================
+	// Main Promenade Cobblestone (Paralelepípedo) stretching from Inland Plaza (Y=+4900) to Seawall (Y=+200)
+	Kit.AddBox(Kit.CobbleISM, FVector(0.0f, 2500.0f, 1.5f), FVector(1700.0f, 4400.0f, 3.0f));
+	// Inland Plaza Cobblestone Base
+	Kit.AddBox(Kit.CobbleISM, FVector(0.0f, 4900.0f, 1.5f), FVector(2600.0f, 1000.0f, 3.0f));
 
-	// Dual open concrete stormwater gutters running down the coastal avenue toward the seawall culvert
-	Kit.AddDrainageGutter(FVector(-340.0f, 4350.0f, 0.0f), FVector(-340.0f, 350.0f, 0.0f), 0.0f, 401);
-	Kit.AddDrainageGutter(FVector(340.0f, 4350.0f, 0.0f), FVector(340.0f, 350.0f, 0.0f), 0.0f, 402);
+	// Weathered center lane asphalt with patched fissures
+	Kit.AddBox(Kit.AsphaltISM, FVector(0.0f, 2500.0f, 2.2f), FVector(660.0f, 4400.0f, 3.2f));
 
-	// Rainwater puddles reflecting the coastal sky & shanties
-	Kit.AddPuddle(FVector(120.0f, 3650.0f, 0.0f), 320.0f, 440.0f, 82.0f, 2.0f);
-	Kit.AddPuddle(FVector(-140.0f, 2950.0f, 0.0f), 360.0f, 480.0f, 96.0f, 2.0f);
-	Kit.AddPuddle(FVector(90.0f, 2100.0f, 0.0f), 340.0f, 420.0f, 88.0f, 2.0f);
-	Kit.AddPuddle(FVector(-80.0f, 1250.0f, 0.0f), 380.0f, 460.0f, 92.0f, 2.0f);
+	// Terra Roxa red clay curbside shoulders
+	Kit.AddBox(Kit.DirtISM, FVector(-1080.0f, 2500.0f, 1.2f), FVector(520.0f, 4400.0f, 2.4f));
+	Kit.AddBox(Kit.DirtISM, FVector(1080.0f, 2500.0f, 1.2f), FVector(520.0f, 4400.0f, 2.4f));
 
-	// 2. Coastal Favela Shanties flanking the Avenue (facing inward toward X=0 and toward the Alpha spawn camera view!)
-	// East Side Shanty Row (X = +1050..+2400)
-	Kit.AddShanty(FVector(1180.0f, 3350.0f, 0.0f), 460.0f, 520.0f, 165.0f, 2, 411, true, true, true);
-	Kit.AddShanty(FVector(1220.0f, 2450.0f, 0.0f), 480.0f, 540.0f, 175.0f, 3, 412, true, true, true);
-	Kit.AddShanty(FVector(1160.0f, 1550.0f, 0.0f), 460.0f, 520.0f, -172.0f, 2, 413, true, true, true);
-	Kit.AddShanty(FVector(1200.0f, 700.0f, 0.0f), 480.0f, 540.0f, 180.0f, 3, 414, true, true, true);
+	// Dual open concrete stormwater drainage gutters ("valetas") along avenue curbs discharging into bay
+	Kit.AddDrainageGutter(FVector(-340.0f, 4600.0f, 0.0f), FVector(-340.0f, -450.0f, 0.0f), 0.0f, 401);
+	Kit.AddDrainageGutter(FVector(340.0f, 4600.0f, 0.0f), FVector(340.0f, -450.0f, 0.0f), 0.0f, 402);
 
-	// West Side Shanty Row (X = -1050..-2400)
-	Kit.AddShanty(FVector(-1180.0f, 3350.0f, 0.0f), 460.0f, 520.0f, 15.0f, 2, 421, true, true, true);
-	Kit.AddShanty(FVector(-1220.0f, 2450.0f, 0.0f), 480.0f, 540.0f, 5.0f, 3, 422, true, true, true);
-	Kit.AddShanty(FVector(-1160.0f, 1550.0f, 0.0f), 460.0f, 520.0f, -8.0f, 2, 423, true, true, true);
-	Kit.AddShanty(FVector(-1200.0f, 700.0f, 0.0f), 480.0f, 540.0f, 0.0f, 3, 424, true, true, true);
+	// Rainwater puddles reflecting the coastal sky, shanties & market awnings
+	Kit.AddPuddle(FVector(120.0f, 3800.0f, 0.0f), 320.0f, 440.0f, 82.0f, 2.0f);
+	Kit.AddPuddle(FVector(-140.0f, 3100.0f, 0.0f), 360.0f, 480.0f, 96.0f, 2.0f);
+	Kit.AddPuddle(FVector(90.0f, 2200.0f, 0.0f), 340.0f, 420.0f, 88.0f, 2.0f);
+	Kit.AddPuddle(FVector(-80.0f, 1300.0f, 0.0f), 380.0f, 460.0f, 92.0f, 2.0f);
+	Kit.AddPuddle(FVector(100.0f, 400.0f, 0.0f), 320.0f, 400.0f, 85.0f, 2.0f);
 
-	// Elevated Hillside Shanties on the Fore-Dune Crests (Z = +230cm)
-	Kit.AddShanty(FVector(2150.0f, 2350.0f, 220.0f), 480.0f, 560.0f, 135.0f, 3, 431, true, true, true);
-	Kit.AddShanty(FVector(-2150.0f, 2350.0f, 220.0f), 480.0f, 560.0f, 45.0f, 3, 432, true, true, true);
-	Kit.AddShanty(FVector(2050.0f, 950.0f, 180.0f), 460.0f, 520.0f, 120.0f, 2, 433, true, true, true);
-	Kit.AddShanty(FVector(-2050.0f, 950.0f, 180.0f), 460.0f, 520.0f, 60.0f, 2, 434, true, true, true);
+	// Tufted weeds sprouting naturally along the drainage gutters
+	Kit.AddWeedLine(FVector(-350.0f, 4500.0f, 0.0f), FVector(-350.0f, 300.0f, 0.0f), 36, 403, 20.0f);
+	Kit.AddWeedLine(FVector(350.0f, 4500.0f, 0.0f), FVector(350.0f, 300.0f, 0.0f), 36, 404, 20.0f);
 
-	// Seawall Crest Shanties & Corrugated Bunker Roofs along the Dike Spine (Y = -500, Z = +420cm)
-	Kit.AddRoofCorrugated(FVector(0.0f, -500.0f, 675.0f), 460.0f, 420.0f, 90.0f, 8.0f, 440, true);
-	Kit.AddShanty(FVector(1150.0f, -500.0f, 415.0f), 420.0f, 480.0f, 90.0f, 2, 441, true, true, true);
-	Kit.AddShanty(FVector(-1150.0f, -500.0f, 415.0f), 420.0f, 480.0f, 90.0f, 2, 442, true, true, true);
-	Kit.AddShanty(FVector(2350.0f, -500.0f, 415.0f), 440.0f, 520.0f, 90.0f, 3, 443, true, true, true);
-	Kit.AddShanty(FVector(-2350.0f, -500.0f, 415.0f), 440.0f, 520.0f, 90.0f, 3, 444, true, true, true);
+	// =========================================================================================
+	// 2. MORRO TOPOGRAPHY: Stepped Hillside Terraces, Retaining Walls & Escadarias (O MORRO)
+	// =========================================================================================
+	// --- Inland Morro Backdrop (North behind Alpha Spawns, Y = +4850 to +5800) ---
+	// Tier 1 Retaining Wall (Z = +320cm)
+	Kit.AddRetainingWall(FVector(0.0f, 4850.0f, 160.0f), FVector(4800.0f, 90.0f, 320.0f), FRotator(0.0f, 0.0f, 0.0f), true);
+	Kit.AddBox(Kit.ConcreteISM, FVector(0.0f, 5200.0f, 310.0f), FVector(4800.0f, 700.0f, 20.0f));
 
-	// Waterfront Pier Fisherman Shacks (overlooking the bay at Y = -2800..-4600, Z = +260cm)
-	Kit.AddRoofCorrugated(FVector(-480.0f, -3100.0f, 510.0f), 380.0f, 320.0f, 0.0f, 9.0f, 445, true);
-	Kit.AddRoofCorrugated(FVector(480.0f, -3800.0f, 510.0f), 380.0f, 320.0f, 180.0f, 9.0f, 446, false);
+	// Concrete Escadarias connecting lower avenue to Tier 1 Inland Terrace
+	Kit.AddEscadaria(FVector(-600.0f, 4680.0f, 0.0f), FVector(-600.0f, 4980.0f, 320.0f), 180.0f, 16);
+	Kit.AddEscadaria(FVector(600.0f, 4680.0f, 0.0f), FVector(600.0f, 4980.0f, 320.0f), 180.0f, 16);
 
-	// 3. Tropical Coastal Foliage: Banana Clusters & Weeds
-	Kit.AddBananaCluster(FVector(680.0f, 3650.0f, 0.0f), 3, 501);
-	Kit.AddBananaCluster(FVector(-680.0f, 3650.0f, 0.0f), 3, 502);
-	Kit.AddBananaCluster(FVector(720.0f, 2750.0f, 0.0f), 4, 503);
-	Kit.AddBananaCluster(FVector(-720.0f, 2750.0f, 0.0f), 4, 504);
-	Kit.AddBananaCluster(FVector(700.0f, 1850.0f, 0.0f), 3, 505);
-	Kit.AddBananaCluster(FVector(-700.0f, 1850.0f, 0.0f), 3, 506);
-	Kit.AddBananaCluster(FVector(680.0f, 950.0f, 0.0f), 4, 507);
-	Kit.AddBananaCluster(FVector(-680.0f, 950.0f, 0.0f), 4, 508);
+	// Tier 2 Retaining Wall (Z = +680cm)
+	Kit.AddRetainingWall(FVector(0.0f, 5450.0f, 500.0f), FVector(4400.0f, 90.0f, 360.0f), FRotator(0.0f, 0.0f, 0.0f), true);
+	Kit.AddBox(Kit.ConcreteISM, FVector(0.0f, 5750.0f, 670.0f), FVector(4400.0f, 600.0f, 20.0f));
 
-	// Vibrant Feira Livre Market Canopies along the Coastal Avenue
-	Kit.AddMarketCanopy(FVector(560.0f, 3200.0f, 0.0f), FVector(240.0f, 180.0f, 220.0f), FRotator(0.0f, -85.0f, 0.0f), FLinearColor(0.95f, 0.72f, 0.08f, 1.0f), 511);
-	Kit.AddMarketCanopy(FVector(-560.0f, 2200.0f, 0.0f), FVector(260.0f, 190.0f, 220.0f), FRotator(0.0f, 95.0f, 0.0f), FLinearColor(0.08f, 0.42f, 0.88f, 1.0f), 512);
-	Kit.AddMarketCanopy(FVector(580.0f, 1200.0f, 0.0f), FVector(250.0f, 185.0f, 220.0f), FRotator(0.0f, -90.0f, 0.0f), FLinearColor(0.88f, 0.16f, 0.18f, 1.0f), 513);
+	// Concrete Escadaria connecting Tier 1 to Tier 2
+	Kit.AddEscadaria(FVector(0.0f, 5300.0f, 320.0f), FVector(0.0f, 5580.0f, 680.0f), 180.0f, 18);
 
-	// Cascading Magenta Bougainvillea Clusters framing shanty roofs & seawall retaining walls
-	Kit.AddBougainvilleaCluster(FVector(960.0f, 3350.0f, 270.0f), FRotator(-15.0f, 180.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f, 1.0f), 28);
-	Kit.AddBougainvilleaCluster(FVector(-960.0f, 2450.0f, 270.0f), FRotator(-15.0f, 0.0f, 0.0f), FLinearColor(1.6f, 0.10f, 1.95f, 1.0f), 32);
-	Kit.AddBougainvilleaCluster(FVector(960.0f, 1550.0f, 270.0f), FRotator(-15.0f, 180.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f, 1.0f), 26);
-	Kit.AddBougainvilleaCluster(FVector(720.0f, -480.0f, 430.0f), FRotator(-20.0f, 90.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f, 1.0f), 35);
-	Kit.AddBougainvilleaCluster(FVector(-720.0f, -480.0f, 430.0f), FRotator(-20.0f, 90.0f, 0.0f), FLinearColor(1.6f, 0.10f, 1.95f, 1.0f), 35);
+	// --- West Hillside Flank Terraces (X = -1700 to -3600) ---
+	// West Tier 1 Retaining Wall (Z = +260cm)
+	Kit.AddRetainingWall(FVector(-1700.0f, 2400.0f, 130.0f), FVector(90.0f, 4400.0f, 260.0f), FRotator(0.0f, 0.0f, 0.0f), true);
+	Kit.AddBox(Kit.ConcreteISM, FVector(-2200.0f, 2400.0f, 250.0f), FVector(1000.0f, 4400.0f, 20.0f));
 
-	// 4. Utility Poles & Swaying Overhead Catenary Electrical Web along the Coastal Avenue
-	const FVector CP_E1 = Kit.AddUtilityPole(FVector(580.0f, 3750.0f, 0.0f), 640.0f, 90.0f, true);
-	const FVector CP_W1 = Kit.AddUtilityPole(FVector(-580.0f, 3750.0f, 0.0f), 640.0f, 90.0f, false);
-	const FVector CP_E2 = Kit.AddUtilityPole(FVector(620.0f, 2650.0f, 0.0f), 660.0f, 85.0f, false);
-	const FVector CP_W2 = Kit.AddUtilityPole(FVector(-620.0f, 2650.0f, 0.0f), 660.0f, 95.0f, true);
-	const FVector CP_E3 = Kit.AddUtilityPole(FVector(600.0f, 1450.0f, 0.0f), 660.0f, 90.0f, true);
-	const FVector CP_W3 = Kit.AddUtilityPole(FVector(-600.0f, 1450.0f, 0.0f), 660.0f, 90.0f, false);
-	const FVector CP_E4 = Kit.AddUtilityPole(FVector(580.0f, 250.0f, 0.0f), 680.0f, 90.0f, false);
-	const FVector CP_W4 = Kit.AddUtilityPole(FVector(-580.0f, 250.0f, 0.0f), 680.0f, 90.0f, true);
+	// Escadarias climbing to West Tier 1 Terrace
+	Kit.AddEscadaria(FVector(-1550.0f, 3350.0f, 0.0f), FVector(-1850.0f, 3350.0f, 260.0f), 180.0f, 14);
+	Kit.AddEscadaria(FVector(-1550.0f, 1750.0f, 0.0f), FVector(-1850.0f, 1750.0f, 260.0f), 180.0f, 14);
 
-	// Cross-avenue sagging catenary cable bundles (framing the player's view toward the seawall & bay!)
-	Kit.AddCableBundle(CP_E1, CP_W1, 5, 56.0f, 601);
-	Kit.AddCableBundle(CP_E2, CP_W2, 6, 64.0f, 602);
-	Kit.AddCableBundle(CP_E1, CP_W2, 4, 70.0f, 603);
-	Kit.AddCableBundle(CP_W1, CP_E2, 4, 70.0f, 604);
-	Kit.AddCableBundle(CP_E3, CP_W3, 5, 62.0f, 605);
-	Kit.AddCableBundle(CP_E4, CP_W4, 5, 60.0f, 606);
+	// West Tier 2 Retaining Wall (Z = +560cm)
+	Kit.AddRetainingWall(FVector(-2700.0f, 2400.0f, 410.0f), FVector(90.0f, 4200.0f, 300.0f), FRotator(0.0f, 0.0f, 0.0f), true);
+	Kit.AddBox(Kit.ConcreteISM, FVector(-3200.0f, 2400.0f, 550.0f), FVector(1000.0f, 4200.0f, 20.0f));
 
-	// Longitudinal trunk lines & shanty rooftop service drops
-	Kit.AddCableBundle(CP_E1, CP_E2, 4, 50.0f, 607);
-	Kit.AddCableBundle(CP_W1, CP_W2, 4, 50.0f, 608);
-	Kit.AddCableBundle(CP_E2, CP_E3, 4, 52.0f, 609);
-	Kit.AddCableBundle(CP_W2, CP_W3, 4, 52.0f, 610);
-	Kit.AddCableBundle(CP_E3, CP_E4, 4, 54.0f, 611);
-	Kit.AddCableBundle(CP_W3, CP_W4, 4, 54.0f, 612);
-	Kit.AddCableBundle(CP_E4, FVector(950.0f, -500.0f, 980.0f), 4, 58.0f, 613);
-	Kit.AddCableBundle(CP_W4, FVector(-950.0f, -500.0f, 980.0f), 4, 58.0f, 614);
+	// Escadaria climbing to West Tier 2 Terrace
+	Kit.AddEscadaria(FVector(-2550.0f, 2550.0f, 260.0f), FVector(-2850.0f, 2550.0f, 560.0f), 180.0f, 16);
+
+	// --- East Hillside Flank Terraces (X = +1700 to +3600) ---
+	// East Tier 1 Retaining Wall (Z = +260cm)
+	Kit.AddRetainingWall(FVector(1700.0f, 2400.0f, 130.0f), FVector(90.0f, 4400.0f, 260.0f), FRotator(0.0f, 0.0f, 0.0f), true);
+	Kit.AddBox(Kit.ConcreteISM, FVector(2200.0f, 2400.0f, 250.0f), FVector(1000.0f, 4400.0f, 20.0f));
+
+	// Escadarias climbing to East Tier 1 Terrace
+	Kit.AddEscadaria(FVector(1550.0f, 3350.0f, 0.0f), FVector(1850.0f, 3350.0f, 260.0f), 180.0f, 14);
+	Kit.AddEscadaria(FVector(1550.0f, 1750.0f, 0.0f), FVector(1850.0f, 1750.0f, 260.0f), 180.0f, 14);
+
+	// East Tier 2 Retaining Wall (Z = +560cm)
+	Kit.AddRetainingWall(FVector(2700.0f, 2400.0f, 410.0f), FVector(90.0f, 4200.0f, 300.0f), FRotator(0.0f, 0.0f, 0.0f), true);
+	Kit.AddBox(Kit.ConcreteISM, FVector(3200.0f, 2400.0f, 550.0f), FVector(1000.0f, 4200.0f, 20.0f));
+
+	// Escadaria climbing to East Tier 2 Terrace
+	Kit.AddEscadaria(FVector(2550.0f, 2550.0f, 260.0f), FVector(2850.0f, 2550.0f, 560.0f), 180.0f, 16);
+
+	// --- Seawall Promenade Access Escadarias (Avenue Z=0 to Seawall Dike Z=+420cm) ---
+	Kit.AddEscadaria(FVector(-320.0f, 0.0f, 0.0f), FVector(-320.0f, -480.0f, 420.0f), 220.0f, 20);
+	Kit.AddEscadaria(FVector(320.0f, 0.0f, 0.0f), FVector(320.0f, -480.0f, 420.0f), 220.0f, 20);
+
+	// =========================================================================================
+	// 3. MULTI-STORY SHANTY DISTRIBUTION (50+ Authentically Detailed Rio Shanties)
+	// =========================================================================================
+	// --- Street-Level Waterfront Avenue Shanties (facing inward toward the street) ---
+	// West Side Street Shanties (X = -1250cm, Yaw = 0..15 deg facing +X)
+	Kit.AddShanty(FVector(-1250.0f, 4100.0f, 0.0f), 460.0f, 520.0f, 10.0f, 2, 701, true, true, true);
+	Kit.AddShanty(FVector(-1220.0f, 3400.0f, 0.0f), 480.0f, 540.0f, 5.0f, 3, 702, true, true, true);
+	Kit.AddShanty(FVector(-1260.0f, 2650.0f, 0.0f), 460.0f, 520.0f, -6.0f, 2, 703, true, true, true);
+	Kit.AddShanty(FVector(-1220.0f, 1900.0f, 0.0f), 480.0f, 540.0f, 8.0f, 3, 704, true, true, true);
+	Kit.AddShanty(FVector(-1250.0f, 1150.0f, 0.0f), 460.0f, 520.0f, 0.0f, 2, 705, true, true, true);
+	Kit.AddShanty(FVector(-1220.0f, 450.0f, 0.0f), 480.0f, 540.0f, 5.0f, 3, 706, true, true, true);
+
+	// East Side Street Shanties (X = +1250cm, Yaw = 165..180 deg facing -X)
+	Kit.AddShanty(FVector(1250.0f, 4100.0f, 0.0f), 460.0f, 520.0f, 170.0f, 2, 711, true, true, true);
+	Kit.AddShanty(FVector(1220.0f, 3400.0f, 0.0f), 480.0f, 540.0f, 180.0f, 3, 712, true, true, true);
+	Kit.AddShanty(FVector(1260.0f, 2650.0f, 0.0f), 460.0f, 520.0f, -172.0f, 2, 713, true, true, true);
+	Kit.AddShanty(FVector(1220.0f, 1900.0f, 0.0f), 480.0f, 540.0f, 175.0f, 3, 714, true, true, true);
+	Kit.AddShanty(FVector(1250.0f, 1150.0f, 0.0f), 460.0f, 520.0f, 180.0f, 2, 715, true, true, true);
+	Kit.AddShanty(FVector(1220.0f, 450.0f, 0.0f), 480.0f, 540.0f, 175.0f, 3, 716, true, true, true);
+
+	// --- Tier 1 Elevated Hillside Shanties (Z = +260cm) ---
+	// West Flank Tier 1 (X = -2200cm)
+	Kit.AddShanty(FVector(-2200.0f, 3850.0f, 260.0f), 480.0f, 540.0f, 15.0f, 3, 721, true, true, true);
+	Kit.AddShanty(FVector(-2220.0f, 3050.0f, 260.0f), 460.0f, 520.0f, 0.0f, 2, 722, true, true, true);
+	Kit.AddShanty(FVector(-2200.0f, 2250.0f, 260.0f), 480.0f, 540.0f, 10.0f, 3, 723, true, true, true);
+	Kit.AddShanty(FVector(-2220.0f, 1450.0f, 260.0f), 460.0f, 520.0f, -5.0f, 2, 724, true, true, true);
+	Kit.AddShanty(FVector(-2200.0f, 650.0f, 260.0f), 480.0f, 540.0f, 15.0f, 3, 725, true, true, true);
+
+	// East Flank Tier 1 (X = +2200cm)
+	Kit.AddShanty(FVector(2200.0f, 3850.0f, 260.0f), 480.0f, 540.0f, 165.0f, 3, 731, true, true, true);
+	Kit.AddShanty(FVector(2220.0f, 3050.0f, 260.0f), 460.0f, 520.0f, 180.0f, 2, 732, true, true, true);
+	Kit.AddShanty(FVector(2200.0f, 2250.0f, 260.0f), 480.0f, 540.0f, 170.0f, 3, 733, true, true, true);
+	Kit.AddShanty(FVector(2220.0f, 1450.0f, 260.0f), 460.0f, 520.0f, -175.0f, 2, 734, true, true, true);
+	Kit.AddShanty(FVector(2200.0f, 650.0f, 260.0f), 480.0f, 540.0f, 165.0f, 3, 735, true, true, true);
+
+	// --- Tier 2 Elevated Hillside Shanties (Z = +560cm) ---
+	// West Flank Tier 2 (X = -3200cm)
+	Kit.AddShanty(FVector(-3200.0f, 3500.0f, 560.0f), 490.0f, 560.0f, 20.0f, 3, 741, true, true, true);
+	Kit.AddShanty(FVector(-3220.0f, 2650.0f, 560.0f), 470.0f, 530.0f, 5.0f, 2, 742, true, true, true);
+	Kit.AddShanty(FVector(-3200.0f, 1800.0f, 560.0f), 490.0f, 560.0f, 15.0f, 3, 743, true, true, true);
+	Kit.AddShanty(FVector(-3220.0f, 950.0f, 560.0f), 470.0f, 530.0f, 0.0f, 2, 744, true, true, true);
+
+	// East Flank Tier 2 (X = +3200cm)
+	Kit.AddShanty(FVector(3200.0f, 3500.0f, 560.0f), 490.0f, 560.0f, 160.0f, 3, 751, true, true, true);
+	Kit.AddShanty(FVector(3220.0f, 2650.0f, 560.0f), 470.0f, 530.0f, -175.0f, 2, 752, true, true, true);
+	Kit.AddShanty(FVector(3200.0f, 1800.0f, 560.0f), 490.0f, 560.0f, 165.0f, 3, 753, true, true, true);
+	Kit.AddShanty(FVector(3220.0f, 950.0f, 560.0f), 470.0f, 530.0f, 180.0f, 2, 754, true, true, true);
+
+	// --- Inland Morro Skyline Backdrop Shanties (North of Alpha spawn, Y = +5050 to +6100) ---
+	// Tier 1 Backdrop (Z = +320cm)
+	Kit.AddShanty(FVector(-1200.0f, 5050.0f, 320.0f), 460.0f, 520.0f, -90.0f, 2, 761, true, true, true);
+	Kit.AddShanty(FVector(-600.0f, 5050.0f, 320.0f), 480.0f, 540.0f, -90.0f, 3, 762, true, true, true);
+	Kit.AddShanty(FVector(0.0f, 5080.0f, 320.0f), 490.0f, 550.0f, -90.0f, 3, 763, true, true, true);
+	Kit.AddShanty(FVector(600.0f, 5050.0f, 320.0f), 480.0f, 540.0f, -90.0f, 3, 764, true, true, true);
+	Kit.AddShanty(FVector(1200.0f, 5050.0f, 320.0f), 460.0f, 520.0f, -90.0f, 2, 765, true, true, true);
+
+	// Tier 2 Backdrop (Z = +680cm)
+	Kit.AddShanty(FVector(-900.0f, 5600.0f, 680.0f), 470.0f, 530.0f, -90.0f, 3, 771, true, true, true);
+	Kit.AddShanty(FVector(-300.0f, 5620.0f, 680.0f), 490.0f, 550.0f, -90.0f, 2, 772, true, true, true);
+	Kit.AddShanty(FVector(300.0f, 5620.0f, 680.0f), 490.0f, 550.0f, -90.0f, 2, 773, true, true, true);
+	Kit.AddShanty(FVector(900.0f, 5600.0f, 680.0f), 470.0f, 530.0f, -90.0f, 3, 774, true, true, true);
+
+	// Tier 3 Mountain Peak Skyline (Z = +1150cm to +1350cm)
+	Kit.AddShanty(FVector(-500.0f, 6050.0f, 1150.0f), 510.0f, 580.0f, -90.0f, 3, 781, true, true, true);
+	Kit.AddShanty(FVector(0.0f, 6100.0f, 1350.0f), 520.0f, 600.0f, -90.0f, 3, 782, true, true, true);
+	Kit.AddShanty(FVector(500.0f, 6050.0f, 1150.0f), 510.0f, 580.0f, -90.0f, 3, 783, true, true, true);
+
+	// --- Seawall Crest Shanties & Corrugated Bunker Roofs (Y = -500cm, Z = +415cm) ---
+	Kit.AddRoofCorrugated(FVector(0.0f, -500.0f, 675.0f), 460.0f, 420.0f, 90.0f, 8.0f, 790, true);
+	Kit.AddShanty(FVector(1150.0f, -500.0f, 415.0f), 440.0f, 480.0f, 90.0f, 2, 791, true, true, true);
+	Kit.AddShanty(FVector(-1150.0f, -500.0f, 415.0f), 440.0f, 480.0f, 90.0f, 2, 792, true, true, true);
+	Kit.AddShanty(FVector(2350.0f, -500.0f, 415.0f), 450.0f, 520.0f, 90.0f, 3, 793, true, true, true);
+	Kit.AddShanty(FVector(-2350.0f, -500.0f, 415.0f), 450.0f, 520.0f, 90.0f, 3, 794, true, true, true);
+
+	// --- Maritime Pier Fisherman Shacks & Fish Racks (Y = -3100..-4600, Z = +260cm) ---
+	Kit.AddRoofCorrugated(FVector(-480.0f, -3100.0f, 510.0f), 380.0f, 320.0f, 0.0f, 9.0f, 795, true);
+	Kit.AddRoofCorrugated(FVector(480.0f, -3800.0f, 510.0f), 380.0f, 320.0f, 180.0f, 9.0f, 796, false);
+	Kit.AddRoofCorrugated(FVector(-480.0f, -4600.0f, 510.0f), 360.0f, 300.0f, 0.0f, 9.0f, 797, true);
+
+	// =========================================================================================
+	// 4. STREET LIFE: Feira Livre Market Canopies, Curbside Clutter & Discarded Tires
+	// =========================================================================================
+	// Feira Livre Brazilian Street Market Canopies (Vibrant Yellow, Blue, Red & Green Tarps)
+	Kit.AddMarketCanopy(FVector(540.0f, 3600.0f, 0.0f), FVector(260.0f, 190.0f, 220.0f), FRotator(0.0f, -85.0f, 0.0f), FLinearColor(0.98f, 0.82f, 0.05f), 801);
+	Kit.AddMarketCanopy(FVector(-540.0f, 3100.0f, 0.0f), FVector(270.0f, 190.0f, 220.0f), FRotator(0.0f, 95.0f, 0.0f), FLinearColor(0.08f, 0.45f, 0.95f), 802);
+	Kit.AddMarketCanopy(FVector(560.0f, 2400.0f, 0.0f), FVector(250.0f, 185.0f, 220.0f), FRotator(0.0f, -90.0f, 0.0f), FLinearColor(0.92f, 0.14f, 0.16f), 803);
+	Kit.AddMarketCanopy(FVector(-550.0f, 1700.0f, 0.0f), FVector(260.0f, 190.0f, 220.0f), FRotator(0.0f, 92.0f, 0.0f), FLinearColor(0.95f, 0.76f, 0.10f), 804);
+	Kit.AddMarketCanopy(FVector(550.0f, 1000.0f, 0.0f), FVector(250.0f, 180.0f, 220.0f), FRotator(0.0f, -88.0f, 0.0f), FLinearColor(0.94f, 0.32f, 0.42f), 805);
+
+	// Discarded Car Tire Stacks acting as organic corner curbs & tactical cover
+	Kit.AddMesh(Kit.TireISM, FVector(-420.0f, 3850.0f, 12.0f), FRotator(0.0f, 35.0f, 0.0f), FVector(1.1f));
+	Kit.AddMesh(Kit.TireISM, FVector(-420.0f, 3850.0f, 32.0f), FRotator(0.0f, 85.0f, 0.0f), FVector(1.05f));
+	Kit.AddMesh(Kit.TireISM, FVector(420.0f, 2950.0f, 12.0f), FRotator(0.0f, 15.0f, 0.0f), FVector(1.1f));
+	Kit.AddMesh(Kit.TireISM, FVector(420.0f, 2950.0f, 32.0f), FRotator(0.0f, 65.0f, 0.0f), FVector(1.05f));
+	Kit.AddMesh(Kit.TireISM, FVector(-420.0f, 2050.0f, 12.0f), FRotator(0.0f, 45.0f, 0.0f), FVector(1.1f));
+	Kit.AddMesh(Kit.TireISM, FVector(420.0f, 1250.0f, 12.0f), FRotator(0.0f, -25.0f, 0.0f), FVector(1.1f));
+
+	// Curbside Trash Bag Clusters & Fruit Crates
+	Kit.AddTrashPile(FVector(-440.0f, 3450.0f, 0.0f), 25.0f, 1.0f);
+	Kit.AddTrashPile(FVector(440.0f, 2550.0f, 0.0f), -40.0f, 1.05f);
+	Kit.AddTrashPile(FVector(-440.0f, 1650.0f, 0.0f), 15.0f, 0.95f);
+	Kit.AddTrashPile(FVector(440.0f, 750.0f, 0.0f), -60.0f, 1.0f);
+
+	// =========================================================================================
+	// 5. TROPICAL BOTANICAL FOLIAGE: Banana Clusters, Royal Fan Palms & Bougainvillea
+	// =========================================================================================
+	// Botanical Banana Palm Clusters along the dirt shoulders
+	Kit.AddBananaCluster(FVector(-700.0f, 4000.0f, 0.0f), 3, 811);
+	Kit.AddBananaCluster(FVector(700.0f, 4000.0f, 0.0f), 3, 812);
+	Kit.AddBananaCluster(FVector(-720.0f, 3300.0f, 0.0f), 4, 813);
+	Kit.AddBananaCluster(FVector(720.0f, 3300.0f, 0.0f), 4, 814);
+	Kit.AddBananaCluster(FVector(-700.0f, 2550.0f, 0.0f), 3, 815);
+	Kit.AddBananaCluster(FVector(700.0f, 2550.0f, 0.0f), 3, 816);
+	Kit.AddBananaCluster(FVector(-720.0f, 1800.0f, 0.0f), 4, 817);
+	Kit.AddBananaCluster(FVector(720.0f, 1800.0f, 0.0f), 4, 818);
+	Kit.AddBananaCluster(FVector(-700.0f, 1050.0f, 0.0f), 3, 819);
+	Kit.AddBananaCluster(FVector(700.0f, 1050.0f, 0.0f), 3, 820);
+	Kit.AddBananaCluster(FVector(-680.0f, 350.0f, 0.0f), 4, 821);
+	Kit.AddBananaCluster(FVector(680.0f, 350.0f, 0.0f), 4, 822);
+
+	// Royal Fan Palms on retaining terrace overlooks & seawall crest
+	Kit.AddPalmCluster(FVector(-1700.0f, 3700.0f, 260.0f), 2, 831);
+	Kit.AddPalmCluster(FVector(1700.0f, 3700.0f, 260.0f), 2, 832);
+	Kit.AddPalmCluster(FVector(-1700.0f, 2100.0f, 260.0f), 2, 833);
+	Kit.AddPalmCluster(FVector(1700.0f, 2100.0f, 260.0f), 2, 834);
+	Kit.AddPalmCluster(FVector(-2700.0f, 2900.0f, 560.0f), 2, 835);
+	Kit.AddPalmCluster(FVector(2700.0f, 2900.0f, 560.0f), 2, 836);
+	Kit.AddPalmCluster(FVector(-750.0f, 4850.0f, 320.0f), 2, 837);
+	Kit.AddPalmCluster(FVector(750.0f, 4850.0f, 320.0f), 2, 838);
+	Kit.AddPalmCluster(FVector(0.0f, -480.0f, 420.0f), 3, 839);
+
+	// Cascading Bougainvillea Flower Clusters (Magenta, Purple & Gold) draping down walls
+	Kit.AddBougainvilleaCluster(FVector(1050.0f, 3400.0f, 270.0f), FRotator(-15.0f, 180.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f), 28);
+	Kit.AddBougainvilleaCluster(FVector(-1050.0f, 2650.0f, 270.0f), FRotator(-15.0f, 0.0f, 0.0f), FLinearColor(1.6f, 0.10f, 1.95f), 32);
+	Kit.AddBougainvilleaCluster(FVector(1050.0f, 1900.0f, 270.0f), FRotator(-15.0f, 180.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f), 26);
+	Kit.AddBougainvilleaCluster(FVector(-1050.0f, 1150.0f, 270.0f), FRotator(-15.0f, 0.0f, 0.0f), FLinearColor(2.2f, 0.75f, 0.15f), 24);
+	Kit.AddBougainvilleaCluster(FVector(720.0f, -480.0f, 430.0f), FRotator(-20.0f, 90.0f, 0.0f), FLinearColor(2.4f, 0.12f, 1.25f), 35);
+	Kit.AddBougainvilleaCluster(FVector(-720.0f, -480.0f, 430.0f), FRotator(-20.0f, 90.0f, 0.0f), FLinearColor(1.6f, 0.10f, 1.95f), 35);
+
+	// =========================================================================================
+	// 6. 3-PHASE ELECTRICAL GRID ("GATOS"): Curb Utility Poles, Catenary Spans & Drops
+	// =========================================================================================
+	// 10 Utility Poles placed with authentic slight lean along the avenue curbs
+	const FVector CP_W0 = Kit.AddUtilityPole(FVector(-580.0f, 4300.0f, 0.0f), 650.0f, 3.5f, false);
+	const FVector CP_E0 = Kit.AddUtilityPole(FVector(580.0f, 4300.0f, 0.0f), 650.0f, -3.0f, true);
+	const FVector CP_W1 = Kit.AddUtilityPole(FVector(-580.0f, 3400.0f, 0.0f), 660.0f, 4.0f, true);
+	const FVector CP_E1 = Kit.AddUtilityPole(FVector(580.0f, 3400.0f, 0.0f), 660.0f, -4.0f, false);
+	const FVector CP_W2 = Kit.AddUtilityPole(FVector(-600.0f, 2500.0f, 0.0f), 670.0f, -3.5f, false);
+	const FVector CP_E2 = Kit.AddUtilityPole(FVector(600.0f, 2500.0f, 0.0f), 670.0f, 4.5f, true);
+	const FVector CP_W3 = Kit.AddUtilityPole(FVector(-580.0f, 1600.0f, 0.0f), 660.0f, 3.0f, true);
+	const FVector CP_E3 = Kit.AddUtilityPole(FVector(580.0f, 1600.0f, 0.0f), 660.0f, -3.5f, false);
+	const FVector CP_W4 = Kit.AddUtilityPole(FVector(-580.0f, 700.0f, 0.0f), 670.0f, -4.0f, false);
+	const FVector CP_E4 = Kit.AddUtilityPole(FVector(580.0f, 700.0f, 0.0f), 670.0f, 3.5f, true);
+
+	// Longitudinal Curb Trunk Lines (3-strand bundles)
+	Kit.AddCableBundle(CP_W0, CP_W1, 3, 38.0f, 851);
+	Kit.AddCableBundle(CP_E0, CP_E1, 3, 38.0f, 852);
+	Kit.AddCableBundle(CP_W1, CP_W2, 3, 40.0f, 853);
+	Kit.AddCableBundle(CP_E1, CP_E2, 3, 40.0f, 854);
+	Kit.AddCableBundle(CP_W2, CP_W3, 3, 40.0f, 855);
+	Kit.AddCableBundle(CP_E2, CP_E3, 3, 40.0f, 856);
+	Kit.AddCableBundle(CP_W3, CP_W4, 3, 42.0f, 857);
+	Kit.AddCableBundle(CP_E3, CP_E4, 3, 42.0f, 858);
+	Kit.AddCableBundle(CP_W4, FVector(-950.0f, -500.0f, 980.0f), 3, 50.0f, 859);
+	Kit.AddCableBundle(CP_E4, FVector(950.0f, -500.0f, 980.0f), 3, 50.0f, 860);
+
+	// High Overhead Cross-Avenue Crossing Bundles (framing player perspective toward the bay)
+	Kit.AddCableBundle(CP_W0, CP_E0, 2, 45.0f, 861);
+	Kit.AddCableBundle(CP_W1, CP_E1, 2, 48.0f, 862);
+	Kit.AddCableBundle(CP_W2, CP_E2, 2, 48.0f, 863);
+	Kit.AddCableBundle(CP_W3, CP_E3, 2, 46.0f, 864);
+	Kit.AddCableBundle(CP_W4, CP_E4, 2, 46.0f, 865);
+
+	// Diagonal Cross spans for tangled authentic look
+	Kit.AddCableSpan(CP_W0, CP_E1, 52.0f, 0.4f, 0.8f, 1.0f);
+	Kit.AddCableSpan(CP_E0, CP_W1, 52.0f, 0.6f, 0.8f, 1.0f);
+	Kit.AddCableSpan(CP_W2, CP_E3, 54.0f, 0.3f, 0.8f, 1.0f);
+	Kit.AddCableSpan(CP_E2, CP_W3, 54.0f, 0.7f, 0.8f, 1.0f);
+
+	// Asymmetric Service Drops ("Gatos") to Individual Shanty Eaves
+	Kit.AddCableSpan(CP_W0, FVector(-1050.0f, 4100.0f, 580.0f), 28.0f, 0.2f, 0.6f, 1.0f);
+	Kit.AddCableSpan(CP_E0, FVector(1050.0f, 4100.0f, 580.0f), 28.0f, 0.5f, 0.6f, 1.0f);
+	Kit.AddCableSpan(CP_W1, FVector(-1020.0f, 3400.0f, 870.0f), 32.0f, 0.3f, 0.7f, 1.0f);
+	Kit.AddCableSpan(CP_E1, FVector(1020.0f, 3400.0f, 870.0f), 32.0f, 0.6f, 0.7f, 1.0f);
+	Kit.AddCableSpan(CP_W2, FVector(-1060.0f, 2650.0f, 580.0f), 30.0f, 0.4f, 0.6f, 1.0f);
+	Kit.AddCableSpan(CP_E2, FVector(1060.0f, 2650.0f, 580.0f), 30.0f, 0.7f, 0.6f, 1.0f);
+	Kit.AddCableSpan(CP_W3, FVector(-1020.0f, 1900.0f, 870.0f), 34.0f, 0.2f, 0.7f, 1.0f);
+	Kit.AddCableSpan(CP_E3, FVector(1020.0f, 1900.0f, 870.0f), 34.0f, 0.8f, 0.7f, 1.0f);
+	Kit.AddCableSpan(CP_W4, FVector(-1020.0f, 450.0f, 870.0f), 36.0f, 0.3f, 0.7f, 1.0f);
+	Kit.AddCableSpan(CP_E4, FVector(1020.0f, 450.0f, 870.0f), 36.0f, 0.7f, 0.7f, 1.0f);
+
 	Kit.MarkAllRenderStatesDirty();
 }
-
