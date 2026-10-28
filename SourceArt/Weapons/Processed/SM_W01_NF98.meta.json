@@ -1,0 +1,99 @@
+{
+  "id": "W01_NF98",
+  "name": "NF-98 Carbine",
+  "archetype": "AssaultRifle",
+  "caliber": "5.56x45mm NATO",
+  "target_length_cm": 84.0,
+  "receiver_mesh": "SM_W01_NF98_Receiver.fbx",
+  "magazine_mesh": "SM_W01_NF98_Mag.fbx",
+  "stats": {
+    "mag_capacity": 30,
+    "reserve_ammo": 180,
+    "base_damage": 34.0,
+    "fire_rate_rpm": 750,
+    "effective_range_m": 450.0,
+    "reload_time_sec": 2.1,
+    "empty_reload_time_sec": 2.6,
+    "recoil_pitch": 0.38,
+    "recoil_yaw_spread": 0.12,
+    "fire_modes": [
+      "FullAuto",
+      "Burst",
+      "SemiAuto"
+    ]
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        -12.0,
+        0.0,
+        -8.0
+      ],
+      "rot": [
+        -18.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_LeftHand": {
+      "loc": [
+        22.0,
+        0.0,
+        1.0
+      ],
+      "rot": [
+        0.0,
+        45.0,
+        90.0
+      ]
+    },
+    "Socket_Muzzle": {
+      "loc": [
+        42.0,
+        0.0,
+        2.5
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Optic": {
+      "loc": [
+        4.0,
+        0.0,
+        6.2
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Magwell": {
+      "loc": [
+        6.0,
+        0.0,
+        -1.5
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Eject": {
+      "loc": [
+        2.0,
+        2.2,
+        3.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

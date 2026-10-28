@@ -1,4 +1,5 @@
 #include "Weapons/FPSWeaponBase.h"
+#include "Weapons/FPSWeaponDataAsset.h"
 #include "Combat/FPSHealthComponent.h"
 #include "Combat/FPSBallisticTracer.h"
 #include "Combat/FPSFermiTimeBubble.h"
@@ -215,6 +216,11 @@ void AFPSWeaponBase::BeginPlay()
 
 	// Construct guaranteed procedural 3D NF-98 carbine geometry
 	BuildProceduralCarbineGeometry();
+
+	if (WeaponDataAsset)
+	{
+		ApplyWeaponDataAsset(WeaponDataAsset);
+	}
 
 	if (AK47StaticMesh && !AK47StaticMesh->GetStaticMesh())
 	{
@@ -1139,4 +1145,55 @@ FVector AFPSWeaponBase::GetForegripWorldLocation() const
 		return ReceiverMesh->GetComponentTransform().TransformPosition(FVector(25.0f, 0.0f, 0.2f));
 	}
 	return GetActorLocation() + GetActorForwardVector() * 30.0f;
+}
+
+void AFPSWeaponBase::ApplyWeaponDataAsset(UFPSWeaponDataAsset* InDataAsset)
+{
+	if (!InDataAsset) return;
+	WeaponDataAsset = InDataAsset;
+
+	WeaponDisplayName = InDataAsset->WeaponDisplayName;
+	MagazineCapacity = InDataAsset->MagazineCapacity;
+	CurrentAmmo = FMath::Min(CurrentAmmo, MagazineCapacity);
+	ReserveAmmo = InDataAsset->ReserveAmmo;
+	BaseDamage = InDataAsset->BaseDamage;
+	FireRateRPM = InDataAsset->FireRateRPM;
+	TacticalReloadDuration = InDataAsset->ReloadTimeSeconds;
+	EmptyReloadDuration = InDataAsset->EmptyReloadTimeSeconds;
+
+	if (ReceiverMesh && InDataAsset->ReceiverMesh)
+	{
+		ReceiverMesh->SetStaticMesh(InDataAsset->ReceiverMesh);
+		ReceiverMesh->SetVisibility(true);
+		ReceiverMesh->SetHiddenInGame(false);
+	}
+	if (MagazineMesh && InDataAsset->MagazineMesh)
+	{
+		MagazineMesh->SetStaticMesh(InDataAsset->MagazineMesh);
+		MagazineMesh->SetVisibility(true);
+		MagazineMesh->SetHiddenInGame(false);
+		if (MagazineRoot)
+		{
+			MagazineRoot->SetRelativeLocation(InDataAsset->MagWellSocketOffset);
+		}
+		MagazineBaseLoc = InDataAsset->MagWellSocketOffset;
+		MagazineMesh->SetRelativeLocation(FVector::ZeroVector);
+	}
+	if (CarbineProcMesh)
+	{
+		CarbineProcMesh->SetVisibility(false);
+		CarbineProcMesh->SetHiddenInGame(true);
+	}
+
+	OnAmmoChanged.Broadcast(CurrentAmmo, ReserveAmmo);
+}
+
+FTransform AFPSWeaponBase::GetRightHandGripTransform() const
+{
+	return WeaponDataAsset ? WeaponDataAsset->RightHandGripTransform : FTransform::Identity;
+}
+
+FTransform AFPSWeaponBase::GetLeftHandGripTransform() const
+{
+	return WeaponDataAsset ? WeaponDataAsset->LeftHandGripTransform : FTransform::Identity;
 }

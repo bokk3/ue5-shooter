@@ -1,0 +1,65 @@
+{
+  "id": "W09_Stun9",
+  "name": "Stun-9 Flashbang",
+  "archetype": "Throwable",
+  "caliber": "Concussive Flash",
+  "target_length_cm": 13.5,
+  "receiver_mesh": "SM_W09_Stun9_Receiver.fbx",
+  "magazine_mesh": null,
+  "stats": {
+    "fuse_seconds": 1.8,
+    "flash_radius_m": 14.0,
+    "blind_duration_sec": 4.5,
+    "concussion_damage": 15.0
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_LeftHand": {
+      "loc": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Pin": {
+      "loc": [
+        -0.5,
+        2.0,
+        5.5
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Spoon": {
+      "loc": [
+        0.0,
+        -2.0,
+        5.2
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

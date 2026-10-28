@@ -1,0 +1,41 @@
+{
+  "id": "W10_Machete",
+  "name": "Favela Bolo Machete",
+  "archetype": "Melee",
+  "caliber": "High-Carbon Steel",
+  "target_length_cm": 52.0,
+  "receiver_mesh": "SM_W10_Machete_Receiver.fbx",
+  "magazine_mesh": null,
+  "stats": {
+    "blade_reach_cm": 85.0,
+    "slash_damage": 75.0,
+    "heavy_slash_damage": 125.0,
+    "attack_rate_sec": 0.65
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        -18.0,
+        0.0,
+        0.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_BladeTip": {
+      "loc": [
+        32.0,
+        0.0,
+        2.5
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

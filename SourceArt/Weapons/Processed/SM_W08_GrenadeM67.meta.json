@@ -1,0 +1,65 @@
+{
+  "id": "W08_GrenadeM67",
+  "name": "M67 Frag Grenade",
+  "archetype": "Throwable",
+  "caliber": "High-Explosive Frag",
+  "target_length_cm": 9.0,
+  "receiver_mesh": "SM_W08_GrenadeM67_Receiver.fbx",
+  "magazine_mesh": null,
+  "stats": {
+    "fuse_seconds": 3.8,
+    "blast_radius_m": 8.5,
+    "max_damage": 150.0,
+    "detonation_sound": "A_Explosion_Grenade"
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_LeftHand": {
+      "loc": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Pin": {
+      "loc": [
+        -0.5,
+        2.2,
+        3.8
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Spoon": {
+      "loc": [
+        0.0,
+        -2.2,
+        3.5
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

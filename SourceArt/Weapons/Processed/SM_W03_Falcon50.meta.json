@@ -1,0 +1,97 @@
+{
+  "id": "W03_Falcon50",
+  "name": "Falcon-50 DMR",
+  "archetype": "BattleRifle",
+  "caliber": "7.62x51mm NATO",
+  "target_length_cm": 104.0,
+  "receiver_mesh": "SM_W03_Falcon50_Receiver.fbx",
+  "magazine_mesh": "SM_W03_Falcon50_Mag.fbx",
+  "stats": {
+    "mag_capacity": 20,
+    "reserve_ammo": 100,
+    "base_damage": 65.0,
+    "fire_rate_rpm": 450,
+    "effective_range_m": 750.0,
+    "reload_time_sec": 2.4,
+    "empty_reload_time_sec": 3.0,
+    "recoil_pitch": 0.65,
+    "recoil_yaw_spread": 0.08,
+    "fire_modes": [
+      "SemiAuto"
+    ]
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        -16.0,
+        0.0,
+        -9.0
+      ],
+      "rot": [
+        -18.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_LeftHand": {
+      "loc": [
+        28.0,
+        0.0,
+        0.5
+      ],
+      "rot": [
+        0.0,
+        45.0,
+        90.0
+      ]
+    },
+    "Socket_Muzzle": {
+      "loc": [
+        52.0,
+        0.0,
+        2.6
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Optic": {
+      "loc": [
+        5.0,
+        0.0,
+        7.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Magwell": {
+      "loc": [
+        5.0,
+        0.0,
+        -1.5
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Eject": {
+      "loc": [
+        3.5,
+        2.5,
+        3.4
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

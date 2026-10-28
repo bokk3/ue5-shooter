@@ -1,0 +1,41 @@
+{
+  "id": "W11_Stiletto",
+  "name": "Shadow Stiletto",
+  "archetype": "Melee",
+  "caliber": "D2 Tool Steel",
+  "target_length_cm": 28.0,
+  "receiver_mesh": "SM_W11_Stiletto_Receiver.fbx",
+  "magazine_mesh": null,
+  "stats": {
+    "blade_reach_cm": 55.0,
+    "slash_damage": 55.0,
+    "backstab_damage": 250.0,
+    "attack_rate_sec": 0.42
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        -8.0,
+        0.0,
+        0.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_BladeTip": {
+      "loc": [
+        18.0,
+        0.0,
+        0.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

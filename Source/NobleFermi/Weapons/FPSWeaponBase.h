@@ -11,6 +11,7 @@ class USoundBase;
 class UParticleSystem;
 class UCurveFloat;
 class UProceduralMeshComponent;
+class UFPSWeaponDataAsset;
 
 UENUM(BlueprintType)
 enum class EFPSFireMode : uint8
@@ -48,6 +49,19 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Components")
 	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
+
+	/** Embedded Data Asset defining PBR meshes, detached magazine, sockets, and combat ballistics */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Data")
+	TObjectPtr<class UFPSWeaponDataAsset> WeaponDataAsset;
+
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Data")
+	void ApplyWeaponDataAsset(class UFPSWeaponDataAsset* InDataAsset);
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FTransform GetRightHandGripTransform() const;
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FTransform GetLeftHandGripTransform() const;
 
 	/** Authoritative 3D Procedural NF-98 Carbine Geometry Component (Guaranteed visibility in packaged builds) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Procedural")

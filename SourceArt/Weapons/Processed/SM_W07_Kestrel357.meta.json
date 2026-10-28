@@ -1,0 +1,97 @@
+{
+  "id": "W07_Kestrel357",
+  "name": "Kestrel-357",
+  "archetype": "Pistol",
+  "caliber": ".357 Magnum",
+  "target_length_cm": 24.0,
+  "receiver_mesh": "SM_W07_Kestrel357_Receiver.fbx",
+  "magazine_mesh": "SM_W07_Kestrel357_Mag.fbx",
+  "stats": {
+    "mag_capacity": 6,
+    "reserve_ammo": 36,
+    "base_damage": 72.0,
+    "fire_rate_rpm": 240,
+    "effective_range_m": 85.0,
+    "reload_time_sec": 2.2,
+    "empty_reload_time_sec": 2.2,
+    "recoil_pitch": 0.75,
+    "recoil_yaw_spread": 0.15,
+    "fire_modes": [
+      "SemiAuto"
+    ]
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        -4.5,
+        0.0,
+        -7.0
+      ],
+      "rot": [
+        -22.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_LeftHand": {
+      "loc": [
+        -3.0,
+        0.0,
+        -8.0
+      ],
+      "rot": [
+        0.0,
+        10.0,
+        0.0
+      ]
+    },
+    "Socket_Muzzle": {
+      "loc": [
+        12.0,
+        0.0,
+        2.2
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Optic": {
+      "loc": [
+        0.0,
+        0.0,
+        4.5
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Magwell": {
+      "loc": [
+        0.0,
+        -2.5,
+        -1.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Eject": {
+      "loc": [
+        0.0,
+        -3.0,
+        0.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

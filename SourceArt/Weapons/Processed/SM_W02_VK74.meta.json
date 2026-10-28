@@ -1,0 +1,98 @@
+{
+  "id": "W02_VK74",
+  "name": "VK-74 Vektor",
+  "archetype": "AssaultRifle",
+  "caliber": "7.62x39mm",
+  "target_length_cm": 88.0,
+  "receiver_mesh": "SM_W02_VK74_Receiver.fbx",
+  "magazine_mesh": "SM_W02_VK74_Mag.fbx",
+  "stats": {
+    "mag_capacity": 30,
+    "reserve_ammo": 150,
+    "base_damage": 42.0,
+    "fire_rate_rpm": 620,
+    "effective_range_m": 400.0,
+    "reload_time_sec": 2.3,
+    "empty_reload_time_sec": 2.9,
+    "recoil_pitch": 0.48,
+    "recoil_yaw_spread": 0.18,
+    "fire_modes": [
+      "FullAuto",
+      "SemiAuto"
+    ]
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        -14.0,
+        0.0,
+        -8.5
+      ],
+      "rot": [
+        -20.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_LeftHand": {
+      "loc": [
+        24.0,
+        0.0,
+        0.8
+      ],
+      "rot": [
+        0.0,
+        45.0,
+        90.0
+      ]
+    },
+    "Socket_Muzzle": {
+      "loc": [
+        44.0,
+        0.0,
+        2.8
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Optic": {
+      "loc": [
+        2.0,
+        0.0,
+        6.5
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Magwell": {
+      "loc": [
+        7.5,
+        0.0,
+        -1.8
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Eject": {
+      "loc": [
+        3.0,
+        2.4,
+        3.2
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

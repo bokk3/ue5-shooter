@@ -1,0 +1,97 @@
+{
+  "id": "W05_Apex9",
+  "name": "Apex-9",
+  "archetype": "Pistol",
+  "caliber": "9x19mm Parabellum",
+  "target_length_cm": 19.5,
+  "receiver_mesh": "SM_W05_Apex9_Receiver.fbx",
+  "magazine_mesh": "SM_W05_Apex9_Mag.fbx",
+  "stats": {
+    "mag_capacity": 17,
+    "reserve_ammo": 68,
+    "base_damage": 28.0,
+    "fire_rate_rpm": 480,
+    "effective_range_m": 50.0,
+    "reload_time_sec": 1.4,
+    "empty_reload_time_sec": 1.8,
+    "recoil_pitch": 0.28,
+    "recoil_yaw_spread": 0.1,
+    "fire_modes": [
+      "SemiAuto"
+    ]
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        -3.5,
+        0.0,
+        -6.0
+      ],
+      "rot": [
+        -16.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_LeftHand": {
+      "loc": [
+        -2.0,
+        0.0,
+        -7.0
+      ],
+      "rot": [
+        0.0,
+        10.0,
+        0.0
+      ]
+    },
+    "Socket_Muzzle": {
+      "loc": [
+        9.8,
+        0.0,
+        1.8
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Optic": {
+      "loc": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Magwell": {
+      "loc": [
+        -3.0,
+        0.0,
+        -10.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Eject": {
+      "loc": [
+        1.0,
+        1.4,
+        2.4
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "id": "W04_Breacher12",
+  "name": "Breacher-12",
+  "archetype": "Shotgun",
+  "caliber": "12-Gauge Buckshot",
+  "target_length_cm": 96.0,
+  "receiver_mesh": "SM_W04_Breacher12_Receiver.fbx",
+  "magazine_mesh": "SM_W04_Breacher12_Mag.fbx",
+  "stats": {
+    "mag_capacity": 8,
+    "reserve_ammo": 48,
+    "base_damage": 120.0,
+    "fire_rate_rpm": 220,
+    "effective_range_m": 35.0,
+    "reload_time_sec": 2.8,
+    "empty_reload_time_sec": 3.4,
+    "recoil_pitch": 0.95,
+    "recoil_yaw_spread": 0.35,
+    "fire_modes": [
+      "SemiAuto"
+    ]
+  },
+  "sockets": {
+    "Socket_RightHand": {
+      "loc": [
+        -15.0,
+        0.0,
+        -8.0
+      ],
+      "rot": [
+        -22.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_LeftHand": {
+      "loc": [
+        22.0,
+        0.0,
+        -1.0
+      ],
+      "rot": [
+        0.0,
+        40.0,
+        90.0
+      ]
+    },
+    "Socket_Muzzle": {
+      "loc": [
+        48.0,
+        0.0,
+        1.8
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Optic": {
+      "loc": [
+        6.0,
+        0.0,
+        5.2
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Magwell": {
+      "loc": [
+        4.0,
+        0.0,
+        -3.0
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "Socket_Eject": {
+      "loc": [
+        2.0,
+        2.2,
+        2.2
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}
