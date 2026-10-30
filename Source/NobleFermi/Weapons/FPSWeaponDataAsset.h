@@ -43,6 +43,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Identity")
 	FString Caliber = TEXT("5.56x45mm NATO");
 
+	// 2D Tactical Preview Icon / Model Render for UI and Weapon Wheel Modal
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Identity")
+	TObjectPtr<class UTexture2D> WeaponIcon = nullptr;
+
 	// 3D Modular Meshes (Discrete Receiver & Detachable Magazine)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Meshes")
 	TObjectPtr<UStaticMesh> ReceiverMesh = nullptr;

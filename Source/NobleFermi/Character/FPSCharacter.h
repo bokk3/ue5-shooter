@@ -307,6 +307,22 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|UI")
 	bool bIsEscapeMenuOpen = false;
 
+	// Tactical Weapon Selection Wheel
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Character|UI")
+	TSubclassOf<class UFPSWeaponWheelWidget> WeaponWheelWidgetClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|UI")
+	TObjectPtr<class UFPSWeaponWheelWidget> ActiveWeaponWheelWidget;
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|UI")
+	void OnWeaponWheelPressed();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|UI")
+	void OnWeaponWheelReleased();
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|UI")
+	bool IsWeaponWheelOpen() const;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Character|Settings")
 	float MouseSensitivityMultiplier = 1.0f;
 

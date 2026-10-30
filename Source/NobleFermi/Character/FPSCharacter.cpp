@@ -15,6 +15,7 @@
 #include "Map/FPSCoastalSplineActor.h"
 #include "UI/FPSHUDWidget.h"
 #include "UI/FPSEscapeMenuWidget.h"
+#include "UI/FPSWeaponWheelWidget.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -1648,6 +1649,14 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindKey(EKeys::MiddleMouseButton, IE_Pressed, this, &AFPSCharacter::OnMiddleMouseButtonPressed);
 	PlayerInputComponent->BindKey(EKeys::MiddleMouseButton, IE_Released, this, &AFPSCharacter::OnMiddleMouseButtonReleased);
 
+	// Weapon Selection Wheel Input Bindings (Tab and 4 keys)
+	PlayerInputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &AFPSCharacter::OnWeaponWheelPressed);
+	PlayerInputComponent->BindKey(EKeys::Tab, IE_Released, this, &AFPSCharacter::OnWeaponWheelReleased);
+	PlayerInputComponent->BindKey(EKeys::Four, IE_Pressed, this, &AFPSCharacter::OnWeaponWheelPressed);
+	PlayerInputComponent->BindKey(EKeys::Four, IE_Released, this, &AFPSCharacter::OnWeaponWheelReleased);
+	PlayerInputComponent->BindAction(TEXT("WeaponWheel"), IE_Pressed, this, &AFPSCharacter::OnWeaponWheelPressed);
+	PlayerInputComponent->BindAction(TEXT("WeaponWheel"), IE_Released, this, &AFPSCharacter::OnWeaponWheelReleased);
+
 	// Live Escape Menu Input Bindings (Escape and P for Editor PIE)
 	PlayerInputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &AFPSCharacter::ToggleEscapeMenu);
 	PlayerInputComponent->BindKey(EKeys::P, IE_Pressed, this, &AFPSCharacter::ToggleEscapeMenu);
@@ -1658,7 +1667,14 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 void AFPSCharacter::MoveForward(float Value)
 {
 	CurrentMoveInput.X = Value;
-	if (Value != 0.0f)
+	if (IsWeaponWheelOpen() && ActiveWeaponWheelWidget)
+	{
+		if (FMath::Abs(Value) > 0.1f || FMath::Abs(CurrentMoveInput.Y) > 0.1f)
+		{
+			ActiveWeaponWheelWidget->SetDirectionalInput(FVector2D(CurrentMoveInput.Y, Value));
+		}
+	}
+	else if (Value != 0.0f)
 	{
 		AddMovementInput(GetActorForwardVector(), Value);
 	}
@@ -1667,7 +1683,14 @@ void AFPSCharacter::MoveForward(float Value)
 void AFPSCharacter::MoveRight(float Value)
 {
 	CurrentMoveInput.Y = Value;
-	if (Value != 0.0f)
+	if (IsWeaponWheelOpen() && ActiveWeaponWheelWidget)
+	{
+		if (FMath::Abs(Value) > 0.1f || FMath::Abs(CurrentMoveInput.X) > 0.1f)
+		{
+			ActiveWeaponWheelWidget->SetDirectionalInput(FVector2D(Value, CurrentMoveInput.X));
+		}
+	}
+	else if (Value != 0.0f)
 	{
 		AddMovementInput(GetActorRightVector(), Value);
 	}
@@ -2837,4 +2860,42 @@ float AFPSCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& D
 		HealthComponent->ApplyDamage(ActualDamage, InstigatorPawn, DummyHit);
 	}
 	return ActualDamage;
+}
+
+
+void AFPSCharacter::OnWeaponWheelPressed()
+{
+	if (bIsDead || bIsEscapeMenuOpen) return;
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC || !PC->IsLocalController()) return;
+
+	if (!ActiveWeaponWheelWidget)
+	{
+		TSubclassOf<UFPSWeaponWheelWidget> WheelClass = WeaponWheelWidgetClass ? WeaponWheelWidgetClass : TSubclassOf<UFPSWeaponWheelWidget>(UFPSWeaponWheelWidget::StaticClass());
+		ActiveWeaponWheelWidget = CreateWidget<UFPSWeaponWheelWidget>(PC, WheelClass);
+		if (ActiveWeaponWheelWidget)
+		{
+			ActiveWeaponWheelWidget->SetOwningCharacter(this);
+			ActiveWeaponWheelWidget->AddToViewport(50); // Above HUD, below pause menu
+		}
+	}
+
+	if (ActiveWeaponWheelWidget)
+	{
+		ActiveWeaponWheelWidget->ShowWeaponWheel();
+	}
+}
+
+void AFPSCharacter::OnWeaponWheelReleased()
+{
+	if (ActiveWeaponWheelWidget)
+	{
+		ActiveWeaponWheelWidget->HideAndSelectWeapon();
+	}
+}
+
+bool AFPSCharacter::IsWeaponWheelOpen() const
+{
+	return ActiveWeaponWheelWidget && ActiveWeaponWheelWidget->IsWheelOpen();
 }
