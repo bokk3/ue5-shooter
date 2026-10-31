@@ -1,4 +1,9 @@
 #include "Character/FPSCharacter.h"
+#include "Lyra/Pawn/FPSPawnExtensionComponent.h"
+#include "Lyra/Pawn/FPSHeroComponent.h"
+#include "Lyra/Equipment/FPSEquipmentManagerComponent.h"
+#include "Lyra/Camera/FPSCameraComponent.h"
+#include "Lyra/AbilitySystem/FPSAbilitySystemComponent.h"
 #include "Character/FPSOperatorGearComponent.h"
 #include "Character/FPSAnimInstance.h"
 #include "Character/FPSCharacterMovementComponent.h"
@@ -284,6 +289,14 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	OperatorGearComponent = CreateDefaultSubobject<UFPSOperatorGearComponent>(TEXT("OperatorGearComponent"));
 	HUDWidgetClass = UFPSHUDWidget::StaticClass();
 
+	// Lyra Replicated Framework Architecture
+	PawnExtComponent = CreateDefaultSubobject<UFPSPawnExtensionComponent>(TEXT("PawnExtComponent"));
+	HeroComponent = CreateDefaultSubobject<UFPSHeroComponent>(TEXT("HeroComponent"));
+	EquipmentManagerComponent = CreateDefaultSubobject<UFPSEquipmentManagerComponent>(TEXT("EquipmentManagerComponent"));
+	LyraCameraComponent = CreateDefaultSubobject<UFPSCameraComponent>(TEXT("LyraCameraComponent"));
+	LyraCameraComponent->SetupAttachment(GetCapsuleComponent());
+	LyraCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
+
 	// Authoritative 3D Procedural Level IV Ceramic Plate Carrier (Attached to Capsule so it NEVER inherits 100x FBX bone scale!)
 	PlateCarrierProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("PlateCarrierProcMesh"));
 	PlateCarrierProcMesh->SetupAttachment(GetCapsuleComponent());
@@ -544,10 +557,13 @@ void AFPSCharacter::BeginPlay()
 
 		if (EjectedPlateShardMesh)
 		{
-			if (UMaterialInstanceDynamic* ShardMID = EjectedPlateShardMesh->CreateDynamicMaterialInstance(0))
+			if (EjectedPlateShardMesh->GetNumMaterials() > 0)
 			{
-				ShardMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.12f, 0.55f, 0.95f, 1.0f));
-				ShardMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.12f, 0.55f, 0.95f, 1.0f));
+				if (UMaterialInstanceDynamic* ShardMID = EjectedPlateShardMesh->CreateDynamicMaterialInstance(0))
+				{
+					ShardMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.12f, 0.55f, 0.95f, 1.0f));
+					ShardMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.12f, 0.55f, 0.95f, 1.0f));
+				}
 			}
 		}
 	}
@@ -603,10 +619,42 @@ void AFPSCharacter::BeginPlay()
 	}
 }
 
+UAbilitySystemComponent* AFPSCharacter::GetAbilitySystemComponent() const
+{
+	if (PawnExtComponent)
+	{
+		return PawnExtComponent->GetFPSAbilitySystemComponent();
+	}
+	return nullptr;
+}
+
+void AFPSCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	if (AFPSPlayerState* PS = GetPlayerState<AFPSPlayerState>())
+	{
+		if (PawnExtComponent)
+		{
+			PawnExtComponent->InitializeAbilitySystem(PS->GetFPSAbilitySystemComponent(), PS);
+			PawnExtComponent->HandlePlayerStateReplicated();
+		}
+	}
+}
+
 void AFPSCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	InitializeHUD();
+
+	if (AFPSPlayerState* PS = GetPlayerState<AFPSPlayerState>())
+	{
+		if (PawnExtComponent)
+		{
+			PawnExtComponent->InitializeAbilitySystem(PS->GetFPSAbilitySystemComponent(), PS);
+			PawnExtComponent->HandleControllerChanged();
+		}
+	}
 
 	if (!bIsTacticalBot)
 	{
@@ -1649,6 +1697,15 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	if (PawnExtComponent)
+	{
+		PawnExtComponent->SetupPlayerInputComponent();
+	}
+	if (HeroComponent)
+	{
+		HeroComponent->InitializePlayerInput(PlayerInputComponent);
+	}
+
 	PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &AFPSCharacter::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &AFPSCharacter::MoveRight);
 	PlayerInputComponent->BindAxis(TEXT("Turn"), this, &AFPSCharacter::Turn);
@@ -2233,7 +2290,7 @@ void AFPSCharacter::ApplyLoadoutCosmetics(int32 CamoIndex, int32 HeadgearIndex, 
 		}
 	}
 
-	if (BallisticHelmetMesh && !bIsHelmetPopped)
+	if (BallisticHelmetMesh && !bIsHelmetPopped && BallisticHelmetMesh->GetNumMaterials() > 0)
 	{
 		UMaterialInstanceDynamic* HelmetMID = Cast<UMaterialInstanceDynamic>(BallisticHelmetMesh->GetMaterial(0));
 		if (!HelmetMID)
@@ -2262,7 +2319,7 @@ void AFPSCharacter::ApplyLoadoutCosmetics(int32 CamoIndex, int32 HeadgearIndex, 
 		}
 	}
 
-	if (ChestCarrierMesh && !bIsArmorPlateShattered)
+	if (ChestCarrierMesh && !bIsArmorPlateShattered && ChestCarrierMesh->GetNumMaterials() > 0)
 	{
 		UMaterialInstanceDynamic* CarrierMID = Cast<UMaterialInstanceDynamic>(ChestCarrierMesh->GetMaterial(0));
 		if (!CarrierMID)
@@ -2308,11 +2365,14 @@ void AFPSCharacter::MulticastTriggerArmorPlateShatter_Implementation(FVector Sho
 	if (ChestCarrierMesh)
 	{
 		ChestCarrierMesh->SetRelativeScale3D(FVector(0.09f, 0.25f, 0.24f));
-		if (UMaterialInstanceDynamic* CarrierMID = ChestCarrierMesh->CreateDynamicMaterialInstance(0))
+		if (ChestCarrierMesh->GetNumMaterials() > 0)
 		{
-			CarrierMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.03f, 0.03f, 0.04f, 1.0f));
-			CarrierMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.03f, 0.03f, 0.04f, 1.0f));
-			CarrierMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.95f, 0.35f, 0.05f, 1.0f));
+			if (UMaterialInstanceDynamic* CarrierMID = ChestCarrierMesh->CreateDynamicMaterialInstance(0))
+			{
+				CarrierMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.03f, 0.03f, 0.04f, 1.0f));
+				CarrierMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.03f, 0.03f, 0.04f, 1.0f));
+				CarrierMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.95f, 0.35f, 0.05f, 1.0f));
+			}
 		}
 	}
 
@@ -2330,10 +2390,13 @@ void AFPSCharacter::MulticastTriggerArmorPlateShatter_Implementation(FVector Sho
 		ShardAngularVelocity = FRotator(FMath::FRandRange(-720.0f, 720.0f), FMath::FRandRange(-720.0f, 720.0f), FMath::FRandRange(-540.0f, 540.0f));
 		ShardFlightTimer = 2.6f;
 
-		if (UMaterialInstanceDynamic* ShardMID = EjectedPlateShardMesh->CreateDynamicMaterialInstance(0))
+		if (EjectedPlateShardMesh->GetNumMaterials() > 0)
 		{
-			ShardMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.22f, 0.25f, 0.28f, 1.0f));
-			ShardMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 0.65f, 1.0f, 1.0f));
+			if (UMaterialInstanceDynamic* ShardMID = EjectedPlateShardMesh->CreateDynamicMaterialInstance(0))
+			{
+				ShardMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.22f, 0.25f, 0.28f, 1.0f));
+				ShardMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 0.65f, 1.0f, 1.0f));
+			}
 		}
 	}
 

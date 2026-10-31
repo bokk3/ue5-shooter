@@ -27,7 +27,12 @@ public class NobleFermi : ModuleRules
 			"Json",
 			"JsonUtilities",
 			"HTTP",
-			"ProceduralMeshComponent"
+			"ProceduralMeshComponent",
+			"GameplayAbilities",
+			"GameplayTags",
+			"GameplayTasks",
+			"ModularGameplay",
+			"NetCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {

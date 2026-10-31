@@ -1,11 +1,28 @@
 #include "Multiplayer/FPSPlayerState.h"
 #include "Economy/FPSEconomySubsystem.h"
+#include "Lyra/AbilitySystem/FPSAbilitySystemComponent.h"
+#include "Lyra/AbilitySystem/FPSCombatAttributeSet.h"
+#include "Lyra/Inventory/FPSInventoryManagerComponent.h"
 #include "Net/UnrealNetwork.h"
 
 AFPSPlayerState::AFPSPlayerState()
 {
 	bReplicates = true;
-	SetNetUpdateFrequency(10.0f);
+	SetNetUpdateFrequency(60.0f);
+
+	// Lyra ASC, Combat Attributes, and Inventory hosted on PlayerState
+	AbilitySystemComponent = CreateDefaultSubobject<UFPSAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+
+	AttributeSet = CreateDefaultSubobject<UFPSCombatAttributeSet>(TEXT("AttributeSet"));
+
+	InventoryManager = CreateDefaultSubobject<UFPSInventoryManagerComponent>(TEXT("InventoryManager"));
+}
+
+UAbilitySystemComponent* AFPSPlayerState::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
 }
 
 void AFPSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -48,46 +65,35 @@ void AFPSPlayerState::AddAssist(int32 ScoreReward)
 
 	Assists++;
 	SetScore(GetScore() + ScoreReward);
+
 	OnRep_StatsChanged();
 }
 
 void AFPSPlayerState::AddCombatScore(int32 AdditionalScore)
 {
-	if (!HasAuthority() || AdditionalScore <= 0) return;
+	if (!HasAuthority()) return;
 
 	SetScore(GetScore() + AdditionalScore);
-	OnRep_Score();
+	OnRep_StatsChanged();
 }
 
 void AFPSPlayerState::AwardCombatAccolade(const FString& AccoladeName, int32 GoldReward)
 {
-	if (HasAuthority() && GoldReward > 0)
-	{
-		SetScore(GetScore() + GoldReward);
-		OnRep_Score();
-	}
+	OnCombatAccoladeEarned.Broadcast(AccoladeName, GoldReward);
 
-	// If pawn is not present (or if called outside character flow), credit local player's economy
-	if (!GetPawn() && GoldReward > 0)
+	if (UGameInstance* GI = GetGameInstance())
 	{
-		if (UGameInstance* GI = GetGameInstance())
+		if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
 		{
-			if (UFPSEconomySubsystem* Economy = GI->GetSubsystem<UFPSEconomySubsystem>())
-			{
-				Economy->AddGold(GoldReward, AccoladeName);
-			}
+			Economy->AddGold(GoldReward);
 		}
 	}
-
-	OnCombatAccoladeEarned.Broadcast(AccoladeName, GoldReward);
 }
 
 void AFPSPlayerState::SetPlayerTeam(EFPSPlayerTeam NewTeam)
 {
-	if (HasAuthority())
-	{
-		PlayerTeam = NewTeam;
-	}
+	if (!HasAuthority()) return;
+	PlayerTeam = NewTeam;
 }
 
 void AFPSPlayerState::OnRep_Score()

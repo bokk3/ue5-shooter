@@ -14,6 +14,10 @@ class UFPSCharacterMovementComponent;
 class UFPSHealthComponent;
 class UFPSInventoryComponent;
 class UFPSHUDWidget;
+class UFPSPawnExtensionComponent;
+class UFPSHeroComponent;
+class UFPSEquipmentManagerComponent;
+class UFPSCameraComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCharacterCombatAccoladeSignature, const FString&, AccoladeName, int32, GoldReward);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBountyEventSignature, FName, EventTag, int32, Count);
@@ -25,7 +29,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBountyEventSignature, FName, Eve
  * full locomotion gait cycles, weapon socketing, and authoritative ragdoll physics.
  */
 UCLASS()
-class NOBLEFERMI_API AFPSCharacter : public ACharacter
+class NOBLEFERMI_API AFPSCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -92,6 +96,37 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<class UFPSBodyMechanicsComponent> BodyMechanicsComponent;
+
+	/** Lyra Modular Pawn Extension Coordinator */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Components")
+	TObjectPtr<UFPSPawnExtensionComponent> PawnExtComponent;
+
+	/** Lyra Hero Component for Input and Camera Mode mapping */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Components")
+	TObjectPtr<UFPSHeroComponent> HeroComponent;
+
+	/** Lyra Fast-Array Replicated Equipment Manager */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Components")
+	TObjectPtr<UFPSEquipmentManagerComponent> EquipmentManagerComponent;
+
+	/** Lyra Blended Multi-Mode Camera Stack */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Components")
+	TObjectPtr<UFPSCameraComponent> LyraCameraComponent;
+
+	// IAbilitySystemInterface
+	virtual class UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	UFUNCTION(BlueprintPure, Category = "Lyra|Components")
+	UFPSPawnExtensionComponent* GetPawnExtensionComponent() const { return PawnExtComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "Lyra|Components")
+	UFPSHeroComponent* GetHeroComponent() const { return HeroComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "Lyra|Components")
+	UFPSEquipmentManagerComponent* GetEquipmentManagerComponent() const { return EquipmentManagerComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "Lyra|Components")
+	UFPSCameraComponent* GetLyraCameraComponent() const { return LyraCameraComponent; }
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UFPSHUDWidget> HUDWidgetClass;
@@ -402,6 +437,7 @@ protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
 	virtual void OnRep_Controller() override;
 	void InitializeHUD();
 

@@ -2,7 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+#include "AbilitySystemInterface.h"
 #include "FPSPlayerState.generated.h"
+
+class UFPSAbilitySystemComponent;
+class UFPSCombatAttributeSet;
+class UFPSInventoryManagerComponent;
 
 UENUM(BlueprintType)
 enum class EFPSPlayerTeam : uint8
@@ -17,11 +22,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStreakEarnedSignature, int32, Cur
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCombatAccoladeEarnedSignature, const FString&, AccoladeName, int32, GoldReward);
 
 /**
- * AAA FPS Multiplayer PlayerState
- * Replicates player combat performance, team assignment, and killstreak progression.
+ * AAA FPS Multiplayer PlayerState (Lyra Replicated Architecture)
+ * Hosts replicated AbilitySystemComponent, CombatAttributeSet, and Fast-Array InventoryManager.
  */
 UCLASS()
-class NOBLEFERMI_API AFPSPlayerState : public APlayerState
+class NOBLEFERMI_API AFPSPlayerState : public APlayerState, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -29,6 +34,18 @@ public:
 	AFPSPlayerState();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	// IAbilitySystemInterface
+	virtual class UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	UFUNCTION(BlueprintPure, Category = "Lyra|Abilities")
+	UFPSAbilitySystemComponent* GetFPSAbilitySystemComponent() const { return AbilitySystemComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "Lyra|Attributes")
+	UFPSCombatAttributeSet* GetCombatAttributeSet() const { return AttributeSet; }
+
+	UFUNCTION(BlueprintPure, Category = "Lyra|Inventory")
+	UFPSInventoryManagerComponent* GetInventoryManager() const { return InventoryManager; }
 
 	UPROPERTY(BlueprintAssignable, Category = "FPS Multiplayer|Events")
 	FOnPlayerStatsUpdatedSignature OnStatsUpdated;
@@ -78,6 +95,15 @@ public:
 	void SetPlayerTeam(EFPSPlayerTeam NewTeam);
 
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Abilities")
+	TObjectPtr<UFPSAbilitySystemComponent> AbilitySystemComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Attributes")
+	TObjectPtr<UFPSCombatAttributeSet> AttributeSet;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Inventory")
+	TObjectPtr<UFPSInventoryManagerComponent> InventoryManager;
+
 	UPROPERTY(ReplicatedUsing = OnRep_StatsChanged, VisibleInstanceOnly, Category = "FPS Stats")
 	int32 Kills = 0;
 
