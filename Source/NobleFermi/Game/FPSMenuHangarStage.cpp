@@ -616,7 +616,7 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	WarmWindowKeySpotLight->SetAttenuationRadius(2800.0f);
 	WarmWindowKeySpotLight->SetInnerConeAngle(22.0f);
 	WarmWindowKeySpotLight->SetOuterConeAngle(52.0f);
-	WarmWindowKeySpotLight->SetVolumetricScatteringIntensity(1.5f);
+	WarmWindowKeySpotLight->SetVolumetricScatteringIntensity(3.5f);
 	WarmWindowKeySpotLight->SetCastShadows(true);
 
 	WarmOperatorRimSpotLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("WarmOperatorRimSpotLight"));
@@ -698,11 +698,12 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	// Positioned behind Operator's left side (-Y) casting cool turquoise rim on left arm/vest & right floor puddles
 	CyanOperatorRimSpotLight->SetRelativeLocation(FVector(-150.0f, -135.0f, 148.0f));
 	CyanOperatorRimSpotLight->SetRelativeRotation(FRotator(-18.0f, 44.0f, 0.0f));
-	CyanOperatorRimSpotLight->SetIntensity(2400.0f);
+	CyanOperatorRimSpotLight->SetIntensity(2800.0f);
 	CyanOperatorRimSpotLight->SetLightColor(FLinearColor(0.0f, 0.867f, 0.961f)); // #00DDF5
-	CyanOperatorRimSpotLight->SetAttenuationRadius(720.0f);
+	CyanOperatorRimSpotLight->SetAttenuationRadius(850.0f);
 	CyanOperatorRimSpotLight->SetInnerConeAngle(25.0f);
 	CyanOperatorRimSpotLight->SetOuterConeAngle(56.0f);
+	CyanOperatorRimSpotLight->SetVolumetricScatteringIntensity(3.2f);
 	CyanOperatorRimSpotLight->SetCastShadows(false);
 
 	CyanScreenIllumRectLight = CreateDefaultSubobject<URectLightComponent>(TEXT("CyanScreenIllumRectLight"));
@@ -758,13 +759,14 @@ void AFPSMenuHangarStage::ConstructThreeToneLightingRig()
 	// -------------------------------------------------------------------------
 	HangarHeightFog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("HangarHeightFog"));
 	HangarHeightFog->SetupAttachment(RootComponent);
-	HangarHeightFog->SetFogDensity(0.00002f);
-	HangarHeightFog->SetFogHeightFalloff(0.25f);
-	HangarHeightFog->SetFogInscatteringColor(FLinearColor(0.016f, 0.039f, 0.071f)); // #040A12
-	HangarHeightFog->SetVolumetricFog(false); // Enabled dynamically when Ultra GI mode is active
-	HangarHeightFog->SetVolumetricFogScatteringDistribution(0.65f);
-	HangarHeightFog->SetVolumetricFogAlbedo(FColor(28, 42, 58));
+	HangarHeightFog->SetFogDensity(0.0028f); // Atmospheric industrial haze
+	HangarHeightFog->SetFogHeightFalloff(0.08f);
+	HangarHeightFog->SetFogInscatteringColor(FLinearColor(0.02f, 0.05f, 0.08f)); // Deep industrial teal
+	HangarHeightFog->SetVolumetricFog(true); // Active Volumetric Fog in Hangar!
+	HangarHeightFog->SetVolumetricFogScatteringDistribution(0.68f);
+	HangarHeightFog->SetVolumetricFogAlbedo(FColor(35, 60, 85));
 	HangarHeightFog->SetVolumetricFogExtinctionScale(1.8f);
+	HangarHeightFog->SetVolumetricFogDistance(4500.0f);
 
 	// -------------------------------------------------------------------------
 	// 6. CAMERA, EXPOSURE & POST-PROCESS LOCK

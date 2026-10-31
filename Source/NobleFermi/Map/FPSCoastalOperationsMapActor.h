@@ -12,8 +12,10 @@ class UStaticMeshComponent;
 class UPointLightComponent;
 class UPostProcessComponent;
 class UBoxComponent;
+class USpotLightComponent;
 class APlayerStart;
 class AFPSCoastalSplineActor;
+class AFPSWeatherManager;
 
 /**
  * Procedural Tactical Arena Actor: "Coastal Operations"
@@ -56,6 +58,12 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Lighting")
 	TObjectPtr<UPointLightComponent> DikeHazardBeacon;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Lighting")
+	TArray<TObjectPtr<USpotLightComponent>> SeawallFloodlights;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Weather")
+	TObjectPtr<AFPSWeatherManager> WeatherManager;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|PostProcess")
 	TObjectPtr<UPostProcessComponent> PostProcess;
