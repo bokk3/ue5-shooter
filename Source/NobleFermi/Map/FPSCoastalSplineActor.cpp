@@ -30,23 +30,15 @@ AFPSCoastalSplineActor::AFPSCoastalSplineActor()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseMatFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> SeawallFinder(TEXT("/Game/Environment/Coastal/Meshes/SM_Seawall_Curved.SM_Seawall_Curved"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> TetrapodFinder(TEXT("/Game/Environment/Coastal/Meshes/SM_Tetrapod_Concrete.SM_Tetrapod_Concrete"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ConcreteMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Concrete.M_Coastal_Concrete"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MetalMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Metal.M_Coastal_Metal"));
 
 	UStaticMesh* CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object.Get() : nullptr;
 	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object.Get() : nullptr;
 	UMaterialInterface* BaseMat = BaseMatFinder.Succeeded() ? BaseMatFinder.Object.Get() : nullptr;
-	UStaticMesh* SeawallMesh = SeawallFinder.Succeeded() ? SeawallFinder.Object.Get() : nullptr;
-	UStaticMesh* TetrapodMesh = TetrapodFinder.Succeeded() ? TetrapodFinder.Object.Get() : nullptr;
-	UMaterialInterface* ConcreteMat = ConcreteMatFinder.Succeeded() ? ConcreteMatFinder.Object.Get() : BaseMat;
-	UMaterialInterface* MetalMat = MetalMatFinder.Succeeded() ? MetalMatFinder.Object.Get() : BaseMat;
 
 	ConstructCrestRoadway(CubeMesh, BaseMat);
-	ConstructModularSeawall(SeawallMesh, ConcreteMat, MetalMat);
+	ConstructModularSeawall(CubeMesh, BaseMat, BaseMat);
 	ConstructSeawardRevetment(CubeMesh, BaseMat);
-	ConstructBasaltRiprapAndTetrapods(CubeMesh, CylinderMesh, TetrapodMesh, BaseMat, ConcreteMat);
+	ConstructBasaltRiprapAndTetrapods(CubeMesh, CylinderMesh, nullptr, BaseMat, BaseMat);
 	ConstructLandwardSlope(CubeMesh, BaseMat);
 	ConstructFlankStairs(CubeMesh, BaseMat);
 	ConstructDrainageCulvert(CubeMesh, BaseMat);
@@ -62,6 +54,38 @@ void AFPSCoastalSplineActor::OnConstruction(const FTransform& Transform)
 void AFPSCoastalSplineActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Safe runtime loading of Phase 3 coastal modular assets (non-blocking for CDO)
+	UStaticMesh* SeawallMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Environment/Coastal/Meshes/SM_Seawall_Curved.SM_Seawall_Curved"));
+	UStaticMesh* TetrapodMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Environment/Coastal/Meshes/SM_Tetrapod_Concrete.SM_Tetrapod_Concrete"));
+	UMaterialInterface* CoastalConcreteMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Concrete.M_Coastal_Concrete"));
+	UMaterialInterface* CoastalMetalMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Metal.M_Coastal_Metal"));
+
+	if (SeawallMesh)
+	{
+		for (UStaticMeshComponent* Comp : ModularSeawallComponents)
+		{
+			if (Comp)
+			{
+				Comp->SetStaticMesh(SeawallMesh);
+				if (CoastalConcreteMat) Comp->SetMaterial(0, CoastalConcreteMat);
+				if (CoastalMetalMat) Comp->SetMaterial(1, CoastalMetalMat);
+			}
+		}
+	}
+
+	if (TetrapodMesh)
+	{
+		for (UStaticMeshComponent* Comp : TetrapodComponents)
+		{
+			if (Comp)
+			{
+				Comp->SetStaticMesh(TetrapodMesh);
+				Comp->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+				if (CoastalConcreteMat) Comp->SetMaterial(0, CoastalConcreteMat);
+			}
+		}
+	}
 
 	// 1. Weathered macadam crest roadway
 	for (UStaticMeshComponent* Comp : CrestRoadComponents)
@@ -198,7 +222,7 @@ void AFPSCoastalSplineActor::ConstructCrestRoadway(UStaticMesh* CubeMesh, UMater
 
 void AFPSCoastalSplineActor::ConstructModularSeawall(UStaticMesh* SeawallMesh, UMaterialInterface* ConcreteMat, UMaterialInterface* MetalMat)
 {
-	if (!SeawallMesh) return;
+	// Construct placeholder if mesh not yet loaded at CDO time
 
 	// 10 modular 12-meter curved seawall segments spanning 120m (-60m to +60m along X)
 	const int32 NumSegments = 10;

@@ -132,36 +132,19 @@ AFPSCoastalOperationsMapActor::AFPSCoastalOperationsMapActor()
 	CoastalDikeSubActor->SetChildActorClass(AFPSCoastalSplineActor::StaticClass());
 	CoastalDikeSubActor->SetRelativeLocation(FVector(0.0f, -500.0f, 0.0f));
 
-	// 3. Load Base Meshes & Materials
+	// 3. Load Base Meshes & Materials (Safe Engine Primitives for CDO stability)
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseMatFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> WatchtowerFinder(TEXT("/Game/Environment/Coastal/Meshes/SM_Pier_Watchtower.SM_Pier_Watchtower"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> GrassClumpFinder(TEXT("/Game/Environment/Coastal/Meshes/SM_Marram_Grass_Clump.SM_Marram_Grass_Clump"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> WetSandMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_WetSand.M_Coastal_WetSand"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> OceanWaterMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_OceanWater.M_Coastal_OceanWater"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> TimberMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Timber.M_Coastal_Timber"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MetalMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Metal.M_Coastal_Metal"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> RoofMetalMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_RoofMetal.M_Coastal_RoofMetal"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DuneGrassMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_DuneGrass.M_Coastal_DuneGrass"));
 
 	UStaticMesh* CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object.Get() : nullptr;
 	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object.Get() : nullptr;
 	UMaterialInterface* BaseMat = BaseMatFinder.Succeeded() ? BaseMatFinder.Object.Get() : nullptr;
-	UStaticMesh* WatchtowerMesh = WatchtowerFinder.Succeeded() ? WatchtowerFinder.Object.Get() : nullptr;
-	UStaticMesh* GrassClumpMesh = GrassClumpFinder.Succeeded() ? GrassClumpFinder.Object.Get() : nullptr;
-	UMaterialInterface* WetSandMat = WetSandMatFinder.Succeeded() ? WetSandMatFinder.Object.Get() : BaseMat;
-	UMaterialInterface* OceanWaterMat = OceanWaterMatFinder.Succeeded() ? OceanWaterMatFinder.Object.Get() : BaseMat;
-	UMaterialInterface* TimberMat = TimberMatFinder.Succeeded() ? TimberMatFinder.Object.Get() : BaseMat;
-	UMaterialInterface* MetalMat = MetalMatFinder.Succeeded() ? MetalMatFinder.Object.Get() : BaseMat;
-	UMaterialInterface* RoofMetalMat = RoofMetalMatFinder.Succeeded() ? RoofMetalMatFinder.Object.Get() : BaseMat;
-	UMaterialInterface* DuneGrassMat = DuneGrassMatFinder.Succeeded() ? DuneGrassMatFinder.Object.Get() : BaseMat;
 
 	// 4. Construct Modular Zones
-	ConstructWaterAndBeach(CubeMesh, WetSandMat ? WetSandMat : BaseMat);
-	if (WaterPlaneMesh && OceanWaterMat) WaterPlaneMesh->SetMaterial(0, OceanWaterMat);
-	ConstructMaritimePier(CubeMesh, CylinderMesh, WatchtowerMesh, BaseMat, TimberMat, MetalMat, RoofMetalMat);
-	ConstructCoastalDunes(CubeMesh, GrassClumpMesh, BaseMat, DuneGrassMat);
+	ConstructWaterAndBeach(CubeMesh, BaseMat);
+	ConstructMaritimePier(CubeMesh, CylinderMesh, nullptr, BaseMat, BaseMat, BaseMat, BaseMat);
+	ConstructCoastalDunes(CubeMesh, nullptr, BaseMat, BaseMat);
 	ConstructPerimeterBoundaries(CubeMesh, BaseMat);
 	ConstructObjectives(CylinderMesh, BaseMat);
 }
@@ -169,6 +152,39 @@ AFPSCoastalOperationsMapActor::AFPSCoastalOperationsMapActor()
 void AFPSCoastalOperationsMapActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Safe runtime loading of Phase 3 coastal modular assets (non-blocking for CDO)
+	UStaticMesh* WatchtowerMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Environment/Coastal/Meshes/SM_Pier_Watchtower.SM_Pier_Watchtower"));
+	UStaticMesh* GrassClumpMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Environment/Coastal/Meshes/SM_Marram_Grass_Clump.SM_Marram_Grass_Clump"));
+	UMaterialInterface* WetSandMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Coastal/Materials/M_Coastal_WetSand.M_Coastal_WetSand"));
+	UMaterialInterface* OceanWaterMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Coastal/Materials/M_Coastal_OceanWater.M_Coastal_OceanWater"));
+	UMaterialInterface* TimberMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Timber.M_Coastal_Timber"));
+	UMaterialInterface* MetalMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Metal.M_Coastal_Metal"));
+	UMaterialInterface* RoofMetalMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Coastal/Materials/M_Coastal_RoofMetal.M_Coastal_RoofMetal"));
+	UMaterialInterface* DuneGrassMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Coastal/Materials/M_Coastal_DuneGrass.M_Coastal_DuneGrass"));
+	UMaterialInterface* ConcreteMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Concrete.M_Coastal_Concrete"));
+
+	if (BeachFloorMesh && WetSandMat) BeachFloorMesh->SetMaterial(0, WetSandMat);
+	if (WaterPlaneMesh && OceanWaterMat) WaterPlaneMesh->SetMaterial(0, OceanWaterMat);
+
+	if (PierWatchtower && WatchtowerMesh)
+	{
+		PierWatchtower->SetStaticMesh(WatchtowerMesh);
+		if (TimberMat) PierWatchtower->SetMaterial(0, TimberMat);
+		if (RoofMetalMat) PierWatchtower->SetMaterial(1, RoofMetalMat);
+	}
+
+	if (GrassClumpMesh)
+	{
+		for (UStaticMeshComponent* Comp : DuneGrassClumps)
+		{
+			if (Comp)
+			{
+				Comp->SetStaticMesh(GrassClumpMesh);
+				if (DuneGrassMat) Comp->SetMaterial(0, DuneGrassMat);
+			}
+		}
+	}
 
 	if (SkyLight)
 	{
@@ -466,20 +482,17 @@ void AFPSCoastalOperationsMapActor::ConstructMaritimePier(UStaticMesh* CubeMesh,
 	// -------------------------------------------------------------------------
 	
 	// Elevated Maritime Observation Watchtower & Cabin (Domination Flag C Anchor)
-	if (WatchtowerMesh)
-	{
-		PierWatchtower = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Pier_Watchtower_Elevated"));
-		PierWatchtower->SetupAttachment(RootComponent);
-		PierWatchtower->SetMobility(EComponentMobility::Movable);
-		PierWatchtower->SetStaticMesh(WatchtowerMesh);
-		if (TimberMat) PierWatchtower->SetMaterial(0, TimberMat);
-		if (RoofMat) PierWatchtower->SetMaterial(1, RoofMat);
-		PierWatchtower->SetRelativeLocation(FVector(520.0f, -5850.0f, 250.0f));
-		PierWatchtower->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
-		PierWatchtower->SetCollisionProfileName(TEXT("BlockAll"));
-		PierWatchtower->SetCastShadow(true);
-		PierWatchtower->ComponentTags.Add(FName("Watchtower"));
-	}
+	PierWatchtower = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Pier_Watchtower_Elevated"));
+	PierWatchtower->SetupAttachment(RootComponent);
+	PierWatchtower->SetMobility(EComponentMobility::Movable);
+	if (WatchtowerMesh) PierWatchtower->SetStaticMesh(WatchtowerMesh);
+	else if (CubeMesh) PierWatchtower->SetStaticMesh(CubeMesh);
+	if (TimberMat) PierWatchtower->SetMaterial(0, TimberMat);
+	PierWatchtower->SetRelativeLocation(FVector(520.0f, -5850.0f, 250.0f));
+	PierWatchtower->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	PierWatchtower->SetCollisionProfileName(TEXT("BlockAll"));
+	PierWatchtower->SetCastShadow(true);
+	PierWatchtower->ComponentTags.Add(FName("Watchtower"));
 
 	// Cast-Iron Mooring Bollards (Waist-high ballistic cover: 0.6m x 0.6m x 0.7m)
 	// -------------------------------------------------------------------------
@@ -625,7 +638,7 @@ void AFPSCoastalOperationsMapActor::ConstructCoastalDunes(UStaticMesh* CubeMesh,
 	AddDune(TEXT("Dune_Peak_West"), FVector(-4800.0f, 3800.0f, 100.0f), FRotator(10.0f, 65.0f, 0.0f), FVector(12.0f, 10.0f, 2.0f), false);
 	AddDune(TEXT("Dune_Peak_East"), FVector(4800.0f, 3800.0f, 100.0f), FRotator(10.0f, 115.0f, 0.0f), FVector(12.0f, 10.0f, 2.0f), false);
 	// 5. Scatter Windblown Coastal Marram Dune Grass Clumps (Docs/Screenshots/aim/coastal_operations_gameplay.jpg)
-	if (GrassClumpMesh)
+	if (CubeMesh)
 	{
 		const FVector ClumpPositions[] = {
 			FVector(-3800.0f, 1600.0f, 75.0f),
@@ -658,7 +671,7 @@ void AFPSCoastalOperationsMapActor::ConstructCoastalDunes(UStaticMesh* CubeMesh,
 			UStaticMeshComponent* Grass = CreateDefaultSubobject<UStaticMeshComponent>(*GrassName);
 			Grass->SetupAttachment(RootComponent);
 			Grass->SetMobility(EComponentMobility::Movable);
-			Grass->SetStaticMesh(GrassClumpMesh);
+			Grass->SetStaticMesh(GrassClumpMesh ? GrassClumpMesh : CubeMesh);
 			if (GrassMat) Grass->SetMaterial(0, GrassMat);
 			Grass->SetRelativeLocation(ClumpPositions[g]);
 			Grass->SetRelativeRotation(FRotator(0.0f, g * 47.3f, 0.0f));
