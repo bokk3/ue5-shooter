@@ -103,9 +103,15 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Pier")
 	TArray<TObjectPtr<UStaticMeshComponent>> PierLadders;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Pier")
+	TObjectPtr<UStaticMeshComponent> PierWatchtower;
+
 	// Coastal Dunes & Backcountry
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Dunes")
 	TArray<TObjectPtr<UStaticMeshComponent>> DuneComponents;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Dunes")
+	TArray<TObjectPtr<UStaticMeshComponent>> DuneGrassClumps;
 
 	// Perimeter Boundaries
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Map|Perimeter")
@@ -126,8 +132,8 @@ protected:
 
 private:
 	void ConstructWaterAndBeach(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat);
-	void ConstructMaritimePier(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* BaseMat);
-	void ConstructCoastalDunes(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat);
+	void ConstructMaritimePier(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UStaticMesh* WatchtowerMesh, UMaterialInterface* BaseMat, UMaterialInterface* TimberMat, UMaterialInterface* MetalMat, UMaterialInterface* RoofMat);
+	void ConstructCoastalDunes(UStaticMesh* CubeMesh, UStaticMesh* GrassClumpMesh, UMaterialInterface* BaseMat, UMaterialInterface* GrassMat);
 	void ConstructPerimeterBoundaries(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat);
 	void ConstructObjectives(UStaticMesh* CylinderMesh, UMaterialInterface* BaseMat);
 

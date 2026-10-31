@@ -30,14 +30,23 @@ AFPSCoastalSplineActor::AFPSCoastalSplineActor()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseMatFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SeawallFinder(TEXT("/Game/Environment/Coastal/Meshes/SM_Seawall_Curved.SM_Seawall_Curved"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> TetrapodFinder(TEXT("/Game/Environment/Coastal/Meshes/SM_Tetrapod_Concrete.SM_Tetrapod_Concrete"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ConcreteMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Concrete.M_Coastal_Concrete"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MetalMatFinder(TEXT("/Game/Environment/Coastal/Materials/M_Coastal_Metal.M_Coastal_Metal"));
 
-	UStaticMesh* CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object : nullptr;
-	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object : nullptr;
-	UMaterialInterface* BaseMat = BaseMatFinder.Succeeded() ? BaseMatFinder.Object : nullptr;
+	UStaticMesh* CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object.Get() : nullptr;
+	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object.Get() : nullptr;
+	UMaterialInterface* BaseMat = BaseMatFinder.Succeeded() ? BaseMatFinder.Object.Get() : nullptr;
+	UStaticMesh* SeawallMesh = SeawallFinder.Succeeded() ? SeawallFinder.Object.Get() : nullptr;
+	UStaticMesh* TetrapodMesh = TetrapodFinder.Succeeded() ? TetrapodFinder.Object.Get() : nullptr;
+	UMaterialInterface* ConcreteMat = ConcreteMatFinder.Succeeded() ? ConcreteMatFinder.Object.Get() : BaseMat;
+	UMaterialInterface* MetalMat = MetalMatFinder.Succeeded() ? MetalMatFinder.Object.Get() : BaseMat;
 
 	ConstructCrestRoadway(CubeMesh, BaseMat);
+	ConstructModularSeawall(SeawallMesh, ConcreteMat, MetalMat);
 	ConstructSeawardRevetment(CubeMesh, BaseMat);
-	ConstructBasaltRiprapAndTetrapods(CubeMesh, CylinderMesh, BaseMat);
+	ConstructBasaltRiprapAndTetrapods(CubeMesh, CylinderMesh, TetrapodMesh, BaseMat, ConcreteMat);
 	ConstructLandwardSlope(CubeMesh, BaseMat);
 	ConstructFlankStairs(CubeMesh, BaseMat);
 	ConstructDrainageCulvert(CubeMesh, BaseMat);
@@ -187,6 +196,34 @@ void AFPSCoastalSplineActor::ConstructCrestRoadway(UStaticMesh* CubeMesh, UMater
 	CurbComponents.Add(SluiceControlHousing);
 }
 
+void AFPSCoastalSplineActor::ConstructModularSeawall(UStaticMesh* SeawallMesh, UMaterialInterface* ConcreteMat, UMaterialInterface* MetalMat)
+{
+	if (!SeawallMesh) return;
+
+	// 10 modular 12-meter curved seawall segments spanning 120m (-60m to +60m along X)
+	const int32 NumSegments = 10;
+	const float SegmentWidth = 1200.0f; // 12 meters per modular unit
+
+	for (int32 i = 0; i < NumSegments; ++i)
+	{
+		const float CenterX = -5400.0f + i * SegmentWidth;
+
+		FString SeawallName = FString::Printf(TEXT("Seawall_Modular_%02d"), i);
+		UStaticMeshComponent* WallSeg = CreateDefaultSubobject<UStaticMeshComponent>(*SeawallName);
+		WallSeg->SetupAttachment(RootComponent);
+		WallSeg->SetMobility(EComponentMobility::Movable);
+		WallSeg->SetStaticMesh(SeawallMesh);
+		if (ConcreteMat) WallSeg->SetMaterial(0, ConcreteMat);
+		if (MetalMat) WallSeg->SetMaterial(1, MetalMat);
+		WallSeg->SetRelativeLocation(FVector(CenterX, -450.0f, 0.0f));
+		WallSeg->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
+		WallSeg->SetCollisionProfileName(TEXT("BlockAll"));
+		WallSeg->SetCastShadow(true);
+		WallSeg->ComponentTags.Add(FName("Seawall_Concrete"));
+		ModularSeawallComponents.Add(WallSeg);
+	}
+}
+
 void AFPSCoastalSplineActor::ConstructSeawardRevetment(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat)
 {
 	// 1:3.5 outer slope (~15.94 degrees) rising from Y = -1695 (Z = 0) up to Y = -225 (Z = 420)
@@ -215,7 +252,7 @@ void AFPSCoastalSplineActor::ConstructSeawardRevetment(UStaticMesh* CubeMesh, UM
 	}
 }
 
-void AFPSCoastalSplineActor::ConstructBasaltRiprapAndTetrapods(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* BaseMat)
+void AFPSCoastalSplineActor::ConstructBasaltRiprapAndTetrapods(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UStaticMesh* TetrapodMesh, UMaterialInterface* BaseMat, UMaterialInterface* ConcreteMat)
 {
 	const int32 BoulderRows = 4;
 	const int32 BouldersPerRow = 14;
@@ -262,11 +299,22 @@ void AFPSCoastalSplineActor::ConstructBasaltRiprapAndTetrapods(UStaticMesh* Cube
 		UStaticMeshComponent* TetCore = CreateDefaultSubobject<UStaticMeshComponent>(*TetName);
 		TetCore->SetupAttachment(RootComponent);
 		TetCore->SetMobility(EComponentMobility::Movable);
-		if (CubeMesh) TetCore->SetStaticMesh(CubeMesh);
-		if (BaseMat) TetCore->SetMaterial(0, BaseMat);
-		TetCore->SetRelativeLocation(FVector(X, -1620.0f, 55.0f));
-		TetCore->SetRelativeRotation(FRotator(18.0f, t * 47.0f, -22.0f));
-		TetCore->SetRelativeScale3D(FVector(1.6f, 1.6f, 1.2f));
+		if (TetrapodMesh)
+		{
+			TetCore->SetStaticMesh(TetrapodMesh);
+			TetCore->SetRelativeLocation(FVector(X, -1620.0f, 20.0f));
+			TetCore->SetRelativeRotation(FRotator(0.0f, t * 53.0f, 0.0f));
+			TetCore->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+			if (ConcreteMat) TetCore->SetMaterial(0, ConcreteMat);
+		}
+		else
+		{
+			if (CubeMesh) TetCore->SetStaticMesh(CubeMesh);
+			TetCore->SetRelativeLocation(FVector(X, -1620.0f, 55.0f));
+			TetCore->SetRelativeRotation(FRotator(18.0f, t * 47.0f, -22.0f));
+			TetCore->SetRelativeScale3D(FVector(1.6f, 1.6f, 1.2f));
+			if (BaseMat) TetCore->SetMaterial(0, BaseMat);
+		}
 		TetCore->SetCollisionProfileName(TEXT("BlockAll"));
 		TetCore->ComponentTags.Add(FName("Surface_Basalt_Rock"));
 		TetCore->ComponentTags.Add(FName("WaveBreaker"));

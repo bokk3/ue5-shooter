@@ -49,6 +49,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Coastal|Armor")
 	TArray<TObjectPtr<UStaticMeshComponent>> TetrapodComponents;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Coastal|Seawall")
+	TArray<TObjectPtr<UStaticMeshComponent>> ModularSeawallComponents;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Coastal|BackSlope")
 	TArray<TObjectPtr<UStaticMeshComponent>> LandwardSlopeComponents;
 
@@ -71,7 +74,8 @@ protected:
 private:
 	void ConstructCrestRoadway(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat);
 	void ConstructSeawardRevetment(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat);
-	void ConstructBasaltRiprapAndTetrapods(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UMaterialInterface* BaseMat);
+	void ConstructModularSeawall(UStaticMesh* SeawallMesh, UMaterialInterface* ConcreteMat, UMaterialInterface* MetalMat);
+	void ConstructBasaltRiprapAndTetrapods(UStaticMesh* CubeMesh, UStaticMesh* CylinderMesh, UStaticMesh* TetrapodMesh, UMaterialInterface* BaseMat, UMaterialInterface* ConcreteMat);
 	void ConstructLandwardSlope(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat);
 	void ConstructFlankStairs(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat);
 	void ConstructDrainageCulvert(UStaticMesh* CubeMesh, UMaterialInterface* BaseMat);
