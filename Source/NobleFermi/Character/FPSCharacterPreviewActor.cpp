@@ -130,10 +130,9 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	PedestalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PedestalMesh->SetCastShadow(true);
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlinthFinder(TEXT("/Game/Environment/Hangar/SM_Hangar_Plinth.SM_Hangar_Plinth"));
-	if (PlinthFinder.Succeeded())
+	if (CylinderMesh)
 	{
-		PedestalMesh->SetStaticMesh(PlinthFinder.Object);
+		PedestalMesh->SetStaticMesh(CylinderMesh);
 	}
 
 	// 5.5 Master High-Fidelity Posed Operator (Vanguard Spec-Ops Soldier with 7-Zone Tactical Armor, Visor, Boots & AK-47)
@@ -303,10 +302,12 @@ void AFPSCharacterPreviewActor::BeginPlay()
 		PedestalMesh->SetVisibility(true, true);
 		PedestalMesh->SetHiddenInGame(false, true);
 
-		if (UMaterialInterface* AKSteel = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel")))
-			PedestalMesh->SetMaterial(0, AKSteel);
-		if (UMaterialInterface* VisorMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Soldier_Visor.M_Soldier_Visor")))
-			PedestalMesh->SetMaterial(1, VisorMat);
+		if (UMaterialInterface* RimSteel = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Hangar/Materials/M_Turntable_Steel.M_Turntable_Steel")))
+			PedestalMesh->SetMaterial(0, RimSteel);
+		if (UMaterialInterface* CyanNeon = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Hangar/Materials/M_Turntable_CyanNeon.M_Turntable_CyanNeon")))
+			PedestalMesh->SetMaterial(1, CyanNeon);
+		if (UMaterialInterface* GripDeck = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Hangar/Materials/M_Turntable_Deck.M_Turntable_Deck")))
+			PedestalMesh->SetMaterial(2, GripDeck);
 	}
 
 	// Hide all legacy primitive boxes and inactive BodyMesh

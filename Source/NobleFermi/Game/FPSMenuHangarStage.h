@@ -97,6 +97,13 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hangar|Layer5_DeepBulkhead")
 	TArray<TObjectPtr<UStaticMeshComponent>> DeepBulkheadMeshes;
 
+	// Section 4B: Phase 4 Military Transport Aircraft & Industrial Traveling Gantry Crane
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hangar|CargoJet")
+	TObjectPtr<UStaticMeshComponent> CargoJetMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hangar|GantryCrane")
+	TObjectPtr<UStaticMeshComponent> OverheadGantryCraneMesh;
+
 	// Section 5: "Rainburst on Glass" Forefront Rain Streaks & Falling Water Droplets
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hangar|RainFX")
 	TArray<TObjectPtr<UStaticMeshComponent>> ForefrontRainStreaks;

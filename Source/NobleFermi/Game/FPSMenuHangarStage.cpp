@@ -86,24 +86,43 @@ AFPSMenuHangarStage::AFPSMenuHangarStage()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereFinder(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> FloorFinder(TEXT("/Game/Environment/Hangar/SM_Hangar_Floor.SM_Hangar_Floor"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SteelMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseMatFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 
-	UStaticMesh* CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object : nullptr;
-	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object : nullptr;
-	UStaticMesh* SphereMesh = SphereFinder.Succeeded() ? SphereFinder.Object : nullptr;
-	UStaticMesh* FloorMesh = FloorFinder.Succeeded() ? FloorFinder.Object.Get() : CubeMesh;
-	UMaterialInterface* SteelMat = SteelMatFinder.Succeeded() ? SteelMatFinder.Object.Get() : nullptr;
-	UMaterialInterface* BaseMat = SteelMat;
+	UStaticMesh* CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object.Get() : nullptr;
+	UStaticMesh* CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object.Get() : nullptr;
+	UStaticMesh* SphereMesh = SphereFinder.Succeeded() ? SphereFinder.Object.Get() : nullptr;
+	UMaterialInterface* BaseMat = BaseMatFinder.Succeeded() ? BaseMatFinder.Object.Get() : nullptr;
 
 	// Build all 5 architectural depth layers + RainFX + Three-Tone Lighting Rig
-	ConstructLayer1FloorAndPlinth(FloorMesh, CubeMesh, CylinderMesh, SteelMat);
-	ConstructLayer2LeftStormWindows(CubeMesh, CylinderMesh, SteelMat);
-	ConstructLayer3RightCommandConsoles(CubeMesh, CylinderMesh, SteelMat);
-	ConstructLayer4OverheadGantry(CubeMesh, CylinderMesh, SteelMat);
-	ConstructLayer5DeepBackgroundBulkhead(CubeMesh, CylinderMesh, SteelMat);
+	ConstructLayer1FloorAndPlinth(CubeMesh, CubeMesh, CylinderMesh, BaseMat);
+	ConstructLayer2LeftStormWindows(CubeMesh, CylinderMesh, BaseMat);
+	ConstructLayer3RightCommandConsoles(CubeMesh, CylinderMesh, BaseMat);
+	ConstructLayer4OverheadGantry(CubeMesh, CylinderMesh, BaseMat);
+	ConstructLayer5DeepBackgroundBulkhead(CubeMesh, CylinderMesh, BaseMat);
 	ConstructRainburstOpticsAndParticles(CubeMesh, SphereMesh, BaseMat);
 	ConstructThreeToneLightingRig();
+
+	// Phase 4: Background Military Transport Aircraft (C-17 Globemaster III)
+	CargoJetMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CargoJetMesh"));
+	CargoJetMesh->SetupAttachment(RootComponent);
+	CargoJetMesh->SetMobility(EComponentMobility::Movable);
+	if (CubeMesh) CargoJetMesh->SetStaticMesh(CubeMesh);
+	CargoJetMesh->SetRelativeLocation(FVector(-720.0f, 60.0f, 25.0f));
+	CargoJetMesh->SetRelativeRotation(FRotator(0.0f, -15.0f, 0.0f));
+	CargoJetMesh->SetRelativeScale3D(FVector(0.55f, 0.55f, 0.55f));
+	CargoJetMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CargoJetMesh->SetCastShadow(true);
+
+	// Phase 4: Overhead Industrial Yellow Traveling Gantry Crane
+	OverheadGantryCraneMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverheadGantryCraneMesh"));
+	OverheadGantryCraneMesh->SetupAttachment(RootComponent);
+	OverheadGantryCraneMesh->SetMobility(EComponentMobility::Movable);
+	if (CubeMesh) OverheadGantryCraneMesh->SetStaticMesh(CubeMesh);
+	OverheadGantryCraneMesh->SetRelativeLocation(FVector(-450.0f, 0.0f, 285.0f));
+	OverheadGantryCraneMesh->SetRelativeRotation(FRotator::ZeroRotator);
+	OverheadGantryCraneMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+	OverheadGantryCraneMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OverheadGantryCraneMesh->SetCastShadow(true);
 }
 
 // =========================================================================================
@@ -1296,6 +1315,47 @@ void AFPSMenuHangarStage::BuildAndApplyProceduralPBRMaterials()
 void AFPSMenuHangarStage::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Safe runtime loading of Phase 4 Hangar Diorama Assets
+	if (UStaticMesh* C17Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Environment/Hangar/Meshes/SM_Cargo_Jet_C17.SM_Cargo_Jet_C17")))
+	{
+		if (CargoJetMesh)
+		{
+			CargoJetMesh->SetStaticMesh(C17Mesh);
+			if (UMaterialInterface* FuselageMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Hangar/Materials/M_CargoJet_Fuselage.M_CargoJet_Fuselage")))
+			{
+				CargoJetMesh->SetMaterial(0, FuselageMat);
+			}
+			if (UMaterialInterface* DetailsMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Hangar/Materials/M_CargoJet_Details.M_CargoJet_Details")))
+			{
+				CargoJetMesh->SetMaterial(1, DetailsMat);
+			}
+		}
+	}
+
+	if (UStaticMesh* CraneMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Environment/Hangar/Meshes/SM_Hangar_GantryCrane.SM_Hangar_GantryCrane")))
+	{
+		if (OverheadGantryCraneMesh)
+		{
+			OverheadGantryCraneMesh->SetStaticMesh(CraneMesh);
+			if (UMaterialInterface* YellowMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Hangar/Materials/M_Hangar_GantryYellow.M_Hangar_GantryYellow")))
+			{
+				OverheadGantryCraneMesh->SetMaterial(0, YellowMat);
+			}
+			if (UMaterialInterface* SteelMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Environment/Hangar/Materials/M_Hangar_StructuralSteel.M_Hangar_StructuralSteel")))
+			{
+				OverheadGantryCraneMesh->SetMaterial(1, SteelMat);
+			}
+		}
+	}
+
+	if (UStaticMesh* FloorAsset = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Environment/Hangar/SM_Hangar_Floor.SM_Hangar_Floor")))
+	{
+		if (WetFloorPlane)
+		{
+			WetFloorPlane->SetStaticMesh(FloorAsset);
+		}
+	}
 
 	BuildAndApplyProceduralPBRMaterials();
 
