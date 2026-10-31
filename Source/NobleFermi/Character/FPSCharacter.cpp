@@ -214,6 +214,21 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		GetMesh()->SetMaterial(0, BaseBodyMatFinder.Object);
 	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ArmorMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Operator_Armor.M_Operator_Armor"));
+	if (ArmorMatFinder.Succeeded())
+	{
+		GetMesh()->SetMaterial(1, ArmorMatFinder.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> VisorMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Soldier_Visor.M_Soldier_Visor"));
+	if (VisorMatFinder.Succeeded())
+	{
+		GetMesh()->SetMaterial(2, VisorMatFinder.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> PatchMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Operator_Patch.M_Operator_Patch"));
+	if (PatchMatFinder.Succeeded())
+	{
+		GetMesh()->SetMaterial(3, PatchMatFinder.Object);
+	}
 
 	// Ballistic collision routing: movement capsule blocks visibility trace so bullet line traces register reliably
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
@@ -447,6 +462,18 @@ void AFPSCharacter::BeginPlay()
 			{
 				GetMesh()->SetMaterial(0, BaseBodyMat);
 			}
+		}
+		if (UMaterialInterface* ArmorMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_Armor.M_Operator_Armor")))
+		{
+			GetMesh()->SetMaterial(1, ArmorMat);
+		}
+		if (UMaterialInterface* VisorMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Soldier_Visor.M_Soldier_Visor")))
+		{
+			GetMesh()->SetMaterial(2, VisorMat);
+		}
+		if (UMaterialInterface* PatchMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_Patch.M_Operator_Patch")))
+		{
+			GetMesh()->SetMaterial(3, PatchMat);
 		}
 
 		UMaterialInstanceDynamic* BodyMID = GetMesh()->CreateDynamicMaterialInstance(0);

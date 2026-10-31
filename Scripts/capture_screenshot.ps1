@@ -4,10 +4,10 @@ $shotPath2 = "Docs\Screenshots\menu_real_actual.png"
 if (Test-Path $shotPath1) { Remove-Item $shotPath1 -Force }
 if (Test-Path $shotPath2) { Remove-Item $shotPath2 -Force }
 
-Write-Host "Launching Packaged NobleFermi to capture screenshot..."
-$proc = Start-Process -FilePath "Packaged\Windows\NobleFermi\Binaries\Win64\NobleFermi.exe" -ArgumentList "-TakeMenuShot -windowed -ResX=1920 -ResY=1080 -log" -PassThru
+Write-Host "Launching Packaged NobleFermi to capture screenshot with MenuShotDelay=6.0..."
+$proc = Start-Process -FilePath "Packaged\Windows\NobleFermi\Binaries\Win64\NobleFermi.exe" -ArgumentList "-TakeMenuShot -MenuShotDelay=6.0 -windowed -ResX=1920 -ResY=1080 -log" -PassThru
 
-$timeout = 60
+$timeout = 35
 $elapsed = 0
 $foundPath = $null
 
@@ -28,10 +28,9 @@ while ($elapsed -lt $timeout -and -not $proc.HasExited) {
     }
 }
 
-# Wait for process to exit cleanly if it is still running
 if (-not $proc.HasExited) {
-    Write-Host "Waiting up to 10 more seconds for clean engine exit..."
-    $proc | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue
+    Write-Host "Waiting up to 5 more seconds for clean engine exit..."
+    $proc | Wait-Process -Timeout 5 -ErrorAction SilentlyContinue
 }
 
 if (-not $proc.HasExited) {

@@ -1,4 +1,5 @@
 #include "Game/FPSMenuGameMode.h"
+#include "EngineUtils.h"
 #include "Game/FPSMenuPlayerController.h"
 #include "Game/FPSMenuHangarStage.h"
 #include "Character/FPSCharacterPreviewActor.h"
@@ -66,6 +67,12 @@ void AFPSMenuGameMode::BeginPlay()
 		SpawnParams
 	);
 	UE_LOG(LogTemp, Warning, TEXT("[GAMEMODE] Spawned ActiveHangarStage: %s"), ActiveHangarStage ? *ActiveHangarStage->GetName() : TEXT("FAILED"));
+	// Diagnostic dump of all world actors
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ACTOR_LIST] %s (%s) at %s"), *It->GetName(), *It->GetClass()->GetName(), *It->GetActorLocation().ToString());
+	}
+
 	if (ActiveHangarStage && ActivePreviewActor)
 	{
 		ActiveHangarStage->ConfigurePreviewActorAndCamera(ActivePreviewActor);

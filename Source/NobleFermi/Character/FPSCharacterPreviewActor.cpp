@@ -23,20 +23,19 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 
 	// 1. Root Scene
 	RootScene = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
+	RootScene->SetMobility(EComponentMobility::Movable);
 	RootComponent = RootScene;
 
 	// 2. Camera: Calibrated to frame the full Task Force Echo Operator & Hangar stage
 	PreviewCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("PreviewCamera"));
 	PreviewCamera->SetupAttachment(RootComponent);
-	PreviewCamera->SetRelativeLocation(FVector(410.0f, 0.0f, 66.0f));
-	PreviewCamera->SetRelativeRotation(FRotator(2.0f, 180.0f, 0.0f));
+	PreviewCamera->SetRelativeLocation(FVector(400.0f, 0.0f, 90.0f));
+	PreviewCamera->SetRelativeRotation(FRotator(-1.5f, 180.0f, 0.0f));
 	PreviewCamera->FieldOfView = 50.0f;
 	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMethod = true;
-	PreviewCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
+	PreviewCamera->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
 	PreviewCamera->PostProcessSettings.bOverride_AutoExposureBias = true;
 	PreviewCamera->PostProcessSettings.AutoExposureBias = 0.0f;
-	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMinBrightness = false;
-	PreviewCamera->PostProcessSettings.bOverride_AutoExposureMaxBrightness = false;
 	PreviewCamera->PostProcessSettings.bOverride_BloomIntensity = true;
 	PreviewCamera->PostProcessSettings.BloomIntensity = 0.25f;
 
@@ -46,7 +45,7 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	StudioKeyLight->SetMobility(EComponentMobility::Movable);
 	StudioKeyLight->SetRelativeLocation(FVector(190.0f, -120.0f, 210.0f));
 	StudioKeyLight->SetRelativeRotation(FRotator(-35.0f, 145.0f, 0.0f));
-	StudioKeyLight->SetIntensity(1500.0f);
+	StudioKeyLight->SetIntensity(8500.0f);
 	StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.78f, 0.40f)); // Warm amber key light
 	StudioKeyLight->SetAttenuationRadius(1500.0f);
 	StudioKeyLight->SetInnerConeAngle(25.0f);
@@ -57,7 +56,7 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	StudioRimLight->SetMobility(EComponentMobility::Movable);
 	StudioRimLight->SetRelativeLocation(FVector(-160.0f, 120.0f, 175.0f));
 	StudioRimLight->SetRelativeRotation(FRotator(-25.0f, -35.0f, 0.0f));
-	StudioRimLight->SetIntensity(1800.0f);
+	StudioRimLight->SetIntensity(9500.0f);
 	StudioRimLight->SetLightColor(FLinearColor(0.0f, 0.898f, 1.0f)); // Tactical cyan rim light (#00E5FF)
 	StudioRimLight->SetAttenuationRadius(1400.0f);
 	StudioRimLight->SetInnerConeAngle(30.0f);
@@ -68,7 +67,7 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	StudioFillLight->SetupAttachment(RootComponent);
 	StudioFillLight->SetMobility(EComponentMobility::Movable);
 	StudioFillLight->SetRelativeLocation(FVector(150.0f, 0.0f, 120.0f));
-	StudioFillLight->SetIntensity(600.0f);
+	StudioFillLight->SetIntensity(6500.0f);
 	StudioFillLight->SetLightColor(FLinearColor(0.85f, 0.92f, 1.0f)); // Clean fill
 	StudioFillLight->SetAttenuationRadius(1500.0f);
 	StudioFillLight->SetCastShadows(false);
@@ -77,7 +76,7 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	StudioAmbientLight->SetupAttachment(RootComponent);
 	StudioAmbientLight->SetMobility(EComponentMobility::Movable);
 	StudioAmbientLight->SetRelativeLocation(FVector(0.0f, 0.0f, 150.0f));
-	StudioAmbientLight->SetIntensity(200.0f);
+	StudioAmbientLight->SetIntensity(2500.0f);
 	StudioAmbientLight->SetLightColor(FLinearColor(0.35f, 0.45f, 0.55f));
 	StudioAmbientLight->SetAttenuationRadius(1500.0f);
 	StudioAmbientLight->SetCastShadows(false);
@@ -155,16 +154,20 @@ AFPSCharacterPreviewActor::AFPSCharacterPreviewActor()
 	}
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseBodyMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ArmorMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Operator_Armor.M_Operator_Armor"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> VisorMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Soldier_Visor.M_Soldier_Visor"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> PatchMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_Operator_Patch.M_Operator_Patch"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKSteelMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKWoodMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> AKBakeMatFinder(TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite"));
 
 	if (BaseBodyMatFinder.Succeeded()) OperatorMesh->SetMaterial(0, BaseBodyMatFinder.Object);
-	if (VisorMatFinder.Succeeded()) OperatorMesh->SetMaterial(1, VisorMatFinder.Object);
-	if (AKSteelMatFinder.Succeeded()) OperatorMesh->SetMaterial(2, AKSteelMatFinder.Object);
-	if (AKWoodMatFinder.Succeeded()) OperatorMesh->SetMaterial(3, AKWoodMatFinder.Object);
-	if (AKBakeMatFinder.Succeeded()) OperatorMesh->SetMaterial(4, AKBakeMatFinder.Object);
+	if (ArmorMatFinder.Succeeded()) OperatorMesh->SetMaterial(1, ArmorMatFinder.Object);
+	if (VisorMatFinder.Succeeded()) OperatorMesh->SetMaterial(2, VisorMatFinder.Object);
+	if (PatchMatFinder.Succeeded()) OperatorMesh->SetMaterial(3, PatchMatFinder.Object);
+	if (AKSteelMatFinder.Succeeded()) OperatorMesh->SetMaterial(4, AKSteelMatFinder.Object);
+	if (AKWoodMatFinder.Succeeded()) OperatorMesh->SetMaterial(5, AKWoodMatFinder.Object);
+	if (AKBakeMatFinder.Succeeded()) OperatorMesh->SetMaterial(6, AKBakeMatFinder.Object);
 
 	if (AKSteelMatFinder.Succeeded()) PedestalMesh->SetMaterial(0, AKSteelMatFinder.Object);
 	if (VisorMatFinder.Succeeded()) PedestalMesh->SetMaterial(1, VisorMatFinder.Object);
@@ -269,14 +272,18 @@ void AFPSCharacterPreviewActor::BeginPlay()
 
 		if (UMaterialInterface* BodyMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody.M_Operator_BaseBody")))
 			OperatorMesh->SetMaterial(0, BodyMat);
+		if (UMaterialInterface* ArmorMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_Armor.M_Operator_Armor")))
+			OperatorMesh->SetMaterial(1, ArmorMat);
 		if (UMaterialInterface* VisorMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Soldier_Visor.M_Soldier_Visor")))
-			OperatorMesh->SetMaterial(1, VisorMat);
+			OperatorMesh->SetMaterial(2, VisorMat);
+		if (UMaterialInterface* PatchMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_Operator_Patch.M_Operator_Patch")))
+			OperatorMesh->SetMaterial(3, PatchMat);
 		if (UMaterialInterface* AKSteel = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Steel.M_AK47_Steel")))
-			OperatorMesh->SetMaterial(2, AKSteel);
+			OperatorMesh->SetMaterial(4, AKSteel);
 		if (UMaterialInterface* AKWood = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Wood.M_AK47_Wood")))
-			OperatorMesh->SetMaterial(3, AKWood);
+			OperatorMesh->SetMaterial(5, AKWood);
 		if (UMaterialInterface* AKBake = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Characters/BaseMale/Materials/M_AK47_Bakelite.M_AK47_Bakelite")))
-			OperatorMesh->SetMaterial(4, AKBake);
+			OperatorMesh->SetMaterial(6, AKBake);
 	}
 
 	// Ensure PedestalMesh is loaded and visible
@@ -506,17 +513,17 @@ void AFPSCharacterPreviewActor::ApplyCamoColors()
 			BodyMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.45f);
 		}
 
-		if (UMaterialInstanceDynamic* VisorMID = Cast<UMaterialInstanceDynamic>(OperatorMesh->GetMaterial(1)))
+		if (UMaterialInstanceDynamic* VisorMID = Cast<UMaterialInstanceDynamic>(OperatorMesh->GetMaterial(2)))
 		{
-			VisorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.01f, 0.08f, 0.12f));
-			VisorMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 0.898f, 1.0f));
-			VisorMID->SetScalarParameterValue(TEXT("EmissiveIntensity"), 1.6f);
+			VisorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.005f, 0.008f, 0.012f));
+			VisorMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 1.4f, 0.35f));
+			VisorMID->SetScalarParameterValue(TEXT("EmissiveIntensity"), 2.5f);
 		}
-		else if (UMaterialInstanceDynamic* NewVisorMID = OperatorMesh->CreateDynamicMaterialInstance(1))
+		else if (UMaterialInstanceDynamic* NewVisorMID = OperatorMesh->CreateDynamicMaterialInstance(2))
 		{
-			NewVisorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.01f, 0.08f, 0.12f));
-			NewVisorMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 0.898f, 1.0f));
-			NewVisorMID->SetScalarParameterValue(TEXT("EmissiveIntensity"), 1.6f);
+			NewVisorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.005f, 0.008f, 0.012f));
+			NewVisorMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 1.4f, 0.35f));
+			NewVisorMID->SetScalarParameterValue(TEXT("EmissiveIntensity"), 2.5f);
 		}
 	}
 }
@@ -535,10 +542,10 @@ void AFPSCharacterPreviewActor::ApplyWeaponFinish()
 {
 	if (OperatorMesh)
 	{
-		UMaterialInstanceDynamic* SteelMID = Cast<UMaterialInstanceDynamic>(OperatorMesh->GetMaterial(2));
+		UMaterialInstanceDynamic* SteelMID = Cast<UMaterialInstanceDynamic>(OperatorMesh->GetMaterial(4));
 		if (!SteelMID)
 		{
-			SteelMID = OperatorMesh->CreateDynamicMaterialInstance(2);
+			SteelMID = OperatorMesh->CreateDynamicMaterialInstance(4);
 		}
 		if (SteelMID)
 		{
