@@ -540,9 +540,19 @@ void AFPSWeaponBase::Tick(float DeltaTime)
 	const float TargetADSAlpha = bIsAimingDownSights ? 1.0f : 0.0f;
 	CurrentADSAlpha = FMath::FInterpTo(CurrentADSAlpha, TargetADSAlpha, DeltaTime, ADSSpeed);
 
-	// 3. Physical recoil kick recovery
-	RecoilOffsetLoc = FMath::VInterpTo(RecoilOffsetLoc, FVector::ZeroVector, DeltaTime, 22.0f);
-	RecoilOffsetRot = FMath::RInterpTo(RecoilOffsetRot, FRotator::ZeroRotator, DeltaTime, 22.0f);
+	// 3. Physical Second-Order Spring-Damper Recoil Integration (Harmonic Oscillator)
+	const float SpringStiffness = 185.0f;
+	const float SpringDamping = 18.0f;
+
+	const FVector LinearAccel = -SpringStiffness * RecoilOffsetLoc - SpringDamping * RecoilSpringVel;
+	RecoilSpringVel += LinearAccel * DeltaTime;
+	RecoilOffsetLoc += RecoilSpringVel * DeltaTime;
+
+	const float PitchAccel = -SpringStiffness * RecoilOffsetRot.Pitch - SpringDamping * RecoilSpringRotVel.Pitch;
+	const float YawAccel = -SpringStiffness * RecoilOffsetRot.Yaw - SpringDamping * RecoilSpringRotVel.Yaw;
+	const float RollAccel = -SpringStiffness * RecoilOffsetRot.Roll - SpringDamping * RecoilSpringRotVel.Roll;
+	RecoilSpringRotVel += FRotator(PitchAccel, YawAccel, RollAccel) * DeltaTime;
+	RecoilOffsetRot += RecoilSpringRotVel * DeltaTime;
 
 	// 4. Mouse look sway inertia
 	APawn* PawnOwner = Cast<APawn>(GetOwner());
@@ -553,10 +563,17 @@ void AFPSWeaponBase::Tick(float DeltaTime)
 		DeltaRot.Normalize();
 		LastControlRot = CurrentControlRot;
 
-		// Dampen weapon sway by 85% when aiming down sights
+		// Dampen weapon sway by 85% when aiming down sights and inject Lissajous breathing curve
 		const float SwayDampener = FMath::Lerp(1.0f, 0.15f, CurrentADSAlpha);
-		const FRotator TargetSway = FRotator(-DeltaRot.Pitch * 0.7f * SwayDampener, DeltaRot.Yaw * 0.7f * SwayDampener, DeltaRot.Yaw * 0.4f * SwayDampener);
-		CurrentSwayRot = FMath::RInterpTo(CurrentSwayRot, TargetSway, DeltaTime, 12.0f);
+		const float WorldTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+		const float BreathPitch = FMath::Sin(WorldTime * 1.8f) * 0.22f * SwayDampener;
+		const float BreathYaw = FMath::Cos(WorldTime * 0.9f) * 0.32f * SwayDampener;
+		const FRotator TargetSway = FRotator(
+			(-DeltaRot.Pitch * 0.7f * SwayDampener) + BreathPitch,
+			(DeltaRot.Yaw * 0.7f * SwayDampener) + BreathYaw,
+			DeltaRot.Yaw * 0.4f * SwayDampener
+		);
+		CurrentSwayRot = FMath::RInterpTo(CurrentSwayRot, TargetSway, DeltaTime, 14.0f);
 	}
 
 	// 5. Multi-Phase Procedural Reload Animation
@@ -961,10 +978,17 @@ void AFPSWeaponBase::FireShot()
 				AccumulatedPitchRecoil += PitchKick;
 			}
 
-			// Procedural physical weapon recoil kick
-			const float ADSRecoilDamp = bIsAimingDownSights ? 0.45f : 1.0f;
-			RecoilOffsetLoc += FVector(-1.2f * ADSRecoilDamp * RecoilMod, FMath::RandRange(-0.08f, 0.08f) * RecoilMod, 0.35f * ADSRecoilDamp * RecoilMod);
-			RecoilOffsetRot += FRotator(FMath::RandRange(1.2f, 1.8f) * ADSRecoilDamp * RecoilMod, FMath::RandRange(-0.3f, 0.3f) * RecoilMod, FMath::RandRange(-0.4f, 0.4f) * RecoilMod);
+			// Procedural physical weapon recoil kick via snappy spring impulse
+			const float ADSRecoilDamp = bIsAimingDownSights ? 0.42f : 1.0f;
+			const float ImpulseBackwards = -42.0f * ADSRecoilDamp * RecoilMod;
+			const float ImpulseLateral = FMath::RandRange(-4.5f, 4.5f) * RecoilMod;
+			const float ImpulseVertical = 11.0f * ADSRecoilDamp * RecoilMod;
+			RecoilSpringVel += FVector(ImpulseBackwards, ImpulseLateral, ImpulseVertical);
+
+			const float ImpulsePitch = FMath::RandRange(60.0f, 90.0f) * ADSRecoilDamp * RecoilMod;
+			const float ImpulseYaw = FMath::RandRange(-15.0f, 15.0f) * RecoilMod;
+			const float ImpulseRoll = FMath::RandRange(-8.0f, 8.0f) * RecoilMod;
+			RecoilSpringRotVel += FRotator(ImpulsePitch, ImpulseYaw, ImpulseRoll);
 		}
 	}
 

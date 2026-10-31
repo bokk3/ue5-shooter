@@ -333,10 +333,12 @@ protected:
 	FTimerHandle FireTimerHandle;
 	FTimerHandle ReloadTimerHandle;
 
-	// Procedural Animation State
+	// Procedural Animation State & Second-Order Spring Recoil
 	float CurrentADSAlpha = 0.0f;
 	FVector RecoilOffsetLoc = FVector::ZeroVector;
 	FRotator RecoilOffsetRot = FRotator::ZeroRotator;
+	FVector RecoilSpringVel = FVector::ZeroVector;
+	FRotator RecoilSpringRotVel = FRotator::ZeroRotator;
 	FRotator CurrentSwayRot = FRotator::ZeroRotator;
 	FRotator LastControlRot = FRotator::ZeroRotator;
 

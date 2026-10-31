@@ -130,7 +130,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	CameraBoom->bInheritYaw = true;
 	CameraBoom->bInheritRoll = false;
 	CameraBoom->bDoCollisionTest = true;
-	CameraBoom->ProbeSize = 12.0f;
+	CameraBoom->ProbeSize = 6.0f; // Calibrated for tight corner peeking without clipping jitter
 	CameraBoom->bEnableCameraLag = true;
 	CameraBoom->CameraLagSpeed = 18.0f;
 	CameraBoom->bEnableCameraRotationLag = true;
@@ -1490,9 +1490,18 @@ void AFPSCharacter::UpdateWeaponSway(float DeltaTime)
 	// Scale sway amplitude if arms are injured
 	const float ArmTraumaMultiplier = (BodyMechanicsComponent && BodyMechanicsComponent->IsArmInjured()) ? 1.75f : 1.0f;
 
-	// Sway lag
-	FRotator TargetSway = FRotator(-DeltaRot.Pitch * 1.5f * ArmTraumaMultiplier, DeltaRot.Yaw * 1.5f * ArmTraumaMultiplier, DeltaRot.Yaw * 0.8f);
-	CurrentWeaponSwayRot = FMath::RInterpTo(CurrentWeaponSwayRot, TargetSway, DeltaTime, 10.0f);
+	// Procedural weapon sway: turning lag blended with figure-8 Lissajous breathing sway
+	const float RunningTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	const float AimingDampener = IsAiming() ? 0.15f : 1.0f;
+	const float BreathPitch = FMath::Sin(RunningTime * 1.8f) * 0.28f * AimingDampener;
+	const float BreathYaw = FMath::Cos(RunningTime * 0.9f) * 0.42f * AimingDampener;
+
+	FRotator TargetSway = FRotator(
+		(-DeltaRot.Pitch * 1.5f * ArmTraumaMultiplier * AimingDampener) + BreathPitch,
+		(DeltaRot.Yaw * 1.5f * ArmTraumaMultiplier * AimingDampener) + BreathYaw,
+		DeltaRot.Yaw * 0.8f * AimingDampener
+	);
+	CurrentWeaponSwayRot = FMath::RInterpTo(CurrentWeaponSwayRot, TargetSway, DeltaTime, 12.0f);
 
 	// Blend weapon sway with flinch aim punch and procedural spine lean roll
 	const FRotator AimPunch = BodyMechanicsComponent ? BodyMechanicsComponent->GetCurrentAimPunch() : FRotator::ZeroRotator;

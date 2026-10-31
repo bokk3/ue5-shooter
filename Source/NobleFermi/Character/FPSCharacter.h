@@ -151,24 +151,24 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
 	TObjectPtr<class UAnimSequence> AnimWalkBackwards;
 
-	// Tactical 3rd-Person Over-The-Shoulder (OTS) Camera Settings (Phase 8A Spec)
+	// Tactical 3rd-Person Over-The-Shoulder (OTS) Camera Settings (Phase 5 Spec)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	float DefaultArmLength = 210.0f;
+	float DefaultArmLength = 165.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	float ADSArmLength = 95.0f;
+	float ADSArmLength = 85.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	FVector HipfireShoulderOffset = FVector(0.0f, 52.0f, 22.0f);
+	FVector HipfireShoulderOffset = FVector(0.0f, 44.0f, 18.0f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	FVector ADSShoulderOffset = FVector(0.0f, 34.0f, 16.0f);
+	FVector ADSShoulderOffset = FVector(0.0f, 30.0f, 14.0f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	float DefaultFOV = 90.0f;
+	float DefaultFOV = 80.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
-	float ADSFOV = 62.0f;
+	float ADSFOV = 68.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Camera")
 	bool bIsRightShoulder = true;
