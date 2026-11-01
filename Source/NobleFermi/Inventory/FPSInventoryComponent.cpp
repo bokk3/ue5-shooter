@@ -70,6 +70,21 @@ void UFPSInventoryComponent::BeginPlay()
 	EquipSlot(0);
 }
 
+void UFPSInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	for (TObjectPtr<AFPSWeaponBase>& Weapon : WeaponSlots)
+	{
+		if (Weapon && IsValid(Weapon))
+		{
+			Weapon->Destroy();
+			Weapon = nullptr;
+		}
+	}
+	ActiveWeapon = nullptr;
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void UFPSInventoryComponent::EquipSlot(int32 SlotIndex)
 {
 	if (!WeaponSlots.IsValidIndex(SlotIndex)) return;

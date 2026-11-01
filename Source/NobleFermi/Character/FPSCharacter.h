@@ -137,6 +137,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
 	UFPSCharacterMovementComponent* GetFPSMovementComponent() const { return FPSMovementComponent; }
 
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Movement")
+	bool IsHoldingCrouchKey() const { return bIsHoldingCrouchKey; }
+
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
 	UFPSInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
@@ -455,6 +458,7 @@ public:
 protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
 	virtual void OnRep_Controller() override;
@@ -484,6 +488,8 @@ private:
 
 	FVector2D CurrentMoveInput = FVector2D::ZeroVector;
 	FRotator CurrentDiveMeshRotation = FRotator(0.0f, -90.0f, 0.0f);
+	FRotator DiveExitMeshRotation = FRotator(0.0f, -90.0f, 0.0f);
+	float DiveExitMeshZOffset = -68.0f;
 	float CurrentDiveMeshZOffset = -96.0f;
 	float DiveRecoveryTimer = 0.0f;
 	float FermiDecoyCooldownRemaining = 0.0f;

@@ -2,6 +2,7 @@
 #include "GameFramework/Character.h"
 #include "Components/CapsuleComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Character/FPSCharacter.h"
 
 UFPSCharacterMovementComponent::UFPSCharacterMovementComponent()
 {
@@ -281,12 +282,37 @@ void UFPSCharacterMovementComponent::StartSlide()
 void UFPSCharacterMovementComponent::StopSlide()
 {
 	bIsSliding = false;
-	CurrentFPSMode = bWantsToSprint ? EFPSMovementMode::Sprinting : EFPSMovementMode::Walking;
-
 	ACharacter* CharOwner = GetCharacterOwner();
-	if (CharOwner)
+	AFPSCharacter* FPSChar = Cast<AFPSCharacter>(CharOwner);
+	const bool bHoldingCrouch = (bWantsToCrouch || (FPSChar && FPSChar->IsHoldingCrouchKey()));
+
+	if (bHoldingCrouch)
 	{
-		CharOwner->UnCrouch();
+		bWantsToCrouch = true;
+		CurrentFPSMode = EFPSMovementMode::Crouching;
+		MaxWalkSpeed = MaxWalkSpeedCrouched;
+		if (CharOwner)
+		{
+			CharOwner->Crouch();
+		}
+	}
+	else if (bWantsToSprint && !bIsStaminaExhausted && CurrentStamina > 5.0f)
+	{
+		CurrentFPSMode = EFPSMovementMode::Sprinting;
+		MaxWalkSpeed = SprintSpeed;
+		if (CharOwner)
+		{
+			CharOwner->UnCrouch();
+		}
+	}
+	else
+	{
+		CurrentFPSMode = EFPSMovementMode::Walking;
+		MaxWalkSpeed = WalkSpeed;
+		if (CharOwner)
+		{
+			CharOwner->UnCrouch();
+		}
 	}
 }
 
@@ -355,9 +381,14 @@ void UFPSCharacterMovementComponent::StopBallisticDive()
 	DiveLandingSlideTimer = 0.0f;
 
 	ACharacter* CharOwner = GetCharacterOwner();
-	if (bWantsToCrouch)
+	AFPSCharacter* FPSChar = Cast<AFPSCharacter>(CharOwner);
+	const bool bHoldingCrouch = (bWantsToCrouch || (FPSChar && FPSChar->IsHoldingCrouchKey()));
+
+	if (bHoldingCrouch)
 	{
+		bWantsToCrouch = true;
 		CurrentFPSMode = EFPSMovementMode::Crouching;
+		MaxWalkSpeed = MaxWalkSpeedCrouched;
 		if (CharOwner)
 		{
 			CharOwner->Crouch();
@@ -366,10 +397,20 @@ void UFPSCharacterMovementComponent::StopBallisticDive()
 	else if (bWantsToSprint && CurrentStamina > 10.0f && !bIsStaminaExhausted)
 	{
 		CurrentFPSMode = EFPSMovementMode::Sprinting;
+		MaxWalkSpeed = SprintSpeed;
+		if (CharOwner)
+		{
+			CharOwner->UnCrouch();
+		}
 	}
 	else
 	{
 		CurrentFPSMode = EFPSMovementMode::Walking;
+		MaxWalkSpeed = WalkSpeed;
+		if (CharOwner)
+		{
+			CharOwner->UnCrouch();
+		}
 	}
 }
 

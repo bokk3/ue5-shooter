@@ -650,6 +650,17 @@ void AFPSCharacter::OnRep_PlayerState()
 	}
 }
 
+void AFPSCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (ActiveHUDWidget)
+	{
+		ActiveHUDWidget->RemoveFromParent();
+		ActiveHUDWidget = nullptr;
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void AFPSCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
@@ -1070,6 +1081,8 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 
 		TargetMeshRot = FRotator(TargetPitch, -90.0f, TargetRoll);
 		TargetZOffset = FPSMovementComponent->IsInDiveLandingSlide() ? -68.0f : -58.0f;
+		DiveExitMeshRotation = TargetMeshRot;
+		DiveExitMeshZOffset = TargetZOffset;
 	}
 	else if (DiveRecoveryTimer > 0.0f)
 	{
@@ -1079,11 +1092,12 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 
 		const bool bRecoverToCrouch = (FPSMovementComponent && (FPSMovementComponent->IsCrouching() || bIsHoldingCrouchKey));
 		const float EndZOffset = bRecoverToCrouch ? -48.0f : -96.0f;
-		TargetZOffset = FMath::Lerp(-68.0f, EndZOffset, SmoothCurve);
+		TargetZOffset = FMath::Lerp(DiveExitMeshZOffset, EndZOffset, SmoothCurve);
 
 		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
 		const float EndRoll = bRecoverToCrouch ? (-6.0f + FMath::Clamp(AimPitch * 0.35f, -20.0f, 20.0f)) : FMath::Clamp(AimPitch * 0.55f, -42.0f, 42.0f);
-		TargetMeshRot = FRotator(0.0f, -90.0f, FMath::Lerp(-35.0f, EndRoll, SmoothCurve));
+		const FRotator EndRot = FRotator(0.0f, -90.0f, EndRoll);
+		TargetMeshRot = FMath::Lerp(DiveExitMeshRotation, EndRot, SmoothCurve);
 	}
 	else if (FPSMovementComponent && FPSMovementComponent->IsSliding())
 	{
@@ -1339,6 +1353,16 @@ void AFPSCharacter::HandleOnDeath(AActor* KillerActor)
 
 	StopFire();
 	bBotIsFiringBurst = false;
+
+	if (InventoryComponent)
+	{
+		if (AFPSWeaponBase* CurWeapon = InventoryComponent->GetActiveWeapon())
+		{
+			CurWeapon->StopFire();
+			CurWeapon->AbortReload();
+			CurWeapon->SetActorHiddenInGame(true);
+		}
+	}
 
 	CustomTimeDilation = 1.0f;
 	if (ActiveTimeBubble && IsValid(ActiveTimeBubble))
