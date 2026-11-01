@@ -205,6 +205,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
 	FVector GetForegripWorldLocation() const;
 
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FVector GetRecoilOffsetLoc() const { return RecoilOffsetLoc; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FRotator GetRecoilOffsetRot() const { return RecoilOffsetRot; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FVector GetReloadOffsetLoc() const { return CurrentReloadOffsetLoc; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FRotator GetReloadOffsetRot() const { return CurrentReloadOffsetRot; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FRotator GetCurrentSwayRot() const { return CurrentSwayRot; }
+
 	// Weapon Transforms
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Transforms")
 	FVector HipfireRelativeLocation = FVector(26.0f, 14.0f, -13.0f);
@@ -349,6 +364,8 @@ protected:
 	float ReloadDuration = 2.4f;
 	float ReloadElapsedTime = 0.0f;
 	FVector MagazineBaseLoc = FVector(8.0f, 0.0f, -2.8f);
+	FVector CurrentReloadOffsetLoc = FVector::ZeroVector;
+	FRotator CurrentReloadOffsetRot = FRotator::ZeroRotator;
 
 private:
 	void FinishReload();

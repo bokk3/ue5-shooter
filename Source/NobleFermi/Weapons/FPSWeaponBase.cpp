@@ -653,18 +653,8 @@ void AFPSWeaponBase::Tick(float DeltaTime)
 		}
 	}
 
-	// 6. Blend Final Weapon Relative Transform (Hipfire <-> ADS + Recoil + Reload + Sway)
-	USceneComponent* AttachParentComp = GetRootComponent() ? GetRootComponent()->GetAttachParent() : nullptr;
-	const bool bIsAttachedToMesh = (AttachParentComp && AttachParentComp->IsA<USkeletalMeshComponent>());
-
-	if (bIsAttachedToMesh)
-	{
-		// 3rd-person tactical weapon orientation and dual-hand grip are pinned authoritatively by AFPSCharacter::Tick
-		return;
-	}
-
-	const FVector BaseLoc = FMath::Lerp(HipfireRelativeLocation, ADSRelativeLocation, CurrentADSAlpha);
-	const FRotator BaseRot = FMath::Lerp(HipfireRelativeRotation, ADSRelativeRotation, CurrentADSAlpha);
+	CurrentReloadOffsetLoc = ReloadOffsetLoc;
+	CurrentReloadOffsetRot = ReloadOffsetRot;
 
 	// Recoil Spring-Back Recovery: When not actively firing, smoothly spring the camera pitch back
 	if (CurrentState != EFPSWeaponState::Firing && FMath::Abs(AccumulatedPitchRecoil) > 0.005f)
@@ -682,6 +672,19 @@ void AFPSWeaponBase::Tick(float DeltaTime)
 			AccumulatedPitchRecoil = 0.0f;
 		}
 	}
+
+	// 6. Blend Final Weapon Relative Transform (Hipfire <-> ADS + Recoil + Reload + Sway)
+	USceneComponent* AttachParentComp = GetRootComponent() ? GetRootComponent()->GetAttachParent() : nullptr;
+	const bool bIsAttachedToMesh = (AttachParentComp && AttachParentComp->IsA<USkeletalMeshComponent>());
+
+	if (bIsAttachedToMesh)
+	{
+		// 3rd-person tactical weapon orientation and dual-hand grip are pinned authoritatively by AFPSCharacter::Tick
+		return;
+	}
+
+	const FVector BaseLoc = FMath::Lerp(HipfireRelativeLocation, ADSRelativeLocation, CurrentADSAlpha);
+	const FRotator BaseRot = FMath::Lerp(HipfireRelativeRotation, ADSRelativeRotation, CurrentADSAlpha);
 
 	const FVector FinalLoc = BaseLoc + RecoilOffsetLoc + ReloadOffsetLoc;
 	const FRotator FinalRot = BaseRot + RecoilOffsetRot + ReloadOffsetRot + CurrentSwayRot;
@@ -1027,6 +1030,8 @@ void AFPSWeaponBase::AbortReload()
 		CurrentState = EFPSWeaponState::Idle;
 	}
 	ReloadElapsedTime = 0.0f;
+	CurrentReloadOffsetLoc = FVector::ZeroVector;
+	CurrentReloadOffsetRot = FRotator::ZeroRotator;
 	if (MagazineRoot)
 	{
 		MagazineRoot->SetRelativeLocation(MagazineBaseLoc);
@@ -1043,6 +1048,8 @@ void AFPSWeaponBase::FinishReload()
 	ReserveAmmo -= AmmoToLoad;
 
 	CurrentState = EFPSWeaponState::Idle;
+	CurrentReloadOffsetLoc = FVector::ZeroVector;
+	CurrentReloadOffsetRot = FRotator::ZeroRotator;
 	if (MagazineRoot)
 	{
 		MagazineRoot->SetRelativeLocation(MagazineBaseLoc);

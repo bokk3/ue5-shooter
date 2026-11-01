@@ -854,12 +854,19 @@ void AFPSCharacter::Tick(float DeltaTime)
 
 				const FVector HandR_Pos = MeshComp->GetBoneLocation(FName(TEXT("hand_r")), EBoneSpaces::WorldSpace);
 				const FVector HandL_Pos = MeshComp->GetBoneLocation(FName(TEXT("hand_l")), EBoneSpaces::WorldSpace);
-				FVector BarrelDir = (HandL_Pos - HandR_Pos).GetSafeNormal();
+				
+				// During reload or when hands are decoupled, barrel tracks forward aim rather than hand_l so rifle isn't pulled into chest
+				const bool bWeaponReloading = Weapon->IsReloading();
 				const float HandDist = FVector::Dist(HandR_Pos, HandL_Pos);
-				if (HandDist < 15.0f || HandDist > 55.0f || BarrelDir.IsNearlyZero())
+				FVector BarrelDir = (!bWeaponReloading && HandDist >= 15.0f && HandDist <= 55.0f)
+					? (HandL_Pos - HandR_Pos).GetSafeNormal()
+					: (bIsTacticalBot ? BotAimRotation.Vector() : GetControlRotation().Vector());
+
+				if (BarrelDir.IsNearlyZero())
 				{
 					BarrelDir = GetActorForwardVector();
 				}
+
 				const FVector CharUp = GetActorUpVector();
 				FVector RifleRight = FVector::CrossProduct(CharUp, BarrelDir).GetSafeNormal();
 				if (RifleRight.IsNearlyZero())
@@ -867,9 +874,14 @@ void AFPSCharacter::Tick(float DeltaTime)
 					RifleRight = GetActorRightVector();
 				}
 				const FVector RifleUp = FVector::CrossProduct(BarrelDir, RifleRight).GetSafeNormal();
-				const FQuat RifleWorldQuat = FRotationMatrix::MakeFromXZ(BarrelDir, RifleUp).ToQuat();
+				const FQuat BaseRifleQuat = FRotationMatrix::MakeFromXZ(BarrelDir, RifleUp).ToQuat();
 
-				Weapon->SetActorLocationAndRotation(HandR_Pos, RifleWorldQuat);
+				// Apply procedural recoil kick, 22-deg reload cant, and mouse sway to 3rd-person orientation
+				const FRotator DynamicRotOffset = Weapon->GetReloadOffsetRot() + Weapon->GetRecoilOffsetRot() + Weapon->GetCurrentSwayRot();
+				const FQuat FinalRifleQuat = BaseRifleQuat * DynamicRotOffset.Quaternion();
+				const FVector DynamicLocOffset = FinalRifleQuat.RotateVector(Weapon->GetRecoilOffsetLoc() + Weapon->GetReloadOffsetLoc());
+
+				Weapon->SetActorLocationAndRotation(HandR_Pos + DynamicLocOffset, FinalRifleQuat);
 			}
 		}
 
