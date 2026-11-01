@@ -29,11 +29,17 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "FPS Inventory|Loadout")
 	TSubclassOf<AFPSWeaponBase> DefaultSecondaryClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Inventory|Loadout")
+	TSubclassOf<AFPSWeaponBase> DefaultSidearmClass;
+
 	UFUNCTION(BlueprintCallable, Category = "FPS Inventory")
 	void EquipSlot(int32 SlotIndex);
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Inventory")
 	void CycleNextWeapon();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Inventory")
+	void CyclePreviousWeapon();
 
 	UFUNCTION(BlueprintPure, Category = "FPS Inventory")
 	AFPSWeaponBase* GetActiveWeapon() const { return ActiveWeapon; }
@@ -43,6 +49,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "FPS Inventory")
 	AFPSWeaponBase* GetSecondaryWeapon() const { return WeaponSlots.IsValidIndex(1) ? WeaponSlots[1].Get() : nullptr; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Inventory")
+	AFPSWeaponBase* GetSidearmWeapon() const { return WeaponSlots.IsValidIndex(2) ? WeaponSlots[2].Get() : nullptr; }
 
 	UFUNCTION(BlueprintPure, Category = "FPS Inventory")
 	int32 GetActiveSlotIndex() const { return CurrentSlotIndex; }

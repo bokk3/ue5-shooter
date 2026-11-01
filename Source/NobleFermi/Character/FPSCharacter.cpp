@@ -284,6 +284,8 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	HealthComponent = CreateDefaultSubobject<UFPSHealthComponent>(TEXT("HealthComponent"));
 	InventoryComponent = CreateDefaultSubobject<UFPSInventoryComponent>(TEXT("InventoryComponent"));
 	InventoryComponent->DefaultPrimaryClass = AFPSWeaponBase::StaticClass();
+	InventoryComponent->DefaultSecondaryClass = AFPSWeaponBase::StaticClass();
+	InventoryComponent->DefaultSidearmClass = AFPSWeaponBase::StaticClass();
 	EquipmentComponent = CreateDefaultSubobject<UFPSEquipmentComponent>(TEXT("EquipmentComponent"));
 	BodyMechanicsComponent = CreateDefaultSubobject<UFPSBodyMechanicsComponent>(TEXT("BodyMechanicsComponent"));
 	OperatorGearComponent = CreateDefaultSubobject<UFPSOperatorGearComponent>(TEXT("OperatorGearComponent"));
@@ -453,6 +455,10 @@ void AFPSCharacter::BeginPlay()
 		if (!AnimWalkBackwards)
 		{
 			AnimWalkBackwards = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk_Backwards.Anim_BaseMale_Walk_Backwards"));
+		}
+		if (!AnimReload)
+		{
+			AnimReload = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Reload.Anim_BaseMale_Reload"));
 		}
 
 		// Runtime fallback for Animation Blueprint mode / Authoritative C++ AnimInstance
@@ -1170,6 +1176,11 @@ void AFPSCharacter::TriggerBallisticDive()
 		return;
 	}
 
+	if (InventoryComponent && InventoryComponent->GetActiveWeapon())
+	{
+		InventoryComponent->GetActiveWeapon()->AbortReload();
+	}
+
 	// Determine desired world dive vector from WASD input (or forward vector if neutral)
 	FVector DesiredDiveDir = (GetActorForwardVector() * CurrentMoveInput.X) + (GetActorRightVector() * CurrentMoveInput.Y);
 	if (DesiredDiveDir.SizeSquared2D() < 0.05f)
@@ -1592,7 +1603,15 @@ void AFPSCharacter::UpdateLocomotionAnimation(float DeltaTime)
 	const float ForwardDot = Velocity2D.IsNearlyZero() ? 1.0f : FVector::DotProduct(Velocity2D, Forward2D);
 	const bool bIsMovingBackwards = (ForwardDot < -0.35f);
 
-	if (IsBallisticDiving())
+	AFPSWeaponBase* ActiveWeapon = InventoryComponent ? InventoryComponent->GetActiveWeapon() : nullptr;
+	const bool bWeaponReloading = ActiveWeapon && ActiveWeapon->IsReloading();
+
+	if (bWeaponReloading && AnimReload)
+	{
+		TargetAnim = AnimReload;
+		PlayRate = 1.0f;
+	}
+	else if (IsBallisticDiving())
 	{
 		// Lock upper body and hands into high-ready aimed posture during mid-air ballistic dive
 		TargetAnim = AnimIdleADS;
@@ -1759,6 +1778,15 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindKey(EKeys::MiddleMouseButton, IE_Pressed, this, &AFPSCharacter::OnMiddleMouseButtonPressed);
 	PlayerInputComponent->BindKey(EKeys::MiddleMouseButton, IE_Released, this, &AFPSCharacter::OnMiddleMouseButtonReleased);
 
+	// Direct Weapon Selection Binds (1 = Primary, 2 = Secondary, 3 = Sidearm)
+	PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AFPSCharacter::EquipPrimary);
+	PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AFPSCharacter::EquipSecondary);
+	PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AFPSCharacter::EquipSidearm);
+
+	// Mouse Wheel Weapon Cycling
+	PlayerInputComponent->BindKey(EKeys::MouseScrollUp, IE_Pressed, this, &AFPSCharacter::CyclePreviousWeapon);
+	PlayerInputComponent->BindKey(EKeys::MouseScrollDown, IE_Pressed, this, &AFPSCharacter::CycleNextWeapon);
+
 	// Weapon Selection Wheel Input Bindings (Tab and 4 keys)
 	PlayerInputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &AFPSCharacter::OnWeaponWheelPressed);
 	PlayerInputComponent->BindKey(EKeys::Tab, IE_Released, this, &AFPSCharacter::OnWeaponWheelReleased);
@@ -1866,6 +1894,46 @@ void AFPSCharacter::Reload()
 	if (InventoryComponent && InventoryComponent->GetActiveWeapon())
 	{
 		InventoryComponent->GetActiveWeapon()->Reload();
+	}
+}
+
+void AFPSCharacter::EquipPrimary()
+{
+	if (InventoryComponent)
+	{
+		InventoryComponent->EquipSlot(0);
+	}
+}
+
+void AFPSCharacter::EquipSecondary()
+{
+	if (InventoryComponent)
+	{
+		InventoryComponent->EquipSlot(1);
+	}
+}
+
+void AFPSCharacter::EquipSidearm()
+{
+	if (InventoryComponent)
+	{
+		InventoryComponent->EquipSlot(2);
+	}
+}
+
+void AFPSCharacter::CycleNextWeapon()
+{
+	if (InventoryComponent)
+	{
+		InventoryComponent->CycleNextWeapon();
+	}
+}
+
+void AFPSCharacter::CyclePreviousWeapon()
+{
+	if (InventoryComponent)
+	{
+		InventoryComponent->CyclePreviousWeapon();
 	}
 }
 

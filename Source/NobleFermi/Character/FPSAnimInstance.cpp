@@ -323,6 +323,19 @@ void UFPSAnimInstance::NativePostEvaluateAnimation()
 		SolveRightArmRifleIK(SpaceBases);
 		SolveLeftHandTwoBoneIK(SpaceBases);
 	}
+	else
+	{
+		// In-game procedural reload IK for left arm
+		AFPSWeaponBase* ActiveWeapon = nullptr;
+		if (OwningCharacter && OwningCharacter->GetInventoryComponent())
+		{
+			ActiveWeapon = OwningCharacter->GetInventoryComponent()->GetActiveWeapon();
+		}
+		if (ActiveWeapon && ActiveWeapon->IsReloading())
+		{
+			SolveLeftHandReloadIK(SpaceBases, ActiveWeapon);
+		}
+	}
 }
 
 void UFPSAnimInstance::ApplyLowerBodyLocomotion(TArray<FTransform>& SpaceBases)
@@ -712,4 +725,80 @@ void UFPSAnimInstance::SolveLeftHandTwoBoneIK(TArray<FTransform>& SpaceBases)
 			SpaceBases[FingerIndex] = RelToHand * SpaceBases[HandL_Index];
 		}
 	}
+}
+
+void UFPSAnimInstance::SolveLeftHandReloadIK(TArray<FTransform>& SpaceBases, AFPSWeaponBase* Weapon)
+{
+	if (!Weapon || RestCompBases.Num() == 0 ||
+		!SpaceBases.IsValidIndex(UpperArmL_Index) || !SpaceBases.IsValidIndex(LowerArmL_Index) ||
+		!SpaceBases.IsValidIndex(HandL_Index) || !SpaceBases.IsValidIndex(HandR_Index))
+	{
+		return;
+	}
+
+	const float Alpha = Weapon->GetReloadProgress();
+	const FTransform& HandR_Trans = SpaceBases[HandR_Index];
+	const FVector HandR_Loc = HandR_Trans.GetLocation();
+	const FQuat HandR_Rot = HandR_Trans.GetRotation();
+
+	const FVector WeaponFwd = HandR_Rot.GetForwardVector();
+	const FVector WeaponRight = HandR_Rot.GetRightVector();
+	const FVector WeaponUp = HandR_Rot.GetUpVector();
+
+	const FVector ForegripPos = SpaceBases[HandL_Index].GetLocation();
+	const FVector MagwellPos = HandR_Loc + (WeaponFwd * 18.0f) - (WeaponUp * 10.0f);
+	const FVector MagDropPos = MagwellPos - (WeaponUp * 22.0f);
+
+	FVector ChestRigPos = HandR_Loc - (WeaponFwd * 8.0f) - (WeaponUp * 32.0f) - (WeaponRight * 14.0f);
+	if (SpaceBases.IsValidIndex(Pelvis_Index))
+	{
+		ChestRigPos = SpaceBases[Pelvis_Index].GetLocation() + FVector(14.0f, -8.0f, 18.0f);
+	}
+
+	FVector TargetHandL = ForegripPos;
+
+	if (Alpha < 0.20f)
+	{
+		const float T = FMath::SmoothStep(0.0f, 0.20f, Alpha);
+		TargetHandL = FMath::Lerp(ForegripPos, MagwellPos, T);
+	}
+	else if (Alpha < 0.42f)
+	{
+		const float T = FMath::SmoothStep(0.20f, 0.42f, Alpha);
+		TargetHandL = FMath::Lerp(MagwellPos, MagDropPos, T);
+	}
+	else if (Alpha < 0.58f)
+	{
+		const float T = FMath::SmoothStep(0.42f, 0.58f, Alpha);
+		TargetHandL = FMath::Lerp(MagDropPos, ChestRigPos, T);
+	}
+	else if (Alpha < 0.72f)
+	{
+		const float T = FMath::SmoothStep(0.58f, 0.72f, Alpha);
+		TargetHandL = FMath::Lerp(ChestRigPos, MagwellPos, T);
+	}
+	else if (Alpha < 0.80f)
+	{
+		const float T = (Alpha - 0.72f) / 0.08f;
+		const float SlapBump = FMath::Sin(T * PI) * 3.5f;
+		TargetHandL = MagwellPos + (WeaponUp * SlapBump);
+	}
+	else
+	{
+		const float T = FMath::SmoothStep(0.80f, 1.0f, Alpha);
+		TargetHandL = FMath::Lerp(MagwellPos, ForegripPos, T);
+	}
+
+	const FVector ShoulderL_Pos = SpaceBases[UpperArmL_Index].GetLocation();
+	const FVector ElbowPoleL = ShoulderL_Pos + FVector(0.0f, -25.0f, -15.0f);
+
+	FTransform UpperArmL_Trans = SpaceBases[UpperArmL_Index];
+	FTransform LowerArmL_Trans = SpaceBases[LowerArmL_Index];
+	FTransform HandL_Trans = SpaceBases[HandL_Index];
+
+	AnimationCore::SolveTwoBoneIK(UpperArmL_Trans, LowerArmL_Trans, HandL_Trans, ElbowPoleL, TargetHandL, false, 1.0, 1.2);
+
+	SpaceBases[UpperArmL_Index] = UpperArmL_Trans;
+	SpaceBases[LowerArmL_Index] = LowerArmL_Trans;
+	SpaceBases[HandL_Index] = HandL_Trans;
 }

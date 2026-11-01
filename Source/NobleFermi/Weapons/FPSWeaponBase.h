@@ -142,6 +142,9 @@ public:
 	virtual void Reload();
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Actions")
+	void AbortReload();
+
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Actions")
 	void SetADS(bool bInADS);
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Cosmetics")

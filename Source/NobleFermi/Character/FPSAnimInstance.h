@@ -189,4 +189,5 @@ private:
 	void ApplySpineAimPitchAndTwist(TArray<FTransform>& SpaceBases);
 	void SolveRightArmRifleIK(TArray<FTransform>& SpaceBases);
 	void SolveLeftHandTwoBoneIK(TArray<FTransform>& SpaceBases);
+	void SolveLeftHandReloadIK(TArray<FTransform>& SpaceBases, AFPSWeaponBase* Weapon);
 };

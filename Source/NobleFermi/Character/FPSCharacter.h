@@ -186,6 +186,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
 	TObjectPtr<class UAnimSequence> AnimWalkBackwards;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
+	TObjectPtr<class UAnimSequence> AnimReload;
+
 	// Tactical 3rd-Person Over-The-Shoulder (OTS) Camera Settings (Phase 5 Spec)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Camera")
 	float DefaultArmLength = 165.0f;
@@ -301,6 +304,22 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Actions")
 	void OnJumpOrDivePressed();
+
+	// Direct Weapon Selection & Cycling
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Weapons")
+	void EquipPrimary();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Weapons")
+	void EquipSecondary();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Weapons")
+	void EquipSidearm();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Weapons")
+	void CycleNextWeapon();
+
+	UFUNCTION(BlueprintCallable, Category = "FPS Character|Weapons")
+	void CyclePreviousWeapon();
 
 	// Surface Footstep Audio Assets (Concrete, Wood, Sand/Dirt, Water/Puddle, Metal)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Audio|Footsteps")

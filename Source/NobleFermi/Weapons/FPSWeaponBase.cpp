@@ -1018,6 +1018,20 @@ void AFPSWeaponBase::Reload()
 	}
 }
 
+void AFPSWeaponBase::AbortReload()
+{
+	if (CurrentState == EFPSWeaponState::Reloading)
+	{
+		CurrentState = EFPSWeaponState::Idle;
+	}
+	ReloadElapsedTime = 0.0f;
+	if (MagazineRoot)
+	{
+		MagazineRoot->SetRelativeLocation(MagazineBaseLoc);
+		MagazineRoot->SetRelativeRotation(FRotator::ZeroRotator);
+	}
+}
+
 void AFPSWeaponBase::FinishReload()
 {
 	int32 NeededAmmo = MagazineCapacity - CurrentAmmo;
