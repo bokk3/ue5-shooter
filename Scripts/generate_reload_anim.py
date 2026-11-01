@@ -57,65 +57,148 @@ merge_vg_clean('pelvis.L', 'spine')
 merge_vg_clean('pelvis.R', 'spine')
 merge_vg_clean('heel.02.L', 'foot.L')
 merge_vg_clean('heel.02.R', 'foot.R')
+merge_vg_clean('f_pinky.03.L', 'f_pinky.02.L')
+merge_vg_clean('f_pinky.03.R', 'f_pinky.02.R')
 
-# Remove deform flags from non-deforming bones
+for side in ['L', 'R']:
+    hand = f'hand.{side}'
+    for i in range(1, 5):
+        merge_vg_clean(f'palm.0{i}.{side}', hand)
+
+rename_map = {
+    'spine': 'pelvis',
+    'spine.001': 'spine_01',
+    'spine.002': 'spine_02',
+    'spine.003': 'spine_03',
+    'spine.004': 'neck_01',
+    'spine.005': 'head',
+    'shoulder.L': 'clavicle_l',
+    'shoulder.R': 'clavicle_r',
+    'upper_arm.L': 'upperarm_l',
+    'upper_arm.R': 'upperarm_r',
+    'forearm.L': 'lowerarm_l',
+    'forearm.R': 'lowerarm_r',
+    'hand.L': 'hand_l',
+    'hand.R': 'hand_r',
+    'thigh.L': 'thigh_l',
+    'thigh.R': 'thigh_r',
+    'shin.L': 'calf_l',
+    'shin.R': 'calf_r',
+    'foot.L': 'foot_l',
+    'foot.R': 'foot_r',
+    'toe.L': 'toes_l',
+    'toe.R': 'toes_r',
+}
+for side, s_code in [('L', 'l'), ('R', 'r')]:
+    for i in range(1, 4):
+        rename_map[f'f_index.0{i}.{side}'] = f'index_0{i}_{s_code}'
+        rename_map[f'thumb.0{i}.{side}'] = f'thumb_0{i}_{s_code}'
+        rename_map[f'f_middle.0{i}.{side}'] = f'middle_0{i}_{s_code}'
+        rename_map[f'f_ring.0{i}.{side}'] = f'ring_0{i}_{s_code}'
+    for i in range(1, 3):
+        rename_map[f'f_pinky.0{i}.{side}'] = f'pinky_0{i}_{s_code}'
+
+for old_name, new_name in rename_map.items():
+    vg = mesh_obj.vertex_groups.get(old_name)
+    if vg:
+        vg.name = new_name
+
+bpy.context.view_layer.objects.active = arm_obj
 bpy.ops.object.mode_set(mode='EDIT')
-eb = arm_obj.data.edit_bones
-for bname in ['root', 'weapon_r', 'eye.L', 'eye.R']:
-    if bname in eb:
-        eb[bname].use_deform = False
+ebones = arm_obj.data.edit_bones
+for b_del in ['spine.006', 'pelvis.L', 'pelvis.R', 'heel.02.L', 'heel.02.R', 'f_pinky.03.L', 'f_pinky.03.R']:
+    b = ebones.get(b_del)
+    if b:
+        ebones.remove(b)
+for side in ['L', 'R']:
+    for i in range(1, 5):
+        b = ebones.get(f'palm.0{i}.{side}')
+        if b:
+            hand_bone = ebones.get(f'hand.{side}')
+            for child in list(b.children):
+                child.parent = hand_bone
+            ebones.remove(b)
 
-# Ensure weapon_r bone exists
-if 'weapon_r' not in eb:
-    wb = eb.new('weapon_r')
-    wb.head = eb['hand_r'].head
-    wb.tail = eb['hand_r'].head + Vector((0, -0.25, 0))
-    wb.parent = eb['hand_r']
-    wb.use_deform = False
-
+root_bone = ebones.new('root')
+root_bone.head = (0, 0, 0)
+root_bone.tail = (0, 0.1, 0)
+root_bone.roll = 0.0
+pelvis_bone = ebones.get('spine')
+if pelvis_bone:
+    pelvis_bone.parent = root_bone
+for old_name, new_name in rename_map.items():
+    b = ebones.get(old_name)
+    if b:
+        b.name = new_name
 bpy.ops.object.mode_set(mode='OBJECT')
 
-pb = arm_obj.pose.bones
-rest_pose_mats = {b.name: b.matrix.copy() for b in pb}
+# Scale to 1.80m
+min_z = min(v.co.z for v in mesh_obj.data.vertices)
+max_z = max(v.co.z for v in mesh_obj.data.vertices)
+scale_to_180 = 1.80 / (max_z - min_z)
+arm_obj.scale = (scale_to_180, scale_to_180, scale_to_180)
+mesh_obj.scale = (scale_to_180, scale_to_180, scale_to_180)
+bpy.context.view_layer.objects.active = arm_obj
+bpy.ops.object.select_all(action='DESELECT')
+arm_obj.select_set(True)
+mesh_obj.select_set(True)
+bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
-# Create Reference Weapon Dummy
-bpy.ops.mesh.primitive_cube_add(size=0.1, location=(0,0,0))
-ak_obj = bpy.context.active_object
-ak_obj.name = "AK47_Ref"
+min_z_after = min(v.co.z for v in mesh_obj.data.vertices)
+if abs(min_z_after) > 0.001:
+    for v in mesh_obj.data.vertices:
+        v.co.z -= min_z_after
+    bpy.context.view_layer.objects.active = arm_obj
+    bpy.ops.object.mode_set(mode='EDIT')
+    for eb in arm_obj.data.edit_bones:
+        if eb.name != 'root':
+            eb.head.z -= min_z_after
+            eb.tail.z -= min_z_after
+    bpy.ops.object.mode_set(mode='OBJECT')
 
-# Create IK Targets
-bpy.ops.object.empty_add(type='PLAIN_AXES', radius=0.08)
-emp_r = bpy.context.active_object
-emp_r.name = "IK_Target_Hand_R"
+# Add weapon_r bone
+bpy.context.view_layer.objects.active = arm_obj
+bpy.ops.object.mode_set(mode='EDIT')
+weapon_bone = arm_obj.data.edit_bones.new('weapon_r')
+weapon_bone.head = (0.0, 0.0, 0.0)
+weapon_bone.tail = (0.0, 0.10, 0.0)
+weapon_bone.roll = 0.0
+weapon_bone.parent = arm_obj.data.edit_bones['hand_r']
+weapon_bone.use_connect = False
+bpy.ops.object.mode_set(mode='OBJECT')
 
-bpy.ops.object.empty_add(type='PLAIN_AXES', radius=0.08)
-emp_l = bpy.context.active_object
-emp_l.name = "IK_Target_Hand_L"
+# Weapon & IK Empties
+ak_obj = bpy.data.objects.new("AK47_Proxy", None)
+bpy.context.scene.collection.objects.link(ak_obj)
 
-bpy.ops.object.empty_add(type='SPHERE', radius=0.05)
-pole_r = bpy.context.active_object
-pole_r.name = "IK_Pole_R"
-
-bpy.ops.object.empty_add(type='SPHERE', radius=0.05)
-pole_l = bpy.context.active_object
-pole_l.name = "IK_Pole_L"
-
-# Parent IK empties to AK dummy
+emp_r = bpy.data.objects.new("IK_Target_RightWrist", None)
+bpy.context.scene.collection.objects.link(emp_r)
 emp_r.parent = ak_obj
-emp_r.location = (0.045, 0.22, -0.065)
+emp_r.location = (-0.030, 0.118, -0.076)
 
+emp_l = bpy.data.objects.new("IK_Target_LeftWrist", None)
+bpy.context.scene.collection.objects.link(emp_l)
 emp_l.parent = ak_obj
-emp_l.location = (-0.025, -0.22, 0.042)
+emp_l.location = (0.026, -0.175, -0.026)
 
-pole_r.parent = ak_obj
-pole_r.location = (0.28, 0.05, -0.25)
+pole_r = bpy.data.objects.new("IK_Pole_RightElbow", None)
+bpy.context.scene.collection.objects.link(pole_r)
+pole_r.location = (-0.32, 0.05, 1.10)
 
-pole_l.parent = ak_obj
-pole_l.location = (-0.28, 0.0, -0.22)
+pole_l = bpy.data.objects.new("IK_Pole_LeftElbow", None)
+bpy.context.scene.collection.objects.link(pole_l)
+pole_l.location = (0.18, -0.18, 1.02)
 
-# Grip frame offsets
-R_ak_ads_inv = Euler((math.radians(2.0), 0.0, math.radians(-5.0))).to_matrix().inverted()
-y_r_local = R_ak_ads_inv @ Vector((-0.18, -0.96, -0.21)).normalized()
+bpy.context.view_layer.objects.active = arm_obj
+bpy.ops.object.mode_set(mode='POSE')
+pb = arm_obj.pose.bones
+for b in pb:
+    b.rotation_mode = 'XYZ'
+
+rest_pose_mats = {b.name: b.bone.matrix_local.copy() for b in pb}
+
+R_ak_ads_inv = Euler((0.0, 0.0, math.radians(-5.0)), 'XYZ').to_matrix().inverted()
+y_r_local = R_ak_ads_inv @ Vector((0.28, -0.95, 0.12)).normalized()
 z_r_local = R_ak_ads_inv @ Vector((-0.55, -0.05, 0.83)).normalized()
 
 y_l_world_ads = Vector((-0.62, -0.77, 0.14)).normalized()
@@ -163,7 +246,7 @@ def bake_reload_animation():
     for act in list(bpy.data.actions):
         bpy.data.actions.remove(act)
 
-    action = bpy.data.actions.new(name="Reload")
+    action = bpy.data.actions.new(name="Anim_BaseMale_Reload")
     arm_obj.animation_data_create()
     arm_obj.animation_data.action = action
 
@@ -180,6 +263,11 @@ def bake_reload_animation():
     ik_l.chain_count = 2
 
     pelvis_rest_loc = rest_pose_mats['pelvis'].to_translation()
+
+    foregrip_local = Vector((0.026, -0.175, -0.026))
+    magwell_local = Vector((0.015, -0.06, -0.08))
+    mag_drop_local = Vector((0.015, -0.06, -0.25))
+    chest_rig_local = Vector((-0.08, 0.08, -0.30))
 
     for f in range(1, num_frames + 1):
         bpy.context.scene.frame_set(f)
@@ -231,16 +319,6 @@ def bake_reload_animation():
         rotate_bone_world(pb['head'], Euler((math.radians(head_pitch * 0.6), 0.0, math.radians(head_yaw * 0.6)), 'XYZ'))
 
         # Left hand IK Target Trajectory (Reload Motion Phases):
-        # Phase 1 (0.0 -> 0.20): Leaves foregrip, reaches toward magwell
-        # Phase 2 (0.20 -> 0.40): Pulls empty magazine down (mag eject)
-        # Phase 3 (0.40 -> 0.72): Dips to chest rig (-Z, +Y), grabs fresh mag, brings up to magwell
-        # Phase 4 (0.72 -> 0.82): Slaps magazine into magwell
-        # Phase 5 (0.82 -> 1.0): Returns smoothly to foregrip
-        foregrip_local = Vector((-0.025, -0.22, 0.042))
-        magwell_local = Vector((0.015, -0.06, -0.08))
-        mag_drop_local = Vector((0.015, -0.06, -0.28))
-        chest_rig_local = Vector((-0.08, 0.08, -0.32)) # relative to ak dummy
-
         if t < 0.20:
             alpha = t / 0.20
             emp_l.location = foregrip_local.lerp(magwell_local, math.sin(alpha * math.pi / 2.0))
@@ -254,7 +332,6 @@ def bake_reload_animation():
             alpha = (t - 0.56) / 0.16
             emp_l.location = chest_rig_local.lerp(magwell_local, math.sin(alpha * math.pi / 2.0))
         elif t < 0.82:
-            # Palm slap bump into magwell
             slap_t = (t - 0.72) / 0.10
             bump_z = math.sin(slap_t * math.pi) * 0.02
             emp_l.location = magwell_local + Vector((0.0, 0.0, bump_z))
@@ -268,16 +345,13 @@ def bake_reload_animation():
         R_ak = ak_obj.matrix_world.to_3x3()
         set_bone_world_axes(pb['hand_r'], R_ak @ y_r_local, R_ak @ z_r_local)
 
-        # Left hand orientation: grip vs mag grab vs palm slap
         if t < 0.20 or t > 0.85:
             set_bone_world_axes(pb['hand_l'], R_ak @ y_l_local, R_ak @ z_l_local)
         elif t >= 0.72 and t <= 0.82:
-            # Flat palm slap upward
             slap_y = Vector((0.0, 0.2, 0.98)).normalized()
             slap_z = Vector((0.0, -0.98, 0.2)).normalized()
             set_bone_world_axes(pb['hand_l'], R_ak @ slap_y, R_ak @ slap_z)
         else:
-            # Grabbing magazine box
             mag_y = Vector((0.0, -0.8, -0.6)).normalized()
             mag_z = Vector((-0.8, 0.0, 0.6)).normalized()
             set_bone_world_axes(pb['hand_l'], R_ak @ mag_y, R_ak @ mag_z)
@@ -303,7 +377,6 @@ def bake_reload_animation():
         pb['weapon_r'].matrix = ak_obj.matrix_world.copy()
         bpy.context.view_layer.update()
 
-        # Record IK-solved world matrices
         solved_mats = {b.name: b.matrix.copy() for b in pb}
 
         ik_r.mute = True
@@ -327,7 +400,7 @@ def bake_reload_animation():
     bpy.ops.object.select_all(action='DESELECT')
     mesh_obj.select_set(True)
     arm_obj.select_set(True)
-    bpy.context.view_layer.active = arm_obj
+    bpy.context.view_layer.objects.active = arm_obj
 
     fbx_primary = os.path.join(out_dir, "Anim_BaseMale_Reload.fbx")
     fbx_alias = os.path.join(out_dir, "Anim_Operator_Reload.fbx")
@@ -342,11 +415,14 @@ def bake_reload_animation():
         axis_up='Y',
         object_types={'ARMATURE', 'MESH'},
         use_mesh_modifiers=True,
+        mesh_smooth_type='FACE',
+        add_leaf_bones=False,
+        primary_bone_axis='Y',
+        secondary_bone_axis='X',
+        armature_nodetype='NULL',
         bake_anim=True,
-        bake_anim_use_all_bones=True,
-        bake_anim_use_nla_strips=False,
         bake_anim_use_all_actions=False,
-        bake_anim_force_startend_keying=True,
+        bake_anim_use_nla_strips=False,
         bake_anim_step=1.0,
         bake_anim_simplify_factor=0.0
     )
