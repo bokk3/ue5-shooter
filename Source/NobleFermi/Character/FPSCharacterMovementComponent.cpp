@@ -355,7 +355,24 @@ void UFPSCharacterMovementComponent::StopBallisticDive()
 	bMaintainHorizontalGroundVelocity = false;
 	DiveAirborneTime = 0.0f;
 	DiveLandingSlideTimer = 0.0f;
-	CurrentFPSMode = bWantsToSprint ? EFPSMovementMode::Sprinting : EFPSMovementMode::Walking;
+
+	ACharacter* CharOwner = GetCharacterOwner();
+	if (bWantsToCrouch)
+	{
+		CurrentFPSMode = EFPSMovementMode::Crouching;
+		if (CharOwner)
+		{
+			CharOwner->Crouch();
+		}
+	}
+	else if (bWantsToSprint && CurrentStamina > 10.0f && !bIsStaminaExhausted)
+	{
+		CurrentFPSMode = EFPSMovementMode::Sprinting;
+	}
+	else
+	{
+		CurrentFPSMode = EFPSMovementMode::Walking;
+	}
 }
 
 bool UFPSCharacterMovementComponent::TryMantle()

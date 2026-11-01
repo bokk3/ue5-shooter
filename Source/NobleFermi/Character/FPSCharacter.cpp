@@ -296,6 +296,8 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	LyraCameraComponent = CreateDefaultSubobject<UFPSCameraComponent>(TEXT("LyraCameraComponent"));
 	LyraCameraComponent->SetupAttachment(GetCapsuleComponent());
 	LyraCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
+	LyraCameraComponent->SetActive(false);
+	LyraCameraComponent->bAutoActivate = false;
 
 	// Authoritative 3D Procedural Level IV Ceramic Plate Carrier (Attached to Capsule so it NEVER inherits 100x FBX bone scale!)
 	PlateCarrierProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("PlateCarrierProcMesh"));
@@ -1036,6 +1038,7 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 
 	if (FPSMovementComponent && FPSMovementComponent->IsBallisticDiving())
 	{
+		DiveRecoveryTimer = 0.35f;
 		const FVector DiveDir2D = FPSMovementComponent->GetBallisticDiveDirection().GetSafeNormal2D();
 		const FVector CharForward2D = GetActorForwardVector().GetSafeNormal2D();
 		const FVector CharRight2D = GetActorRightVector().GetSafeNormal2D();
@@ -1049,6 +1052,20 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 
 		TargetMeshRot = FRotator(TargetPitch, -90.0f, TargetRoll);
 		TargetZOffset = FPSMovementComponent->IsInDiveLandingSlide() ? -68.0f : -58.0f;
+	}
+	else if (DiveRecoveryTimer > 0.0f)
+	{
+		DiveRecoveryTimer = FMath::Max(0.0f, DiveRecoveryTimer - DeltaTime);
+		const float RecoveryAlpha = 1.0f - (DiveRecoveryTimer / 0.35f);
+		const float SmoothCurve = FMath::SmoothStep(0.0f, 1.0f, RecoveryAlpha);
+
+		const bool bRecoverToCrouch = (FPSMovementComponent && (FPSMovementComponent->IsCrouching() || bIsHoldingCrouchKey));
+		const float EndZOffset = bRecoverToCrouch ? -48.0f : -96.0f;
+		TargetZOffset = FMath::Lerp(-68.0f, EndZOffset, SmoothCurve);
+
+		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
+		const float EndRoll = bRecoverToCrouch ? (-6.0f + FMath::Clamp(AimPitch * 0.35f, -20.0f, 20.0f)) : FMath::Clamp(AimPitch * 0.55f, -42.0f, 42.0f);
+		TargetMeshRot = FRotator(0.0f, -90.0f, FMath::Lerp(-35.0f, EndRoll, SmoothCurve));
 	}
 	else if (FPSMovementComponent && FPSMovementComponent->IsSliding())
 	{
@@ -1921,6 +1938,19 @@ void AFPSCharacter::StopCrouchOrSlide()
 
 void AFPSCharacter::OnJumpOrDivePressed()
 {
+	if (IsBallisticDiving())
+	{
+		return;
+	}
+
+	if (FPSMovementComponent && FPSMovementComponent->IsSliding())
+	{
+		// Crisp Slide-Jump: preserve forward slide momentum while leaping out of slide
+		FPSMovementComponent->StopSlide();
+		Jump();
+		return;
+	}
+
 	// Pressing Spacebar while holding LeftControl/C and moving triggers Max Payne Omnidirectional Dive
 	if (bIsHoldingCrouchKey && (CurrentMoveInput.SizeSquared() > 0.05f || GetVelocity().Size2D() > 80.0f))
 	{

@@ -466,6 +466,7 @@ private:
 	FVector2D CurrentMoveInput = FVector2D::ZeroVector;
 	FRotator CurrentDiveMeshRotation = FRotator(0.0f, -90.0f, 0.0f);
 	float CurrentDiveMeshZOffset = -96.0f;
+	float DiveRecoveryTimer = 0.0f;
 	float FermiDecoyCooldownRemaining = 0.0f;
 	float QuantumSwapFlashTimer = 0.0f;
 	float FOVPunchTimer = 0.0f;
