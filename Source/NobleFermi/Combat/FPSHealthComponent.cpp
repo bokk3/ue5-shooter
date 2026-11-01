@@ -70,35 +70,42 @@ void UFPSHealthComponent::ApplyDamage(float BaseDamage, AActor* InstigatorActor,
 		}
 	}
 	float FinalDamage = BaseDamage * BoneMultiplier;
-
-	// Tactical Body Armor: Chest plate absorbs 40% more bullet damage before health penetration
-	if (bIsArmorPlateHit && CurrentShield > 0.0f)
-	{
-		FinalDamage *= 0.70f;
-	}
-
 	bool bShieldBroken = false;
 
-	// Deduct from shield/vest first
-	if (CurrentShield > 0.0f)
-	{
-		if (CurrentShield >= FinalDamage)
-		{
-			CurrentShield -= FinalDamage;
-			FinalDamage = 0.0f;
-		}
-		else
-		{
-			FinalDamage -= CurrentShield;
-			CurrentShield = 0.0f;
-			bShieldBroken = true;
-		}
-	}
-
-	// Excess damage penetrates to biological human vitals
-	if (FinalDamage > 0.0f)
+	// Headshots cleanly bypass body armor plates directly to biological vitals
+	if (bIsHeadshot)
 	{
 		CurrentHealth = FMath::Max(0.0f, CurrentHealth - FinalDamage);
+	}
+	else
+	{
+		// Tactical Body Armor: Chest plate absorbs 30% of incoming bullet kinetic energy
+		if (bIsArmorPlateHit && CurrentShield > 0.0f)
+		{
+			FinalDamage *= 0.70f;
+		}
+
+		// Deduct from shield/vest plates first
+		if (CurrentShield > 0.0f)
+		{
+			if (CurrentShield >= FinalDamage)
+			{
+				CurrentShield -= FinalDamage;
+				FinalDamage = 0.0f;
+			}
+			else
+			{
+				FinalDamage -= CurrentShield;
+				CurrentShield = 0.0f;
+				bShieldBroken = true;
+			}
+		}
+
+		// Excess damage penetrates to biological human vitals
+		if (FinalDamage > 0.0f)
+		{
+			CurrentHealth = FMath::Max(0.0f, CurrentHealth - FinalDamage);
+		}
 	}
 
 	OnHealthShieldChanged.Broadcast(CurrentHealth, CurrentShield);

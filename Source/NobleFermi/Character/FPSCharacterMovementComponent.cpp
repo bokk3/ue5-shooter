@@ -28,7 +28,7 @@ void UFPSCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float De
 		if (CurrentStamina <= 0.0f)
 		{
 			bIsStaminaExhausted = true;
-			SetWantsToSprint(false);
+			CurrentFPSMode = EFPSMovementMode::Walking;
 		}
 	}
 	else
@@ -37,9 +37,13 @@ void UFPSCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float De
 		if (TimeSinceLastSprint >= StaminaRegenDelay)
 		{
 			CurrentStamina = FMath::Min(MaxStamina, CurrentStamina + StaminaRegenRate * DeltaSeconds);
-			if (CurrentStamina >= 25.0f)
+			if (CurrentStamina >= 25.0f && bIsStaminaExhausted)
 			{
 				bIsStaminaExhausted = false;
+				if (bWantsToSprint && IsMovingOnGround() && !IsCrouching() && !bIsSliding && !bIsBallisticDiving)
+				{
+					CurrentFPSMode = EFPSMovementMode::Sprinting;
+				}
 			}
 		}
 	}
@@ -219,15 +223,9 @@ float UFPSCharacterMovementComponent::GetMaxSpeed() const
 
 void UFPSCharacterMovementComponent::SetWantsToSprint(bool bSprint)
 {
-	if (bSprint && (bIsStaminaExhausted || CurrentStamina <= 5.0f || bIsBallisticDiving))
-	{
-		bWantsToSprint = false;
-		return;
-	}
-
 	bWantsToSprint = bSprint;
 
-	if (bWantsToSprint && IsMovingOnGround() && !IsCrouching() && !bIsSliding && !bIsBallisticDiving)
+	if (bWantsToSprint && !bIsStaminaExhausted && CurrentStamina > 5.0f && IsMovingOnGround() && !IsCrouching() && !bIsSliding && !bIsBallisticDiving)
 	{
 		CurrentFPSMode = EFPSMovementMode::Sprinting;
 	}

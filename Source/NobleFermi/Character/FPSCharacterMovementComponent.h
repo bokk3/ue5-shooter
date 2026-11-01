@@ -151,6 +151,10 @@ public:
 	{
 		CurrentStamina = FMath::Clamp(CurrentStamina + Amount, 0.0f, MaxStamina);
 		bIsStaminaExhausted = false;
+		if (bWantsToSprint && CurrentStamina > 10.0f && IsMovingOnGround() && !IsCrouching() && !bIsSliding && !bIsBallisticDiving)
+		{
+			CurrentFPSMode = EFPSMovementMode::Sprinting;
+		}
 	}
 
 private:

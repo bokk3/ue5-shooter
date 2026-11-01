@@ -13,8 +13,8 @@
 | **Locomotion & Stances** | 🟢 Verified & Stabilized | Walk, Run, Sprint, Slide, Ballistic Dive, Jump in `UFPSCharacterMovementComponent`. | Pass 1 Complete: `FollowCamera` deconflicted from `LyraCameraComponent`. 0.35s S-curve dive recovery blend and slide-to-jump momentum conservation integrated. |
 | **Animation Systems** | 🟢 Verified & Stabilized | Raw anim assets exist for Walk, Run, Sprint, Slide, Crouch, ADS. 21-bone procedural system drives leaning, recoil, sway. | Pass 2 Complete: Integrated procedural left-hand reload IK solver in `UFPSAnimInstance` tracking multi-phase magazine release, chest-rig retrieval, and palm slap. |
 | **Weapons & Gunsmith** | 🟢 Verified & Stabilized | 11 weapon data assets, procedural weapon construction, procedural slide/recoil, procedural magazine reload translation, projectile penetration. | Pass 2 Complete: Direct input binds `1`, `2`, `3` and `MouseWheelUp`/`Down`. `UFPSInventoryComponent` manages 3 slots (Primary, Secondary, Sidearm). Fail-safe `AbortReload()` prevents desyncs. |
-| **Health, Armor & Damage** | 🟢 Functional | 4-plate Level IV ceramic armor + biological health in `UFPSHealthComponent`. Headshot multipliers, plate damage reduction, bone impulse on hit, ragdoll on death. | Lyra `UFPSCombatAttributeSet` exists as a duplicate GAS attribute layer; legacy `UFPSHealthComponent` is the active driver for gameplay. |
-| **Stamina & Tactical Energy** | 🟢 Functional | Sprint drain, ballistic dive cost, regeneration delay, exhaustion lockout in `UFPSCharacterMovementComponent`. | Near-miss stamina refund and dive recovery timing need tuning to prevent accidental exhaustion locks during rapid maneuvers. |
+| **Health, Armor & Damage** | 🟢 Verified & Stabilized | 4-plate Level IV ceramic armor + biological health in `UFPSHealthComponent`. Headshots bypass armor plates directly to vitals with bone multipliers. Chest plate reduces bullet kinetic damage by 30%. Death cleanly decouples camera boom and tracks pelvis ragdoll with 12cm collision probe. | Pass 3 Complete: Reliable damage calculation, headshot armor penetration, and smooth ragdoll death tracking. |
+| **Stamina & Tactical Energy** | 🟢 Verified & Stabilized | Sprint drain, ballistic dive cost, regeneration delay, exhaustion lockout in `UFPSCharacterMovementComponent`. Auto-resumes sprinting on recovery if sprint key remains held. | Pass 3 Complete: `SetWantsToSprint` preserves player intent, recovering from exhaustion back into sprint at >=25 stamina without key re-press. `AddStamina` restores sprinting dynamically. |
 | **Economy, Profile & Auth** | 🟢 Functional | Offline local JSON fallback (`Saved/NobleFermiProfile.json`, `Saved/NobleFermiLocalAccounts.json`) + online API stub. Camo/armor/weapon loadouts serialize properly. | Menu load time in Hangar is slow due to synchronous package checks and texture streaming. |
 | **HUD & Slate Overlay** | 🟢 Working | High-fidelity canvas HUD (`UFPSHUDWidget`) with dynamic ammo, 4-plate ceramic armor, ECG vitals, compass, hitmarkers, crosshair sway, and killfeed. | High framerate cost if dirty checks aren't batched; requires caching for Slate drawing calls. |
 
@@ -122,9 +122,11 @@
    - Add direct key bindings: `1` (Primary), `2` (Secondary), `3` (Melee), `MouseWheelUp` / `MouseWheelDown` (Cycle).
    - Implement procedural arm animation offsets in `UFPSAnimInstance` during reload to accompany procedural magazine movement.
    - Add fail-safe cancel/cleanup in `AFPSWeaponBase` so weapon switching during reload properly aborts and resets magazine position.
-3. **Pass 3: Vitals, Armor & Stamina Hardening**
-   - Verify zero-stamina recovery never gets trapped.
-   - Ensure clean death ragdoll without collision glitches or camera drops below floor.
+3. **Pass 3: Vitals, Armor & Stamina Hardening** - ✅ **Completed**
+   - Verified zero-stamina recovery never gets trapped; player automatically resumes sprinting once stamina regens above 25 threshold while holding Shift.
+   - Headshots cleanly bypass body armor plates directly to biological health pool.
+   - Ceramic plates absorb 30% of kinetic energy before shield depletion.
+   - Camera boom decouples from pawn controller rotation on death, inherits -28° pitch angle, and smoothly tracks pelvis ragdoll with 12cm ground probe test preventing floor clipping.
 4. **Pass 4: Base Game Loop & Build Packaging Verification**
    - Test seamless Menu -> Deploy -> Combat -> Death/Respawn -> Return to Menu cycle.
    - Ensure packaged binaries launch cleanly with all required DLLs.

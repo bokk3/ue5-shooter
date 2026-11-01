@@ -1352,12 +1352,20 @@ void AFPSCharacter::HandleOnDeath(AActor* KillerActor)
 		FPSMovementComponent->StopMovementImmediately();
 	}
 
-	// Smoothly attach CameraBoom to pelvis to track ragdoll death without jarring snap
+	// Decouple camera boom from pawn controller rotation and track ragdoll pelvis stably
 	if (!bIsTacticalBot && CameraBoom && GetMesh())
 	{
+		CameraBoom->bUsePawnControlRotation = false;
+		CameraBoom->bInheritPitch = false;
+		CameraBoom->bInheritYaw = false;
+		CameraBoom->bInheritRoll = false;
+		CameraBoom->SetUsingAbsoluteRotation(true);
+		CameraBoom->SetWorldRotation(FRotator(-28.0f, GetActorRotation().Yaw, 0.0f));
 		CameraBoom->bEnableCameraLag = true;
-		CameraBoom->CameraLagSpeed = 6.0f;
-		CameraBoom->TargetArmLength = 240.0f;
+		CameraBoom->CameraLagSpeed = 4.5f;
+		CameraBoom->TargetArmLength = 250.0f;
+		CameraBoom->bDoCollisionTest = true;
+		CameraBoom->ProbeSize = 12.0f;
 		CameraBoom->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform, TEXT("pelvis"));
 	}
 
