@@ -217,10 +217,7 @@ void AFPSWeaponBase::BeginPlay()
 	// Construct guaranteed procedural 3D NF-98 carbine geometry
 	BuildProceduralCarbineGeometry();
 
-	if (WeaponDataAsset)
-	{
-		ApplyWeaponDataAsset(WeaponDataAsset);
-	}
+	// ApplyWeaponDataAsset deferred to end of BeginPlay
 
 	if (AK47StaticMesh && !AK47StaticMesh->GetStaticMesh())
 	{
@@ -322,6 +319,11 @@ void AFPSWeaponBase::BeginPlay()
 	if (!DryFireSound)
 	{
 		DryFireSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Audio/Weapons/Reloads/A_Weapon_DryFire_Click.A_Weapon_DryFire_Click"));
+	}
+
+	if (WeaponDataAsset)
+	{
+		ApplyWeaponDataAsset(WeaponDataAsset);
 	}
 
 	APawn* PawnOwner = Cast<APawn>(GetOwner());
@@ -1188,39 +1190,78 @@ FVector AFPSWeaponBase::GetForegripWorldLocation() const
 void AFPSWeaponBase::ApplyWeaponDataAsset(UFPSWeaponDataAsset* InDataAsset)
 {
 	if (!InDataAsset) return;
-	WeaponDataAsset = InDataAsset;
+	StopFire();
+	AbortReload();
 
+	WeaponDataAsset = InDataAsset;
 	WeaponDisplayName = InDataAsset->WeaponDisplayName;
 	MagazineCapacity = InDataAsset->MagazineCapacity;
-	CurrentAmmo = FMath::Min(CurrentAmmo, MagazineCapacity);
+	CurrentAmmo = MagazineCapacity;
 	ReserveAmmo = InDataAsset->ReserveAmmo;
 	BaseDamage = InDataAsset->BaseDamage;
 	FireRateRPM = InDataAsset->FireRateRPM;
 	TacticalReloadDuration = InDataAsset->ReloadTimeSeconds;
 	EmptyReloadDuration = InDataAsset->EmptyReloadTimeSeconds;
+	RecoilPitchKick = InDataAsset->RecoilPitch;
+	RecoilYawSpread = InDataAsset->RecoilYawSpread;
+	MaxRange = InDataAsset->EffectiveRangeMeters * 100.0f;
+
+	// Set fire mode appropriate for weapon archetype
+	switch (InDataAsset->Archetype)
+	{
+	case EFPSWeaponArchetype::AssaultRifle:
+		FireMode = EFPSFireMode::FullAuto;
+		break;
+	case EFPSWeaponArchetype::BattleRifle:
+	case EFPSWeaponArchetype::Shotgun:
+	case EFPSWeaponArchetype::Pistol:
+	default:
+		FireMode = EFPSFireMode::SemiAuto;
+		break;
+	}
 
 	if (ReceiverMesh && InDataAsset->ReceiverMesh)
 	{
 		ReceiverMesh->SetStaticMesh(InDataAsset->ReceiverMesh);
+		ReceiverMesh->SetRelativeLocation(FVector::ZeroVector);
+		ReceiverMesh->SetRelativeRotation(FRotator::ZeroRotator);
+		ReceiverMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+		ReceiverMesh->EmptyOverrideMaterials();
 		ReceiverMesh->SetVisibility(true);
 		ReceiverMesh->SetHiddenInGame(false);
-	}
-	if (MagazineMesh && InDataAsset->MagazineMesh)
-	{
-		MagazineMesh->SetStaticMesh(InDataAsset->MagazineMesh);
-		MagazineMesh->SetVisibility(true);
-		MagazineMesh->SetHiddenInGame(false);
-		if (MagazineRoot)
+
+		// Hide procedural carbine when an authoritative receiver asset is installed
+		if (CarbineProcMesh)
 		{
-			MagazineRoot->SetRelativeLocation(InDataAsset->MagWellSocketOffset);
+			CarbineProcMesh->SetVisibility(false);
+			CarbineProcMesh->SetHiddenInGame(true);
 		}
-		MagazineBaseLoc = InDataAsset->MagWellSocketOffset;
-		MagazineMesh->SetRelativeLocation(FVector::ZeroVector);
 	}
-	if (CarbineProcMesh)
+
+	if (MagazineMesh)
 	{
-		CarbineProcMesh->SetVisibility(false);
-		CarbineProcMesh->SetHiddenInGame(true);
+		if (InDataAsset->MagazineMesh)
+		{
+			MagazineMesh->SetStaticMesh(InDataAsset->MagazineMesh);
+			MagazineMesh->SetRelativeLocation(FVector::ZeroVector);
+			MagazineMesh->SetRelativeRotation(FRotator::ZeroRotator);
+			MagazineMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+			MagazineMesh->EmptyOverrideMaterials();
+			MagazineMesh->SetVisibility(true);
+			MagazineMesh->SetHiddenInGame(false);
+
+			if (MagazineRoot)
+			{
+				MagazineRoot->SetRelativeLocation(InDataAsset->MagWellSocketOffset);
+				MagazineRoot->SetRelativeRotation(FRotator::ZeroRotator);
+			}
+			MagazineBaseLoc = InDataAsset->MagWellSocketOffset;
+		}
+		else
+		{
+			MagazineMesh->SetVisibility(false);
+			MagazineMesh->SetHiddenInGame(true);
+		}
 	}
 
 	OnAmmoChanged.Broadcast(CurrentAmmo, ReserveAmmo);
