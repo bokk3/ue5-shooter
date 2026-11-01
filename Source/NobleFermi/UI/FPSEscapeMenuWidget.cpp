@@ -821,7 +821,7 @@ void UFPSEscapeMenuWidget::OpenSettings()
 
 void UFPSEscapeMenuWidget::ReturnToMainMenu()
 {
-	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Maps/MainMenuMap")));
+	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Maps/MenuMap")));
 }
 
 void UFPSEscapeMenuWidget::ExitToDesktop()

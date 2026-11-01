@@ -37,5 +37,5 @@ void UFPSPauseMenuWidget::OpenSettings()
 void UFPSPauseMenuWidget::LeaveMatchToMainMenu()
 {
 	UGameplayStatics::SetGamePaused(this, false);
-	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Maps/MainMenuMap")));
+	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Maps/MenuMap")));
 }

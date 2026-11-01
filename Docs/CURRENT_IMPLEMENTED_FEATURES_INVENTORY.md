@@ -115,18 +115,25 @@
 
 ## 6. Actionable Stabilization Plan Summary
 
-1. **Pass 1: Locomotion & Camera Stabilization**
-   - Clean up camera hierarchy: ensure unified camera control without fighting between SpringArm and Lyra camera component.
-   - Smooth Ballistic Dive blend to sprint/crouch/stand.
-2. **Pass 2: Weapon Switching, Direct Binds & Reload State Machine**
-   - Add direct key bindings: `1` (Primary), `2` (Secondary), `3` (Melee), `MouseWheelUp` / `MouseWheelDown` (Cycle).
-   - Implement procedural arm animation offsets in `UFPSAnimInstance` during reload to accompany procedural magazine movement.
-   - Add fail-safe cancel/cleanup in `AFPSWeaponBase` so weapon switching during reload properly aborts and resets magazine position.
-3. **Pass 3: Vitals, Armor & Stamina Hardening** - ✅ **Completed**
-   - Verified zero-stamina recovery never gets trapped; player automatically resumes sprinting once stamina regens above 25 threshold while holding Shift.
+1. **Pass 1: Locomotion & Camera Stabilization** - [x] **Completed (Commit 8686062)**
+   - Cleaned up camera hierarchy: FollowCamera designated as authoritative tactical camera (SetActive(true)), inactive Lyra UFPSCameraComponent and FirstPersonCamera deactivated with AutoActivate = false.
+   - Smooth S-curve Ballistic Dive recovery timer (0.35s) smoothly blending character pitch from prone (-78°) to crouch (-6°) or stand (0°).
+   - Ballistic Dive respect for WantsToCrouch, and Slide-Jump preserves horizontal momentum without snagging.
+
+2. **Pass 2: Weapon Switching, Direct Binds & Reload State Machine** - [x] **Completed (Commit 162462)**
+   - Added direct key bindings: 1 (Primary), 2 (Secondary), 3 (Sidearm), MouseWheelUp (Cycle Previous) / MouseWheelDown (Cycle Next).
+   - UFPSInventoryComponent initializes 3 active weapon slots (DA_W01_NF98, DA_W05_Apex9, DA_W06_Spectre45).
+   - Implemented procedural anatomical arm animation in UFPSAnimInstance::SolveLeftHandReloadIK() via AnimationCore::SolveTwoBoneIK (5-phase reload arc).
+   - Fail-safe AFPSWeaponBase::AbortReload() resets magazine translation to root and returns weapon state to Idle on weapon swap or dive interrupt.
+
+3. **Pass 3: Vitals, Armor & Stamina Hardening** - [x] **Completed (Commit 30f340)**
+   - Verified zero-stamina recovery never gets trapped: SetWantsToSprint preserves player intent; character automatically resumes sprinting once stamina regens above 25 threshold while holding Shift.
    - Headshots cleanly bypass body armor plates directly to biological health pool.
-   - Ceramic plates absorb 30% of kinetic energy before shield depletion.
+   - Ceramic plates absorb 30% of incoming kinetic bullet energy before shield depletion.
    - Camera boom decouples from pawn controller rotation on death, inherits -28° pitch angle, and smoothly tracks pelvis ragdoll with 12cm ground probe test preventing floor clipping.
-4. **Pass 4: Base Game Loop & Build Packaging Verification**
-   - Test seamless Menu -> Deploy -> Combat -> Death/Respawn -> Return to Menu cycle.
-   - Ensure packaged binaries launch cleanly with all required DLLs.
+
+4. **Pass 4: Base Game Loop & Build Packaging Verification** - [x] **Completed**
+   - Fixed map navigation in FPSEscapeMenuWidget and FPSPauseMenuWidget to resolve directly to /Game/Maps/MenuMap instead of non-existent MainMenuMap.
+   - Verified HUD telemetry sync (interpolated health/shield ghost bars, low-ammo tracer pips, 4-stage reload progress arc, directional threat radar).
+   - Intel TBB DLL dependencies (	bbmalloc.dll, 	bb12.dll) staged to engine, packaged, and project root binaries.
+   - Both direct binary (NobleFermi.exe) and standalone launcher (Packaged/Windows/NobleFermi.exe) verified running stably without crash.
