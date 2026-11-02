@@ -3300,7 +3300,7 @@ TSharedRef<SWidget> UMainMenuWidget::BuildHeader()
 				]
 			]
 		]
-		// Center Telemetry Strip: VERSION 1.2.8.47 | EU-WEST-1 | 42 MS | Gold & Opals
+		// Center Telemetry Strip: VERSION 0.4.0-alpha | EU-WEST-1 | 42 MS | Gold & Opals
 		+ SHorizontalBox::Slot()
 		.FillWidth(1.0f)
 		.HAlign(HAlign_Center)
@@ -3313,7 +3313,7 @@ TSharedRef<SWidget> UMainMenuWidget::BuildHeader()
 			.Padding(0.0f, 0.0f, 16.0f, 0.0f)
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("VERSION 1.2.8.47    |    EU-WEST-1    |    42 MS")))
+				.Text(FText::FromString(TEXT("VERSION 0.4.0-alpha    |    EU-WEST-1    |    42 MS")))
 				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
 				.ColorAndOpacity(MWTheme::TextSecondary)
 			]
