@@ -15,6 +15,56 @@
 #include "Misc/CommandLine.h"
 #include "HAL/PlatformFileManager.h"
 #include "UnrealClient.h"
+#if PLATFORM_WINDOWS
+#include "Windows/AllowWindowsPlatformTypes.h"
+#include <windows.h>
+#include "Windows/HideWindowsPlatformTypes.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Misc/Paths.h"
+#endif
+
+
+#if PLATFORM_WINDOWS
+static void ApplyTacticalMultiplayerWindowIcon()
+{
+	if (!FSlateApplication::IsInitialized())
+	{
+		return;
+	}
+
+	TSharedPtr<SWindow> MainWindow = FSlateApplication::Get().GetActiveTopLevelWindow();
+	if (!MainWindow.IsValid())
+	{
+		const TArray<TSharedRef<SWindow>>& Windows = FSlateApplication::Get().GetTopLevelWindows();
+		if (Windows.Num() > 0)
+		{
+			MainWindow = Windows[0];
+		}
+	}
+
+	if (MainWindow.IsValid() && MainWindow->GetNativeWindow().IsValid())
+	{
+		HWND Hwnd = (HWND)MainWindow->GetNativeWindow()->GetOSWindowHandle();
+		if (Hwnd)
+		{
+			FString FullIcoPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Build/Windows/Application.ico"));
+			if (FPaths::FileExists(FullIcoPath))
+			{
+				HICON hIconBig = (HICON)LoadImageW(NULL, *FullIcoPath, IMAGE_ICON, 256, 256, LR_LOADFROMFILE);
+				HICON hIconSmall = (HICON)LoadImageW(NULL, *FullIcoPath, IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+				if (hIconBig)
+				{
+					SendMessageW(Hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIconBig);
+				}
+				if (hIconSmall)
+				{
+					SendMessageW(Hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSmall);
+				}
+			}
+		}
+	}
+}
+#endif
 
 AFPSMultiplayerGameMode::AFPSMultiplayerGameMode()
 {
@@ -113,6 +163,9 @@ void AFPSMultiplayerGameMode::EnsureCombatArenaExists()
 void AFPSMultiplayerGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+#if PLATFORM_WINDOWS
+	ApplyTacticalMultiplayerWindowIcon();
+#endif
 
 	// Enforce baseline iGPU optimization on fresh match load if no user config exists yet
 	if (GConfig && GetWorld())

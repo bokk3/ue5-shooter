@@ -1387,7 +1387,7 @@ void AFPSMenuHangarStage::ConfigurePreviewActorAndCamera(AFPSCharacterPreviewAct
 	{
 		InPreviewActor->StudioKeyLight->SetRelativeLocation(FVector(110.0f, 155.0f, 185.0f));
 		InPreviewActor->StudioKeyLight->SetRelativeRotation(FRotator(-22.0f, -125.0f, 0.0f));
-		InPreviewActor->StudioKeyLight->SetIntensity(8500.0f);
+		InPreviewActor->StudioKeyLight->SetIntensity(1800.0f);
 		InPreviewActor->StudioKeyLight->SetLightColor(FLinearColor(1.0f, 0.70f, 0.35f)); // Warm Amber
 	}
 
@@ -1395,20 +1395,20 @@ void AFPSMenuHangarStage::ConfigurePreviewActorAndCamera(AFPSCharacterPreviewAct
 	{
 		InPreviewActor->StudioRimLight->SetRelativeLocation(FVector(-95.0f, -155.0f, 160.0f));
 		InPreviewActor->StudioRimLight->SetRelativeRotation(FRotator(-16.0f, 55.0f, 0.0f));
-		InPreviewActor->StudioRimLight->SetIntensity(9500.0f);
+		InPreviewActor->StudioRimLight->SetIntensity(2200.0f);
 		InPreviewActor->StudioRimLight->SetLightColor(FLinearColor(0.0f, 0.898f, 1.0f)); // Tactical Cyan
 	}
 
 	if (InPreviewActor->StudioFillLight)
 	{
 		InPreviewActor->StudioFillLight->SetRelativeLocation(FVector(150.0f, 0.0f, 115.0f));
-		InPreviewActor->StudioFillLight->SetIntensity(6500.0f);
+		InPreviewActor->StudioFillLight->SetIntensity(1100.0f);
 		InPreviewActor->StudioFillLight->SetLightColor(FLinearColor(1.0f, 0.96f, 0.90f));
 	}
 
 	if (InPreviewActor->StudioAmbientLight)
 	{
-		InPreviewActor->StudioAmbientLight->SetIntensity(2500.0f);
+		InPreviewActor->StudioAmbientLight->SetIntensity(500.0f);
 		InPreviewActor->StudioAmbientLight->SetLightColor(FLinearColor(0.35f, 0.45f, 0.55f));
 	}
 
@@ -1422,11 +1422,17 @@ void AFPSMenuHangarStage::ConfigurePreviewActorAndCamera(AFPSCharacterPreviewAct
 	{
 		FPostProcessSettings& CamPP = InPreviewActor->PreviewCamera->PostProcessSettings;
 		CamPP.bOverride_AutoExposureMethod = true;
-		CamPP.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+		CamPP.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
 		CamPP.bOverride_AutoExposureBias = true;
-		CamPP.AutoExposureBias = 0.0f;
-		CamPP.bOverride_AutoExposureMinBrightness = false;
-		CamPP.bOverride_AutoExposureMaxBrightness = false;
+		CamPP.AutoExposureBias = -0.35f;
+		CamPP.bOverride_AutoExposureMinBrightness = true;
+		CamPP.AutoExposureMinBrightness = 0.40f;
+		CamPP.bOverride_AutoExposureMaxBrightness = true;
+		CamPP.AutoExposureMaxBrightness = 2.0f;
+		CamPP.bOverride_AutoExposureSpeedUp = true;
+		CamPP.AutoExposureSpeedUp = 20.0f;
+		CamPP.bOverride_AutoExposureSpeedDown = true;
+		CamPP.AutoExposureSpeedDown = 20.0f;
 
 		CamPP.bOverride_BloomIntensity = true;
 		CamPP.BloomIntensity = 0.28f;
