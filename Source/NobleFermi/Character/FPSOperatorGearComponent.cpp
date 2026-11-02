@@ -224,8 +224,10 @@ UFPSOperatorGearComponent::UFPSOperatorGearComponent()
 		Comp->bCastDynamicShadow = true;
 		Comp->SetOwnerNoSee(false);
 		Comp->SetOnlyOwnerSee(false);
-		Comp->SetHiddenInGame(false);
-		Comp->SetVisibility(true, true);
+		Comp->SetCastShadow(false);
+		Comp->bCastDynamicShadow = false;
+		Comp->SetHiddenInGame(true);
+		Comp->SetVisibility(false, false);
 		AllGearMeshes.Add(Comp);
 		return Comp;
 	};
@@ -266,14 +268,16 @@ void UFPSOperatorGearComponent::InitializeGearRig(USkeletalMeshComponent* InBody
 	{
 		if (Comp)
 		{
-			Comp->SetVisibility(false, true);
+			Comp->ClearAllMeshSections();
+			Comp->SetVisibility(false, false);
 			Comp->SetHiddenInGame(true);
 		}
 	}
 
 	if (CarbineProcMesh)
 	{
-		CarbineProcMesh->SetVisibility(false, true);
+		CarbineProcMesh->ClearAllMeshSections();
+		CarbineProcMesh->SetVisibility(false, false);
 		CarbineProcMesh->SetHiddenInGame(true);
 	}
 
@@ -1295,21 +1299,17 @@ void UFPSOperatorGearComponent::ApplyCamoPreset(int32 CamoIndex)
 void UFPSOperatorGearComponent::ApplyHeadgearVariant(int32 HeadgearIndex)
 {
 	CurrentHeadgearIndex = FMath::Clamp(HeadgearIndex, 0, 3);
-	BuildZone1_HeadAndComms();
-	ApplyGearMaterialsToMesh(HeadGearProcMesh);
-	UpdateGearTransforms();
+	// High-fidelity SK_BaseMale model contains full integrated tactical FAST helmet
+	if (HeadGearProcMesh) { HeadGearProcMesh->SetVisibility(false, false); HeadGearProcMesh->SetHiddenInGame(true); }
 }
 
 void UFPSOperatorGearComponent::ApplyVestVariant(int32 VestIndex)
 {
 	CurrentVestIndex = FMath::Clamp(VestIndex, 0, 2);
-	BuildZone2_PlateCarrierAndCollar();
-	ApplyGearMaterialsToMesh(TorsoGearProcMesh);
-
-	const bool bShowHeavyPauldrons = (CurrentVestIndex != 2);
-	if (LeftPauldronProcMesh) LeftPauldronProcMesh->SetVisibility(bShowHeavyPauldrons, true);
-	if (RightPauldronProcMesh) RightPauldronProcMesh->SetVisibility(bShowHeavyPauldrons, true);
-	UpdateGearTransforms();
+	// High-fidelity SK_BaseMale model contains full integrated tactical armor vest
+	if (LeftPauldronProcMesh) { LeftPauldronProcMesh->SetVisibility(false, false); LeftPauldronProcMesh->SetHiddenInGame(true); }
+	if (RightPauldronProcMesh) { RightPauldronProcMesh->SetVisibility(false, false); RightPauldronProcMesh->SetHiddenInGame(true); }
+	if (TorsoGearProcMesh) { TorsoGearProcMesh->SetVisibility(false, false); TorsoGearProcMesh->SetHiddenInGame(true); }
 }
 
 void UFPSOperatorGearComponent::ApplyWeaponFinishVariant(int32 FinishIndex)
@@ -1323,7 +1323,8 @@ void UFPSOperatorGearComponent::SetHelmetVisible(bool bVisible)
 	bIsHelmetPopped = !bVisible;
 	if (HeadGearProcMesh)
 	{
-		HeadGearProcMesh->SetVisibility(bVisible, true);
+		HeadGearProcMesh->SetVisibility(false, false);
+		HeadGearProcMesh->SetHiddenInGame(true);
 	}
 }
 

@@ -308,12 +308,12 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 	PlateCarrierProcMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	PlateCarrierProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	PlateCarrierProcMesh->SetCastShadow(true);
-	PlateCarrierProcMesh->bCastDynamicShadow = true;
+	PlateCarrierProcMesh->SetCastShadow(false);
+	PlateCarrierProcMesh->bCastDynamicShadow = false;
 	PlateCarrierProcMesh->SetOwnerNoSee(false);
 	PlateCarrierProcMesh->SetOnlyOwnerSee(false);
-	PlateCarrierProcMesh->SetHiddenInGame(false);
-	PlateCarrierProcMesh->SetVisibility(true, true);
+	PlateCarrierProcMesh->SetHiddenInGame(true);
+	PlateCarrierProcMesh->SetVisibility(false, false);
 
 	// Authoritative 3D Procedural Tactical FAST Ballistic Helmet (Attached to Capsule so it NEVER inherits 100x FBX bone scale!)
 	BallisticHelmetProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("BallisticHelmetProcMesh"));
@@ -322,12 +322,12 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 	BallisticHelmetProcMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	BallisticHelmetProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BallisticHelmetProcMesh->SetCastShadow(true);
-	BallisticHelmetProcMesh->bCastDynamicShadow = true;
+	BallisticHelmetProcMesh->SetCastShadow(false);
+	BallisticHelmetProcMesh->bCastDynamicShadow = false;
 	BallisticHelmetProcMesh->SetOwnerNoSee(false);
 	BallisticHelmetProcMesh->SetOnlyOwnerSee(false);
-	BallisticHelmetProcMesh->SetHiddenInGame(false);
-	BallisticHelmetProcMesh->SetVisibility(true, true);
+	BallisticHelmetProcMesh->SetHiddenInGame(true);
+	BallisticHelmetProcMesh->SetVisibility(false, false);
 
 	// Legacy basic shape static meshes (Kept hidden; ProceduralMesh is authoritative)
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
@@ -529,7 +529,32 @@ void AFPSCharacter::BeginPlay()
 			BodyMID->SetScalarParameterValue(TEXT("RipstopTiling"), 24.0f);
 		}
 
-		// Build and attach Authoritative 3D Procedural Level IV Ceramic Plate Carrier & FAST Helmet
+		// Setup high-fidelity tactical visor & armor materials for SK_BaseMale
+		if (UMaterialInstanceDynamic* VisorMID = Cast<UMaterialInstanceDynamic>(GetMesh()->GetMaterial(2)))
+		{
+			VisorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.005f, 0.008f, 0.012f));
+			VisorMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 1.4f, 0.35f));
+			VisorMID->SetScalarParameterValue(TEXT("EmissiveIntensity"), 2.5f);
+		}
+		else if (UMaterialInstanceDynamic* NewVisorMID = GetMesh()->CreateDynamicMaterialInstance(2))
+		{
+			NewVisorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.005f, 0.008f, 0.012f));
+			NewVisorMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(0.0f, 1.4f, 0.35f));
+			NewVisorMID->SetScalarParameterValue(TEXT("EmissiveIntensity"), 2.5f);
+		}
+
+		if (UMaterialInstanceDynamic* ArmorMID = Cast<UMaterialInstanceDynamic>(GetMesh()->GetMaterial(1)))
+		{
+			ArmorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.08f, 0.10f, 0.12f, 1.0f));
+			ArmorMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.55f);
+		}
+		else if (UMaterialInstanceDynamic* NewArmorMID = GetMesh()->CreateDynamicMaterialInstance(1))
+		{
+			NewArmorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.08f, 0.10f, 0.12f, 1.0f));
+			NewArmorMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.55f);
+		}
+
+		// Legacy procedural boxes bypassed to let SK_BaseMale render cleanly
 		BuildProceduralTacticalGear();
 
 		if (OperatorGearComponent)
@@ -901,18 +926,16 @@ void AFPSCharacter::Tick(float DeltaTime)
 			OperatorGearComponent->UpdateGearTransforms();
 		}
 
-		const FQuat GearWorldQuat = MeshComp->GetComponentQuat();
-		if (PlateCarrierProcMesh && !bIsDead)
+		// Procedural box meshes remain disabled - SK_BaseMale contains integrated tactical armor and helmet
+		if (PlateCarrierProcMesh && PlateCarrierProcMesh->IsVisible() && !bIsDead)
 		{
 			const FVector SpineWorldLoc = MeshComp->GetBoneLocation(FName(TEXT("spine_03")), EBoneSpaces::WorldSpace);
-			PlateCarrierProcMesh->SetWorldLocationAndRotation(SpineWorldLoc, GearWorldQuat);
-			PlateCarrierProcMesh->SetWorldScale3D(bIsArmorPlateShattered ? FVector(0.92f, 0.80f, 0.92f) : FVector(1.0f, 1.0f, 1.0f));
+			PlateCarrierProcMesh->SetWorldLocationAndRotation(SpineWorldLoc, MeshComp->GetComponentQuat());
 		}
-		if (BallisticHelmetProcMesh && !bIsHelmetPopped && !bIsDead)
+		if (BallisticHelmetProcMesh && BallisticHelmetProcMesh->IsVisible() && !bIsHelmetPopped && !bIsDead)
 		{
 			const FVector HeadWorldLoc = MeshComp->GetBoneLocation(FName(TEXT("head")), EBoneSpaces::WorldSpace);
-			BallisticHelmetProcMesh->SetWorldLocationAndRotation(HeadWorldLoc, GearWorldQuat);
-			BallisticHelmetProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
+			BallisticHelmetProcMesh->SetWorldLocationAndRotation(HeadWorldLoc, MeshComp->GetComponentQuat());
 		}
 	}
 }
@@ -2570,9 +2593,8 @@ void AFPSCharacter::MulticastPopBallisticHelmet_Implementation(FVector ShotDirec
 	}
 	if (BallisticHelmetProcMesh)
 	{
-		BallisticHelmetProcMesh->SetHiddenInGame(false);
-		BallisticHelmetProcMesh->SetVisibility(true, true);
-		BallisticHelmetProcMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+		BallisticHelmetProcMesh->SetHiddenInGame(true);
+		BallisticHelmetProcMesh->SetVisibility(false, false);
 	}
 	if (BallisticHelmetMesh)
 	{
@@ -2952,21 +2974,15 @@ void AFPSCharacter::RedeployOperator()
 		OperatorGearComponent->SetHelmetVisible(true);
 	}
 
-	if (PlateCarrierProcMesh && GetCapsuleComponent())
+	if (PlateCarrierProcMesh)
 	{
-		PlateCarrierProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-		PlateCarrierProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 28.0f));
-		PlateCarrierProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
-		PlateCarrierProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
-		PlateCarrierProcMesh->SetVisibility(true, true);
+		PlateCarrierProcMesh->SetVisibility(false, false);
+		PlateCarrierProcMesh->SetHiddenInGame(true);
 	}
-	if (BallisticHelmetProcMesh && GetCapsuleComponent())
+	if (BallisticHelmetProcMesh)
 	{
-		BallisticHelmetProcMesh->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-		BallisticHelmetProcMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
-		BallisticHelmetProcMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
-		BallisticHelmetProcMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
-		BallisticHelmetProcMesh->SetVisibility(true, true);
+		BallisticHelmetProcMesh->SetVisibility(false, false);
+		BallisticHelmetProcMesh->SetHiddenInGame(true);
 	}
 	if (ChestCarrierMesh) { ChestCarrierMesh->SetVisibility(false); ChestCarrierMesh->SetHiddenInGame(true); }
 	if (BallisticHelmetMesh) { BallisticHelmetMesh->SetVisibility(false); BallisticHelmetMesh->SetHiddenInGame(true); }
@@ -2980,112 +2996,18 @@ void AFPSCharacter::RedeployOperator()
 
 void AFPSCharacter::BuildProceduralTacticalGear()
 {
-	UMaterialInterface* BaseMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	if (!BaseMat)
-	{
-		BaseMat = UMaterial::GetDefaultMaterial(MD_Surface);
-	}
-
-	// 1. Build Level IV Ceramic Plate Carrier
+	// Legacy procedural box blockout meshes disabled in favor of high-fidelity SK_BaseMale model
 	if (PlateCarrierProcMesh)
 	{
 		PlateCarrierProcMesh->ClearAllMeshSections();
-
-		TArray<FVector> Vertices;
-		TArray<int32> Triangles;
-		TArray<FVector> Normals;
-		TArray<FVector2D> UVs;
-		TArray<FColor> Colors;
-		TArray<FProcMeshTangent> Tangents;
-
-		// Front Plate Bag (15 x 5 x 16)
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(0.0f, 9.0f, 0.0f), FVector(15.0f, 5.0f, 16.0f), FRotator::ZeroRotator, FColor(24, 26, 28, 255));
-
-		// Back Plate Bag (14 x 4.5 x 15)
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(0.0f, -8.5f, 0.0f), FVector(14.0f, 4.5f, 15.0f), FRotator::ZeroRotator, FColor(22, 24, 26, 255));
-
-		// Left & Right Shoulder Straps (3 x 9 x 1.5)
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(-9.0f, 0.0f, 16.5f), FVector(3.0f, 9.0f, 1.5f), FRotator::ZeroRotator, FColor(18, 20, 22, 255));
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(9.0f, 0.0f, 16.5f), FVector(3.0f, 9.0f, 1.5f), FRotator::ZeroRotator, FColor(18, 20, 22, 255));
-
-		// Left & Right Cummerbund Flanks (2 x 9 x 6)
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(-14.0f, 0.0f, -2.0f), FVector(2.0f, 9.0f, 6.0f), FRotator::ZeroRotator, FColor(20, 22, 24, 255));
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(14.0f, 0.0f, -2.0f), FVector(2.0f, 9.0f, 6.0f), FRotator::ZeroRotator, FColor(20, 22, 24, 255));
-
-		// 3 Kangaroo Mag Pouches on Front Chest
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(-8.0f, 15.0f, -4.0f), FVector(3.8f, 2.5f, 7.5f), FRotator::ZeroRotator, FColor(26, 28, 30, 255));
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(0.0f, 15.0f, -4.0f), FVector(3.8f, 2.5f, 7.5f), FRotator::ZeroRotator, FColor(26, 28, 30, 255));
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(8.0f, 15.0f, -4.0f), FVector(3.8f, 2.5f, 7.5f), FRotator::ZeroRotator, FColor(26, 28, 30, 255));
-
-		PlateCarrierProcMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
-
-		if (BaseMat)
-		{
-			if (UMaterialInstanceDynamic* CarrierMID = PlateCarrierProcMesh->CreateDynamicMaterialInstance(0, BaseMat))
-			{
-				CarrierMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.08f, 0.09f, 0.11f, 1.0f));
-				CarrierMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.08f, 0.09f, 0.11f, 1.0f));
-				CarrierMID->SetScalarParameterValue(TEXT("Roughness"), 0.70f);
-				CarrierMID->SetScalarParameterValue(TEXT("Metallic"), 0.10f);
-			}
-		}
+		PlateCarrierProcMesh->SetHiddenInGame(true);
+		PlateCarrierProcMesh->SetVisibility(false, false);
 	}
-
-	// 2. Build FAST Ballistic Helmet
 	if (BallisticHelmetProcMesh)
 	{
 		BallisticHelmetProcMesh->ClearAllMeshSections();
-
-		TArray<FVector> Vertices;
-		TArray<int32> Triangles;
-		TArray<FVector> Normals;
-		TArray<FVector2D> UVs;
-		TArray<FColor> Colors;
-		TArray<FProcMeshTangent> Tangents;
-
-		// High-Cut FAST Helmet Shell (11.5 x 12.5 x 9)
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(0.0f, 1.0f, 8.5f), FVector(11.5f, 12.5f, 9.0f), FRotator::ZeroRotator, FColor(22, 22, 24, 255));
-
-		// Crown Ridge (4 x 11 x 1.5)
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(0.0f, 0.5f, 18.0f), FVector(4.0f, 11.0f, 1.5f), FRotator::ZeroRotator, FColor(20, 20, 22, 255));
-
-		// Forehead NVG Shroud (2.5 x 1 x 2.5)
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(0.0f, 13.0f, 8.0f), FVector(2.5f, 1.0f, 2.5f), FRotator::ZeroRotator, FColor(45, 45, 48, 255));
-
-		// Left & Right ARC Accessory Rails (1.2 x 7 x 1.8)
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(-12.5f, 1.0f, 7.0f), FVector(1.2f, 7.0f, 1.8f), FRotator::ZeroRotator, FColor(18, 18, 20, 255));
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(12.5f, 1.0f, 7.0f), FVector(1.2f, 7.0f, 1.8f), FRotator::ZeroRotator, FColor(18, 18, 20, 255));
-
-		// Velcro Top Patch Panel (4 x 5 x 0.3)
-		AddBoxToProcMeshBuffers(Vertices, Triangles, Normals, UVs, Colors,
-			FVector(0.0f, -2.0f, 18.0f), FVector(4.0f, 5.0f, 0.3f), FRotator::ZeroRotator, FColor(35, 35, 38, 255));
-
-		BallisticHelmetProcMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
-
-		if (BaseMat)
-		{
-			if (UMaterialInstanceDynamic* HelmetMID = BallisticHelmetProcMesh->CreateDynamicMaterialInstance(0, BaseMat))
-			{
-				HelmetMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.06f, 0.07f, 0.08f, 1.0f));
-				HelmetMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.06f, 0.07f, 0.08f, 1.0f));
-				HelmetMID->SetScalarParameterValue(TEXT("Roughness"), 0.65f);
-				HelmetMID->SetScalarParameterValue(TEXT("Metallic"), 0.15f);
-			}
-		}
+		BallisticHelmetProcMesh->SetHiddenInGame(true);
+		BallisticHelmetProcMesh->SetVisibility(false, false);
 	}
 }
 
