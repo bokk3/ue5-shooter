@@ -42,9 +42,17 @@ void UFPSAuthSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		}
 	}
 
+	// Clean quotes and trailing slashes
+	ApiBaseUrl.TrimQuotesInline();
 	if (ApiBaseUrl.EndsWith(TEXT("/")))
 	{
 		ApiBaseUrl = ApiBaseUrl.LeftChop(1);
+	}
+
+	// Guard against truncated URL (e.g. 'https:' from unquoted ini comment stripping)
+	if (ApiBaseUrl.IsEmpty() || !ApiBaseUrl.Contains(TEXT("://")) || ApiBaseUrl.Len() < 10)
+	{
+		ApiBaseUrl = TEXT("https://noble-fermi.pages.dev/api");
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("[FPSAuthSubsystem] Initialized. Target Edge API: %s"), *ApiBaseUrl);
