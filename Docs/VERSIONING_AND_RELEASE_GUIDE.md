@@ -27,7 +27,7 @@ Example: **`v0.4.0-alpha`**
 ## 2. Release Progression History & Roadmap
 
 ```
- v0.1.0-alpha            v0.2.0-alpha            v0.3.0-alpha            v0.4.0-alpha (Current)
+ v0.1.0-alpha            v0.2.0-alpha            v0.3.0-alpha            v0.4.2-alpha (Current)
 ┌─────────────┐         ┌─────────────┐         ┌─────────────┐         ┌─────────────────────────┐
 │ OTS Locomotion │  ───► │ Acrylic Lobby│  ───► │ 11-Sector   │  ───►  │ BaseMale Spec-Ops Mesh, │
 │ 128Hz Netcode │       │ Favela Arena│         │ Weapon Wheel│         │ Diorama Plinth, Live    │
@@ -59,7 +59,7 @@ When bumping versions, all of the following locations must be updated synchronou
    - Download button anchor: `https://github.com/bokk3/ue5-shooter/releases/tag/v0.4.0-alpha`
    - Button text: `DOWNLOAD V0.4.0-ALPHA RELEASE`
 5. **Git Tag**:
-   - Annotated Git tag with release notes: `git tag -a v0.4.0-alpha -m "NOBLE FERMI v0.4.0-alpha: ..."`
+   - Annotated Git tag with release notes: `git tag -a v0.4.2-alpha -m "NOBLE FERMI v0.4.0-alpha: ..."`
 
 ---
 
@@ -74,7 +74,7 @@ To generate the standalone release archive:
 New-Item -ItemType Directory -Force -Path "Releases"
 
 # Package standalone client files into distribution zip
-Compress-Archive -Path "Packaged\Windows\*" -DestinationPath "Releases\NobleFermi-v0.4.0-alpha-Windows.zip" -Force
+Compress-Archive -Path "Packaged\Windows\*" -DestinationPath "Releases\NobleFermi-v0.4.2-alpha-Windows.zip" -Force
 ```
 
 ### Git Tag Creation
@@ -84,7 +84,7 @@ Compress-Archive -Path "Packaged\Windows\*" -DestinationPath "Releases\NobleFerm
 git status
 
 # Create annotated tag
-git tag -a v0.4.0-alpha -m "NOBLE FERMI v0.4.0-alpha: High-Res Spec-Ops Operator, Turntable Plinth & Live Splash Telemetry"
+git tag -a v0.4.2-alpha -m "NOBLE FERMI v0.4.0-alpha: High-Res Spec-Ops Operator, Turntable Plinth & Live Splash Telemetry"
 
 # Push commit and tags to origin (when ready)
 # git push origin master --tags

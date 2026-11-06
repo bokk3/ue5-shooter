@@ -4,8 +4,8 @@
 
 # NOBLE FERMI // CHRONO-TACTICAL BALLISTIC WARFARE
 
-[![Release](https://img.shields.io/badge/Release-v0.4.1--alpha-FFEA00.svg?style=flat-square&logo=github)](https://github.com/bokk3/ue5-shooter/releases/tag/v0.4.1-alpha)
-[![Build](https://img.shields.io/badge/Build-0.4.1.51-00E5FF.svg?style=flat-square)]()
+[![Release](https://img.shields.io/badge/Release-v0.4.2--alpha-FFEA00.svg?style=flat-square&logo=github)](https://github.com/bokk3/ue5-shooter/releases/tag/v0.4.2-alpha)
+[![Build](https://img.shields.io/badge/Build-0.4.2.52-00E5FF.svg?style=flat-square)]()
 [![Engine](https://img.shields.io/badge/Unreal%20Engine-5.8-00E5FF.svg?style=flat-square&logo=unrealengine)](https://www.unrealengine.com/)
 [![Language](https://img.shields.io/badge/Language-C%2B%2B20-FFB300.svg?style=flat-square&logo=cplusplus)](https://en.cppreference.com/w/cpp/20)
 [![Tickrate](https://img.shields.io/badge/Tickrate-128%20Hz%20Authoritative-00E676.svg?style=flat-square)]()
@@ -15,7 +15,7 @@
 
 > **Noble Fermi** is an authoritative 128-tick tactical shooter built natively in **Unreal Engine 5.8 C++20**. Engineered around a responsive **3rd-person over-the-shoulder (OTS) combat perspective** and **The Fermi Paradox Engine**, it fuses high-lethality military gunplay, physical **Level IV Ceramic Armor Plate fracture**, localized **0.25x relativistic time-dilation spheres (`AFPSFermiTimeBubble`)** that convert incoming hitscan rounds into dodgeable 3D brass slugs (`AFPSDilatedBulletActor`), **Acoustic Hologram Decoys & Mid-Air Quantum Phase-Swapping (`AFPSFermiDecoyActor`)**, and a **zero-UMG Pure Slate C++ AR Visor HUD & 3-Zone Acrylic Command Lobby**.
 >
-> 📦 **Latest Release**: [**Noble Fermi v0.4.1-alpha (Build 0.4.1.51)**](https://github.com/bokk3/ue5-shooter/releases/tag/v0.4.1-alpha) — Featuring the full Command Center UI with interactive Slate spark particles, real Vanguard Spec-Ops operator in 3D hangar diorama, Favela // Rocha Velha & Favela // Baía Brava arenas with 128-tick tactical bots, and 7-zone customizable armor loadouts.
+> 📦 **Latest Release**: [**Noble Fermi v0.4.2-alpha (Build 0.4.2.52)**](https://github.com/bokk3/ue5-shooter/releases/tag/v0.4.2-alpha) — Featuring the full Command Center UI with interactive Slate spark particles, real Vanguard Spec-Ops operator in 3D hangar diorama, Favela // Rocha Velha & Favela // Baía Brava arenas with 128-tick tactical bots, and 7-zone customizable armor loadouts.
 
 ---
 
@@ -116,7 +116,7 @@
 ## Quick Launch & Deployment
 
 > [!TIP]
-> Download the pre-packaged standalone release directly from the [**v0.4.1-alpha Release**](https://github.com/bokk3/ue5-shooter/releases/tag/v0.4.1-alpha), or launch from local source as detailed below.
+> Download the pre-packaged standalone release directly from the [**v0.4.2-alpha Release**](https://github.com/bokk3/ue5-shooter/releases/tag/v0.4.2-alpha), or launch from local source as detailed below.
 
 ### 1. Launch Standalone Client (3-Zone Lobby → Favela // Rocha Velha Arena)
 Double-click `Launch_Menu.bat` or run from PowerShell:
