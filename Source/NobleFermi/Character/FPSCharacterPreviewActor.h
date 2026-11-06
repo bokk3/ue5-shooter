@@ -12,6 +12,8 @@ class USpotLightComponent;
 class UPointLightComponent;
 class UMaterialInstanceDynamic;
 class UFPSOperatorGearComponent;
+class UFPSBeltGearComponent;
+class UFPSBreathVaporComponent;
 
 UENUM(BlueprintType)
 enum class EOperatorCamo : uint8
@@ -49,10 +51,10 @@ enum class EOperatorWeaponFinish : uint8
 };
 
 /**
- * 3D Rotating Task Force Echo Operator Model for Main Menu Hangar Diorama & Customisation.
- * Displays adult human male soldier (180cm, 82kg anthropometry) equipped with the 7-Zone
- * Socket-Driven Tactical Armor Rig (UFPSOperatorGearComponent) and Spec-Ops Carbine in an
- * authoritative Low-Ready stance with 360-degree turntable rotation.
+ * 3D Rotating Task Force Echo Operator Model for Main Menu Hangar Diorama & Customization.
+ * Displays animated SK_BaseMale operator driven by UFPSAnimInstance (grounded 180cm posture,
+ * 0.18 Hz weight transfer, 0.32 Hz thoracic breathing, situational micro-look), modular 3D belt gear
+ * (STANAG fast-mag pouches, M67 frag grenade, M84 flashbang), and Hangar Table Loadout Rifle display.
  */
 UCLASS()
 class NOBLEFERMI_API AFPSCharacterPreviewActor : public AActor
@@ -95,17 +97,51 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Turntable")
 	TObjectPtr<UStaticMeshComponent> PedestalMesh;
 
-	// Master Anatomical Skeletal Mesh (SK_BaseMale)
-	// Master High-Fidelity Posed Operator (Vanguard Soldier with Armor Rig, Helmet, Visor, Boots & AK-47)
+	// Static posed fallback mesh
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Operator")
 	TObjectPtr<UStaticMeshComponent> OperatorMesh;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Skeletal")
+	// Live Skinned Operator Mesh (SK_BaseMale driven by UFPSAnimInstance)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Skeletal")
 	TObjectPtr<USkeletalMeshComponent> BodyMesh;
 
-	// 7-Zone Socket-Driven 3D Tactical Gear & Carbine Rig Component
+	// Modular 3D Belt Gear Component (STANAG mags, M67 Frag, M84 Flashbang)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Gear")
+	TObjectPtr<UFPSBeltGearComponent> BeltGearComponent;
+
+	// Procedural Cold Breath Vapor Component
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Effects")
+	TObjectPtr<UFPSBreathVaporComponent> BreathVaporComponent;
+
+	// 7-Zone Socket-Driven 3D Tactical Gear Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Gear")
 	TObjectPtr<UFPSOperatorGearComponent> OperatorGearComponent;
+
+	// Hangar Armory Table & Loadout Weapon Display (reflects active loadout archetype & finish)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|TableWeapon")
+	TObjectPtr<USceneComponent> TableWeaponRoot;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|TableWeapon")
+	TObjectPtr<UStaticMeshComponent> TablePedestalMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|TableWeapon")
+	TObjectPtr<UStaticMeshComponent> TableRackStandMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|TableWeapon")
+	TObjectPtr<UStaticMeshComponent> TableRifleReceiverMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|TableWeapon")
+	TObjectPtr<UStaticMeshComponent> TableRifleMagMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|TableWeapon")
+	TObjectPtr<USpotLightComponent> TableWeaponKeyLight;
+
+	// Hand-held rifle meshes (shown when previewing High-Ready ADS stance in customization)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|HeldWeapon")
+	TObjectPtr<UStaticMeshComponent> HeldRifleReceiverMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|HeldWeapon")
+	TObjectPtr<UStaticMeshComponent> HeldRifleMagMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Preview|Skeletal")
 	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
@@ -232,6 +268,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
 	void SetWeaponFinish(EOperatorWeaponFinish NewFinish);
 
+	/** Updates the rifle displayed on the Hangar table (and in ADS preview) based on current loadout archetype [0..4]. */
+	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
+	void SetEquippedWeaponArchetype(int32 ArchetypeIndex);
+
+	UFUNCTION(BlueprintPure, Category = "FPS Operator")
+	int32 GetEquippedWeaponArchetype() const { return CurrentWeaponArchetypeIndex; }
+
 	UFUNCTION(BlueprintCallable, Category = "FPS Operator")
 	void SetAimingStance(bool bInAiming);
 
@@ -286,7 +329,8 @@ private:
 	EOperatorHeadgear CurrentHeadgear = EOperatorHeadgear::BallisticHelmet;
 	EOperatorArmorVest CurrentVest = EOperatorArmorVest::HeavyPlateCarrier;
 	EOperatorWeaponFinish CurrentWeaponFinish = EOperatorWeaponFinish::FactoryBluedSteel;
-	int32 CurrentStanceIndex = 0; // 0 = Low-Ready Carbine (default), 1 = High-Ready ADS, 2 = Patrol Walk
+	int32 CurrentStanceIndex = 0; // 0 = Relaxed Tactical Idle (rifle on table), 1 = High-Ready ADS, 2 = Patrol Walk
+	int32 CurrentWeaponArchetypeIndex = 0; // 0 = NF-98, 1 = Spectre-45, 2 = VK-74, 3 = Falcon .50, 4 = Breacher-12
 
 	void UpdateAimingPose(float DeltaTime);
 	void ApplyCamoColors();

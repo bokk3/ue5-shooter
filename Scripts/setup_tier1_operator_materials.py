@@ -137,9 +137,50 @@ def create_visor_material(mat_name):
     unreal.log_warning(f"[MAT] Cleanly rebuilt {mat_name}")
     return mat
 
+# 2.5 Clean M_Belt_Gear_PBR (Dedicated untextured PBR material for 3D procedural belt gear: STANAG mags, M67 Frag, M84 Flashbang)
+def create_belt_gear_material(mat_name):
+    full_path = f"{materials_path}/{mat_name}"
+    mat = unreal.EditorAssetLibrary.load_asset(full_path)
+    if not mat:
+        mat_factory = unreal.MaterialFactoryNew()
+        mat = asset_tools.create_asset(mat_name, materials_path, unreal.Material, mat_factory)
+    else:
+        mat_editing.delete_all_material_expressions(mat)
+
+    try:
+        mat.set_editor_property("used_with_skeletal_mesh", True)
+        mat.set_editor_property("two_sided", True)
+    except Exception:
+        pass
+
+    col_param = mat_editing.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -450, -160)
+    col_param.set_editor_property("parameter_name", "BaseColor")
+    col_param.set_editor_property("default_value", unreal.LinearColor(0.18, 0.20, 0.22, 1.0))
+    mat_editing.connect_material_property(col_param, "", unreal.MaterialProperty.MP_BASE_COLOR)
+
+    rough_param = mat_editing.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -300, 40)
+    rough_param.set_editor_property("parameter_name", "Roughness")
+    rough_param.set_editor_property("default_value", 0.45)
+    mat_editing.connect_material_property(rough_param, "", unreal.MaterialProperty.MP_ROUGHNESS)
+
+    metal_param = mat_editing.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -300, 140)
+    metal_param.set_editor_property("parameter_name", "Metallic")
+    metal_param.set_editor_property("default_value", 0.50)
+    mat_editing.connect_material_property(metal_param, "", unreal.MaterialProperty.MP_METALLIC)
+
+    zero_emis = mat_editing.create_material_expression(mat, unreal.MaterialExpressionConstant, -200, 240)
+    zero_emis.set_editor_property("r", 0.0)
+    mat_editing.connect_material_property(zero_emis, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
+    mat_editing.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat, only_if_is_dirty=False)
+    unreal.log_warning(f"[MAT] Cleanly rebuilt {mat_name}")
+    return mat
+
 mat_uniform = create_uniform_material("M_Operator_BaseBody")
 mat_armor = create_uniform_material("M_Operator_Armor")
 mat_visor = create_visor_material("M_Soldier_Visor")
+mat_belt_gear = create_belt_gear_material("M_Belt_Gear_PBR")
 
 # 3. Import clean SM_Soldier_Posed
 posed_task = unreal.AssetImportTask()
@@ -172,8 +213,11 @@ if sm_posed:
     unreal.EditorAssetLibrary.save_loaded_asset(sm_posed, only_if_is_dirty=False)
     unreal.log_warning("Successfully assigned clean materials [M_Operator_BaseBody, M_Soldier_Visor] to SM_Soldier_Posed!")
 
-# 4. Reimport clean SK_BaseMale onto SK_BaseMale_Skeleton
-sk_skeleton = unreal.EditorAssetLibrary.load_asset("/Game/Characters/BaseMale/SK_BaseMale_Skeleton")
+# 4. Delete old conflicting SK_BaseMale / SK_BaseMale_Skeleton and import clean SK_BaseMale.fbx with its native Vanguard rest pose
+if unreal.EditorAssetLibrary.does_asset_exist("/Game/Characters/BaseMale/SK_BaseMale"):
+    unreal.EditorAssetLibrary.delete_asset("/Game/Characters/BaseMale/SK_BaseMale")
+if unreal.EditorAssetLibrary.does_asset_exist("/Game/Characters/BaseMale/SK_BaseMale_Skeleton"):
+    unreal.EditorAssetLibrary.delete_asset("/Game/Characters/BaseMale/SK_BaseMale_Skeleton")
 
 sk_task = unreal.AssetImportTask()
 sk_task.filename = sk_fbx
@@ -187,25 +231,27 @@ sk_opts = unreal.FbxImportUI()
 sk_opts.import_mesh = True
 sk_opts.import_as_skeletal = True
 sk_opts.mesh_type_to_import = unreal.FBXImportType.FBXIT_SKELETAL_MESH
-sk_opts.create_physics_asset = False
+sk_opts.create_physics_asset = True
 sk_opts.automated_import_should_detect_type = False
 sk_opts.import_animations = False
 sk_opts.import_materials = False
 sk_opts.import_textures = False
-if sk_skeleton:
-    sk_opts.skeleton = sk_skeleton
 sk_task.options = sk_opts
 
-unreal.log_warning("Importing clean SK_BaseMale.fbx onto SK_BaseMale_Skeleton...")
+unreal.log_warning("Importing clean SK_BaseMale.fbx with native Vanguard Skeleton...")
 asset_tools.import_asset_tasks([sk_task])
 
 sk_base = unreal.EditorAssetLibrary.load_asset("/Game/Characters/BaseMale/SK_BaseMale")
 if sk_base:
-    skeletal_mats = sk_base.get_editor_property("materials")
+    skeletal_mats = list(sk_base.get_editor_property("materials"))
     sk_assigned = [mat_uniform, mat_visor]
-    for idx in range(min(len(skeletal_mats), len(sk_assigned))):
-        skeletal_mats[idx].material_interface = sk_assigned[idx]
-    sk_base.set_editor_property("materials", skeletal_mats)
+    new_mats = []
+    for idx in range(len(skeletal_mats)):
+        mat_slot = skeletal_mats[idx]
+        if idx < len(sk_assigned):
+            mat_slot.set_editor_property("material_interface", sk_assigned[idx])
+        new_mats.append(mat_slot)
+    sk_base.set_editor_property("materials", new_mats)
     unreal.EditorAssetLibrary.save_loaded_asset(sk_base, only_if_is_dirty=False)
     unreal.log_warning("Successfully assigned clean materials [M_Operator_BaseBody, M_Soldier_Visor] to SK_BaseMale!")
 

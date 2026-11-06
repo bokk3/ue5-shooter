@@ -5,6 +5,8 @@
 #include "Lyra/Camera/FPSCameraComponent.h"
 #include "Lyra/AbilitySystem/FPSAbilitySystemComponent.h"
 #include "Character/FPSOperatorGearComponent.h"
+#include "Character/FPSBeltGearComponent.h"
+#include "Character/FPSBreathVaporComponent.h"
 #include "Character/FPSAnimInstance.h"
 #include "Character/FPSCharacterMovementComponent.h"
 #include "Combat/FPSHealthComponent.h"
@@ -205,7 +207,7 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	// Full tactical operator mesh: visible to local owner
 	GetMesh()->SetOwnerNoSee(false);
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -96.0f));
-	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	GetMesh()->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 	GetMesh()->SetCastShadow(true);
 	GetMesh()->bCastDynamicShadow = true;
 
@@ -239,42 +241,14 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	GetMesh()->SetCollisionObjectType(ECC_Pawn);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
-	// Tactical Locomotion Animations
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
-	if (IdleAnimFinder.Succeeded())
-	{
-		AnimIdleADS = IdleAnimFinder.Object;
-	}
+	// Tactical Locomotion Animations (Authoritative Procedural Animation in UFPSAnimInstance)
+	AnimIdleADS = nullptr;
+	AnimWalk = nullptr;
+	AnimRun = nullptr;
+	AnimSprint = nullptr;
 
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> WalkAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk.Anim_BaseMale_Walk"));
-	if (WalkAnimFinder.Succeeded())
-	{
-		AnimWalk = WalkAnimFinder.Object;
-	}
-
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> RunAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Run.Anim_BaseMale_Run"));
-	if (RunAnimFinder.Succeeded())
-	{
-		AnimRun = RunAnimFinder.Object;
-	}
-
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> SprintAnimFinder(TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Sprint.Anim_BaseMale_Sprint"));
-	if (SprintAnimFinder.Succeeded())
-	{
-		AnimSprint = SprintAnimFinder.Object;
-	}
-
-	// Tactical Locomotion Animation Blueprint / Native C++ AnimInstance
-	static ConstructorHelpers::FClassFinder<UAnimInstance> AnimBPFinder(TEXT("/Game/Characters/BaseMale/ABP_BaseMale.ABP_BaseMale_C"));
-	if (AnimBPFinder.Succeeded() && AnimBPFinder.Class)
-	{
-		AnimBlueprintClass = AnimBPFinder.Class;
-		GetMesh()->SetAnimInstanceClass(AnimBlueprintClass);
-	}
-	else
-	{
-		GetMesh()->SetAnimInstanceClass(UFPSAnimInstance::StaticClass());
-	}
+	// Authoritative Native C++ UFPSAnimInstance (Two-Bone IK + Tactical Resting Idle + Belt-Pull IK)
+	GetMesh()->SetAnimInstanceClass(UFPSAnimInstance::StaticClass());
 	GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 
 	HealthComponent = CreateDefaultSubobject<UFPSHealthComponent>(TEXT("HealthComponent"));
@@ -285,6 +259,8 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	EquipmentComponent = CreateDefaultSubobject<UFPSEquipmentComponent>(TEXT("EquipmentComponent"));
 	BodyMechanicsComponent = CreateDefaultSubobject<UFPSBodyMechanicsComponent>(TEXT("BodyMechanicsComponent"));
 	OperatorGearComponent = CreateDefaultSubobject<UFPSOperatorGearComponent>(TEXT("OperatorGearComponent"));
+	BeltGearComponent = CreateDefaultSubobject<UFPSBeltGearComponent>(TEXT("BeltGearComponent"));
+	BreathVaporComponent = CreateDefaultSubobject<UFPSBreathVaporComponent>(TEXT("BreathVaporComponent"));
 	HUDWidgetClass = UFPSHUDWidget::StaticClass();
 
 	// Lyra Replicated Framework Architecture
@@ -412,50 +388,18 @@ void AFPSCharacter::BeginPlay()
 			}
 		}
 
-		if (!AnimIdleADS)
-		{
-			AnimIdleADS = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Idle_ADS.Anim_BaseMale_Idle_ADS"));
-		}
-		if (!AnimLowReady)
-		{
-			AnimLowReady = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_LowReady.Anim_BaseMale_LowReady"));
-		}
-		if (!AnimWalk)
-		{
-			AnimWalk = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk.Anim_BaseMale_Walk"));
-		}
-		if (!AnimRun)
-		{
-			AnimRun = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Run.Anim_BaseMale_Run"));
-		}
-		if (!AnimSprint)
-		{
-			AnimSprint = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Sprint.Anim_BaseMale_Sprint"));
-		}
-		if (!AnimJumpLoop)
-		{
-			AnimJumpLoop = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Jump_Loop.Anim_BaseMale_Jump_Loop"));
-		}
-		if (!AnimCrouchIdle)
-		{
-			AnimCrouchIdle = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Crouch_Idle.Anim_BaseMale_Crouch_Idle"));
-		}
-		if (!AnimCrouchWalk)
-		{
-			AnimCrouchWalk = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Crouch_Walk.Anim_BaseMale_Crouch_Walk"));
-		}
-		if (!AnimSlide)
-		{
-			AnimSlide = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Slide.Anim_BaseMale_Slide"));
-		}
-		if (!AnimWalkBackwards)
-		{
-			AnimWalkBackwards = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Walk_Backwards.Anim_BaseMale_Walk_Backwards"));
-		}
-		if (!AnimReload)
-		{
-			AnimReload = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/BaseMale/Animations/Anim_BaseMale_Reload.Anim_BaseMale_Reload"));
-		}
+		// Authoritative Procedural Animation in UFPSAnimInstance (Resting Idle + Locomotion + IK)
+		AnimIdleADS = nullptr;
+		AnimLowReady = nullptr;
+		AnimWalk = nullptr;
+		AnimRun = nullptr;
+		AnimSprint = nullptr;
+		AnimJumpLoop = nullptr;
+		AnimCrouchIdle = nullptr;
+		AnimCrouchWalk = nullptr;
+		AnimSlide = nullptr;
+		AnimWalkBackwards = nullptr;
+		AnimReload = nullptr;
 
 		// Runtime fallback for Animation Blueprint mode / Authoritative C++ AnimInstance
 		if (!AnimBlueprintClass)
@@ -463,12 +407,16 @@ void AFPSCharacter::BeginPlay()
 			AnimBlueprintClass = LoadClass<UAnimInstance>(nullptr, TEXT("/Game/Characters/BaseMale/ABP_BaseMale.ABP_BaseMale_C"));
 		}
 
-		GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
-		GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		if (AnimLowReady)
+		GetMesh()->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
+		GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+		GetMesh()->SetAnimInstanceClass(UFPSAnimInstance::StaticClass());
+		if (BeltGearComponent)
 		{
-			GetMesh()->SetAnimation(AnimLowReady);
-			GetMesh()->Play(true);
+			BeltGearComponent->InitializeBeltKit(GetMesh());
+		}
+		if (BreathVaporComponent)
+		{
+			BreathVaporComponent->InitializeBreathVapor(GetMesh());
 		}
 
 		UMaterialInterface* CurrentMat = GetMesh()->GetMaterial(0);
@@ -493,33 +441,17 @@ void AFPSCharacter::BeginPlay()
 		UMaterialInstanceDynamic* BodyMID = GetMesh()->CreateDynamicMaterialInstance(0);
 		if (BodyMID)
 		{
-			if (UTexture* CamoTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Camo_Digital.T_Camo_Digital")))
+			if (UTexture* DiffuseTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Soldier_Diffuse.T_Soldier_Diffuse")))
 			{
-				BodyMID->SetTextureParameterValue(TEXT("Texture_Camo"), CamoTex);
+				BodyMID->SetTextureParameterValue(TEXT("Texture_Diffuse"), DiffuseTex);
 			}
-			if (UTexture* MaskTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Operator_Body_Mask.T_Operator_Body_Mask")))
+			if (UTexture* NormTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Soldier_Normal.T_Soldier_Normal")))
 			{
-				BodyMID->SetTextureParameterValue(TEXT("Texture_BodyMask"), MaskTex);
+				BodyMID->SetTextureParameterValue(TEXT("Texture_Normal"), NormTex);
 			}
-			if (UTexture* NormTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Ripstop_Normal.T_Ripstop_Normal")))
-			{
-				BodyMID->SetTextureParameterValue(TEXT("Texture_RipstopNormal"), NormTex);
-			}
-			if (UTexture* RoughTex = LoadObject<UTexture>(nullptr, TEXT("/Game/Characters/BaseMale/Textures/T_Ripstop_Roughness.T_Ripstop_Roughness")))
-			{
-				BodyMID->SetTextureParameterValue(TEXT("Texture_RipstopRoughness"), RoughTex);
-			}
-
-			BodyMID->SetVectorParameterValue(TEXT("CamoColorPrimary"), FLinearColor(0.25f, 0.28f, 0.32f, 1.0f));
-			BodyMID->SetVectorParameterValue(TEXT("CamoColorSecondary"), FLinearColor(0.12f, 0.14f, 0.17f, 1.0f));
-			BodyMID->SetVectorParameterValue(TEXT("CamoColorTertiary"), FLinearColor(0.42f, 0.44f, 0.46f, 1.0f));
-			BodyMID->SetVectorParameterValue(TEXT("TorsoColor"), FLinearColor(0.18f, 0.20f, 0.23f, 1.0f));
-			BodyMID->SetVectorParameterValue(TEXT("SkinTone"), FLinearColor(0.82f, 0.62f, 0.50f, 1.0f));
-			BodyMID->SetVectorParameterValue(TEXT("GearColor"), FLinearColor(0.05f, 0.06f, 0.07f, 1.0f));
-			BodyMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.75f);
-			BodyMID->SetScalarParameterValue(TEXT("SubsurfaceIntensity"), 0.40f);
-			BodyMID->SetScalarParameterValue(TEXT("CamoTiling"), 6.0f);
-			BodyMID->SetScalarParameterValue(TEXT("RipstopTiling"), 24.0f);
+			BodyMID->SetVectorParameterValue(TEXT("CamoTint"), FLinearColor(1.0f, 1.0f, 1.0f, 1.0f));
+			BodyMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.68f);
+			BodyMID->SetScalarParameterValue(TEXT("MetallicBase"), 0.05f);
 		}
 
 		// Setup high-fidelity tactical visor & armor materials for SK_BaseMale
@@ -536,15 +468,10 @@ void AFPSCharacter::BeginPlay()
 			NewVisorMID->SetScalarParameterValue(TEXT("EmissiveIntensity"), 2.5f);
 		}
 
-		if (UMaterialInstanceDynamic* ArmorMID = Cast<UMaterialInstanceDynamic>(GetMesh()->GetMaterial(1)))
+		if (UMaterialInstanceDynamic* VisorSlot1MID = GetMesh()->CreateDynamicMaterialInstance(1))
 		{
-			ArmorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.08f, 0.10f, 0.12f, 1.0f));
-			ArmorMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.55f);
-		}
-		else if (UMaterialInstanceDynamic* NewArmorMID = GetMesh()->CreateDynamicMaterialInstance(1))
-		{
-			NewArmorMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.08f, 0.10f, 0.12f, 1.0f));
-			NewArmorMID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.55f);
+			VisorSlot1MID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.65f, 0.75f, 0.85f, 1.0f));
+			VisorSlot1MID->SetScalarParameterValue(TEXT("RoughnessBase"), 0.15f);
 		}
 
 		// Legacy procedural boxes bypassed to let SK_BaseMale render cleanly
@@ -882,14 +809,43 @@ void AFPSCharacter::Tick(float DeltaTime)
 				Weapon->SetActorScale3D(FVector(1.0f, 1.0f, 1.0f));
 
 				const FVector HandR_Pos = MeshComp->GetBoneLocation(FName(TEXT("hand_r")), EBoneSpaces::WorldSpace);
-				const FVector HandL_Pos = MeshComp->GetBoneLocation(FName(TEXT("hand_l")), EBoneSpaces::WorldSpace);
 				
-				// During reload or when hands are decoupled, barrel tracks forward aim rather than hand_l so rifle isn't pulled into chest
+				// Tactical Forward Aim Vector derived from Player Control Rotation / Bot Aim
+				const FRotator AimRot = bIsTacticalBot ? BotAimRotation : GetControlRotation();
+				FVector AimDir = AimRot.Vector();
+				if (AimDir.IsNearlyZero())
+				{
+					AimDir = GetActorForwardVector();
+				}
+
+				// Check AnimInstance stance: Low-Ready vs High-Ready ADS
+				UFPSAnimInstance* AnimInst = GetFPSAnimInstance();
+				const float ReadyAlpha = AnimInst ? AnimInst->HighReadyAlpha : 1.0f;
 				const bool bWeaponReloading = Weapon->IsReloading();
-				const float HandDist = FVector::Dist(HandR_Pos, HandL_Pos);
-				FVector BarrelDir = (!bWeaponReloading && HandDist >= 15.0f && HandDist <= 55.0f)
-					? (HandL_Pos - HandR_Pos).GetSafeNormal()
-					: (bIsTacticalBot ? BotAimRotation.Vector() : GetControlRotation().Vector());
+				const bool bThrowingGrenade = (AnimInst && AnimInst->IsThrowingGrenade());
+
+				FVector BarrelDir;
+				if (bWeaponReloading)
+				{
+					// During reload: canted ~22 deg across body for magazine well visibility
+					const FVector CharRight = GetActorRightVector();
+					const FVector CharForward = GetActorForwardVector();
+					const FVector CharUp = GetActorUpVector();
+					BarrelDir = (CharForward * 0.86f - CharRight * 0.42f + CharUp * 0.12f).GetSafeNormal();
+				}
+				else if (bThrowingGrenade)
+				{
+					BarrelDir = AimDir;
+				}
+				else
+				{
+					// Low-Ready patrol cradle vs High-Ready ADS forward aiming
+					const FVector CharRight = GetActorRightVector();
+					const FVector CharForward = GetActorForwardVector();
+					const FVector CharUp = GetActorUpVector();
+					const FVector LowReadyDir = (CharForward * 0.72f - CharRight * 0.62f - CharUp * 0.31f).GetSafeNormal();
+					BarrelDir = FMath::Lerp(LowReadyDir, AimDir, ReadyAlpha).GetSafeNormal();
+				}
 
 				if (BarrelDir.IsNearlyZero())
 				{
@@ -910,7 +866,7 @@ void AFPSCharacter::Tick(float DeltaTime)
 				const FQuat FinalRifleQuat = BaseRifleQuat * DynamicRotOffset.Quaternion();
 				const FVector DynamicLocOffset = FinalRifleQuat.RotateVector(Weapon->GetRecoilOffsetLoc() + Weapon->GetReloadOffsetLoc());
 
-				Weapon->SetActorLocationAndRotation(HandR_Pos + DynamicLocOffset, FinalRifleQuat);
+				Weapon->SetActorLocationAndRotation(HandR_Pos + DynamicLocOffset, FinalRifleQuat, false, nullptr, ETeleportType::TeleportPhysics);
 			}
 		}
 
@@ -1078,7 +1034,7 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 		return;
 	}
 
-	FRotator TargetMeshRot = FRotator(0.0f, -90.0f, 0.0f);
+	FRotator TargetMeshRot = FRotator(0.0f, 90.0f, 0.0f);
 	float TargetZOffset = -96.0f;
 
 	if (FPSMovementComponent && FPSMovementComponent->IsBallisticDiving())
@@ -1095,7 +1051,7 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 		const float TargetRoll = -ForwardDot * DiveTiltDeg;
 		const float TargetPitch = RightDot * DiveTiltDeg;
 
-		TargetMeshRot = FRotator(TargetPitch, -90.0f, TargetRoll);
+		TargetMeshRot = FRotator(TargetPitch, 90.0f, TargetRoll);
 		TargetZOffset = FPSMovementComponent->IsInDiveLandingSlide() ? -68.0f : -58.0f;
 		DiveExitMeshRotation = TargetMeshRot;
 		DiveExitMeshZOffset = TargetZOffset;
@@ -1112,27 +1068,25 @@ void AFPSCharacter::UpdateBallisticDivePosture(float DeltaTime)
 
 		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
 		const float EndRoll = bRecoverToCrouch ? (-6.0f + FMath::Clamp(AimPitch * 0.35f, -20.0f, 20.0f)) : FMath::Clamp(AimPitch * 0.55f, -42.0f, 42.0f);
-		const FRotator EndRot = FRotator(0.0f, -90.0f, EndRoll);
+		const FRotator EndRot = FRotator(0.0f, 90.0f, EndRoll);
 		TargetMeshRot = FMath::Lerp(DiveExitMeshRotation, EndRot, SmoothCurve);
 	}
 	else if (FPSMovementComponent && FPSMovementComponent->IsSliding())
 	{
 		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
-		TargetMeshRot = FRotator(0.0f, -90.0f, 18.0f + FMath::Clamp(AimPitch * 0.25f, -15.0f, 15.0f));
+		TargetMeshRot = FRotator(0.0f, 90.0f, 18.0f + FMath::Clamp(AimPitch * 0.25f, -15.0f, 15.0f));
 		TargetZOffset = -42.0f;
 	}
 	else if (FPSMovementComponent && FPSMovementComponent->IsCrouching())
 	{
 		const float AimPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
-		TargetMeshRot = FRotator(0.0f, -90.0f, -6.0f + FMath::Clamp(AimPitch * 0.35f, -20.0f, 20.0f));
+		TargetMeshRot = FRotator(0.0f, 90.0f, -6.0f + FMath::Clamp(AimPitch * 0.35f, -20.0f, 20.0f));
 		TargetZOffset = -48.0f;
 	}
 	else
 	{
-		// Standing posture: Forward yaw = +90 deg strictly maintained
-		const float RawPitch = bIsTacticalBot ? BotAimRotation.Pitch : GetControlRotation().Pitch;
-		const float AimPitch = FRotator::NormalizeAxis(RawPitch);
-		TargetMeshRot = FRotator(0.0f, -90.0f, FMath::Clamp(AimPitch * 0.55f, -42.0f, 42.0f));
+		// Standing posture: Keep feet grounded flat on the floor; upper spine & arms handle AimPitch via UFPSAnimInstance
+		TargetMeshRot = FRotator(0.0f, 90.0f, 0.0f);
 		TargetZOffset = -96.0f;
 	}
 
@@ -1764,19 +1718,33 @@ void AFPSCharacter::UpdateLocomotionAnimation(float DeltaTime)
 		}
 	}
 
-	// Authoritative high-quality mocap locomotion animation playback
-	if (TargetAnim && TargetAnim != CurrentLocomotionAnim)
+	// Feed active mocap sequence to UFPSAnimInstance while keeping AnimationBlueprint mode active for Two-Bone IK & Resting Idle
+	CurrentLocomotionAnim = TargetAnim;
+	if (GetMesh()->GetAnimationMode() != EAnimationMode::AnimationBlueprint)
 	{
-		CurrentLocomotionAnim = TargetAnim;
-		GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		GetMesh()->SetAnimation(TargetAnim);
-		GetMesh()->SetPlayRate(PlayRate);
-		GetMesh()->Play(true);
+		GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+		GetMesh()->SetAnimInstanceClass(UFPSAnimInstance::StaticClass());
 	}
-	else if (CurrentLocomotionAnim)
+	if (UFPSAnimInstance* FPSAnim = GetFPSAnimInstance())
 	{
-		GetMesh()->SetPlayRate(PlayRate);
+		FPSAnim->SetActiveMocapSequence(TargetAnim, PlayRate);
 	}
+}
+
+bool AFPSCharacter::IsSprinting() const
+{
+	return FPSMovementComponent && FPSMovementComponent->IsTacticalSprinting();
+}
+
+bool AFPSCharacter::IsSliding() const
+{
+	return FPSMovementComponent && FPSMovementComponent->IsSliding();
+}
+
+float AFPSCharacter::GetReplicatedAimPitch() const
+{
+	const float RawPitch = bIsTacticalBot ? BotAimRotation.Pitch : GetControlRotation().Pitch;
+	return FRotator::NormalizeAxis(RawPitch);
 }
 
 UFPSAnimInstance* AFPSCharacter::GetFPSAnimInstance() const
@@ -1896,6 +1864,13 @@ void AFPSCharacter::MoveRight(float Value)
 
 void AFPSCharacter::Turn(float Rate)
 {
+	if (FMath::Abs(Rate) > 0.02f)
+	{
+		if (UFPSAnimInstance* FPSAnim = GetFPSAnimInstance())
+		{
+			FPSAnim->TriggerAlertHighReady(2.5f);
+		}
+	}
 	float SensMod = MouseSensitivityMultiplier;
 	if (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights())
 	{
@@ -1908,6 +1883,13 @@ void AFPSCharacter::Turn(float Rate)
 
 void AFPSCharacter::LookUp(float Rate)
 {
+	if (FMath::Abs(Rate) > 0.02f)
+	{
+		if (UFPSAnimInstance* FPSAnim = GetFPSAnimInstance())
+		{
+			FPSAnim->TriggerAlertHighReady(2.5f);
+		}
+	}
 	float SensMod = MouseSensitivityMultiplier;
 	if (InventoryComponent && InventoryComponent->GetActiveWeapon() && InventoryComponent->GetActiveWeapon()->IsAimingDownSights())
 	{
@@ -1919,6 +1901,11 @@ void AFPSCharacter::LookUp(float Rate)
 
 void AFPSCharacter::StartFire()
 {
+	if (UFPSAnimInstance* FPSAnim = GetFPSAnimInstance())
+	{
+		FPSAnim->TriggerAlertHighReady(3.5f);
+		FPSAnim->NotifyWeaponFired(1.0f);
+	}
 	if (InventoryComponent && InventoryComponent->GetActiveWeapon())
 	{
 		InventoryComponent->GetActiveWeapon()->StartFire();

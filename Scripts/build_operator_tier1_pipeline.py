@@ -1,13 +1,94 @@
 import bpy
+import bmesh
 import os
 import math
-from mathutils import Vector, Matrix
+from mathutils import Vector, Matrix, Quaternion
 
 print("=== STARTING CLEAN HIGH-FIDELITY OPERATOR PIPELINE (SK_BaseMale & SM_Soldier_Posed) ===")
 
 glb_path = os.path.abspath('Scripts/BaseMesh/Soldier.glb')
 out_sk_fbx = os.path.abspath('Content/Characters/BaseMale/SK_BaseMale.fbx')
 out_posed_fbx = os.path.abspath('Content/Characters/BaseMale/SM_Soldier_Posed.fbx')
+
+
+def strip_belt_pouch_islands(mesh_obj):
+    """
+    Separates and removes the baked-in boxy belt pouches, clips, and studs from vanguard_Mesh
+    while preserving the continuous waist belt strap ring (ISL023/ISL035) and front buckle plate (ISL055/ISL107).
+    """
+    me = mesh_obj.data
+    vg_names = {g.index: g.name for g in mesh_obj.vertex_groups}
+
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+
+    seen = set()
+    islands = []
+    for v in bm.verts:
+        if v.index in seen:
+            continue
+        stack = [v]
+        isl = []
+        seen.add(v.index)
+        while stack:
+            c = stack.pop()
+            isl.append(c.index)
+            for e in c.link_edges:
+                n = e.other_vert(c)
+                if n.index not in seen:
+                    seen.add(n.index)
+                    stack.append(n)
+        islands.append(isl)
+
+    verts_to_remove = set()
+    removed_islands = 0
+
+    for isl in islands:
+        if len(isl) > 200:
+            continue
+        # Check if island belongs exclusively to mixamorig:Hips
+        hips_count = 0
+        other_bone_count = 0
+        for vid in isl:
+            for g in me.vertices[vid].groups:
+                if g.weight > 0.25:
+                    bname = vg_names.get(g.group, '')
+                    if bname == 'mixamorig:Hips':
+                        hips_count += 1
+                    else:
+                        other_bone_count += 1
+        if hips_count == 0 or other_bone_count > 0:
+            continue
+
+        pts = [mesh_obj.matrix_world @ me.vertices[vid].co for vid in isl]
+        cx = sum(p.x for p in pts) / len(pts)
+        cy = sum(p.y for p in pts) / len(pts)
+        cz = sum(p.z for p in pts) / len(pts)
+        ex = max(p.x for p in pts) - min(p.x for p in pts)
+        ey = max(p.y for p in pts) - min(p.y for p in pts)
+        ez = max(p.z for p in pts) - min(p.z for p in pts)
+
+        # Keep the main waist belt strap ring (ex ~ 0.39-0.41m)
+        if ex > 0.25:
+            continue
+        # Keep the flat central front belt buckle plate (cx ~ 0, cy > 0.12, ey < 0.025)
+        if abs(cx) < 0.025 and cy > 0.12 and ey < 0.025:
+            continue
+
+        # Remove boxy belt pouch / clip / stud island
+        removed_islands += 1
+        for vid in isl:
+            verts_to_remove.add(vid)
+
+    if verts_to_remove:
+        bmesh.ops.delete(bm, geom=[bm.verts[i] for i in verts_to_remove], context='VERTS')
+        bm.to_mesh(me)
+        me.update()
+
+    bm.free()
+    print(f"[BeltStrip] Stripped {removed_islands} baked belt pouch/clip islands ({len(verts_to_remove)} vertices removed, {len(me.vertices)} vertices remaining)")
+
 
 # =========================================================================
 # PART 1: GENERATE SM_SOLDIER_POSED.FBX (Hangar Turntable Master Operator)
@@ -17,12 +98,35 @@ print("--- [1/2] Generating Clean SM_Soldier_Posed.fbx ---")
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=glb_path)
 
+mesh_body = bpy.data.objects['vanguard_Mesh']
+strip_belt_pouch_islands(mesh_body)
+
 arm = bpy.data.objects['Character']
 arm.animation_data.action = bpy.data.actions['Idle_Character']
 bpy.context.scene.frame_set(0)
+bpy.context.view_layer.update()
+
+bpy.context.view_layer.objects.active = arm
+bpy.ops.object.mode_set(mode='POSE')
+leg_bones_posed = [
+    'mixamorig:LeftUpLeg', 'mixamorig:LeftLeg', 'mixamorig:LeftFoot', 'mixamorig:LeftToeBase',
+    'mixamorig:RightUpLeg', 'mixamorig:RightLeg', 'mixamorig:RightFoot', 'mixamorig:RightToeBase',
+    'mixamorig:Hips', 'mixamorig:Spine', 'mixamorig:Spine1', 'mixamorig:Spine2'
+]
+for bname in leg_bones_posed:
+    pb = arm.pose.bones.get(bname)
+    if pb:
+        pb.rotation_mode = 'QUATERNION'
+        if 'Hips' in bname:
+            pb.rotation_quaternion = pb.rotation_quaternion.slerp(Quaternion((1.0, 0.0, 0.0, 0.0)), 0.55)
+        elif 'Spine' in bname:
+            pb.rotation_quaternion = pb.rotation_quaternion.slerp(Quaternion((1.0, 0.0, 0.0, 0.0)), 0.50)
+        else:
+            pb.rotation_quaternion = pb.rotation_quaternion.slerp(Quaternion((1.0, 0.0, 0.0, 0.0)), 0.72)
+bpy.ops.object.mode_set(mode='OBJECT')
+bpy.context.view_layer.update()
 
 dg = bpy.context.evaluated_depsgraph_get()
-mesh_body = bpy.data.objects['vanguard_Mesh']
 mesh_visor = bpy.data.objects['vanguard_visor']
 
 eval_body = mesh_body.evaluated_get(dg)
@@ -129,6 +233,8 @@ arm_obj = bpy.data.objects.get('Character')
 mesh_body = bpy.data.objects.get('vanguard_Mesh')
 mesh_visor = bpy.data.objects.get('vanguard_visor')
 
+strip_belt_pouch_islands(mesh_body)
+
 # Remove unneeded objects
 for obj in list(bpy.data.objects):
     if obj.name not in ['Character', 'vanguard_Mesh', 'vanguard_visor']:
@@ -159,12 +265,50 @@ bpy.ops.object.join()
 sk_mesh = mesh_body
 sk_mesh.name = "SK_BaseMale"
 
-# Reset Armature to rest pose
+# Bake Upright, Grounded 180cm Tactical Resting Pose from Idle_Character as Rest Pose
+# (Preserves authentic Mixamo shoulder-pauldron & helmet bone rolls while straightening knees!)
+arm_obj.animation_data.action = bpy.data.actions['Idle_Character']
+bpy.context.scene.frame_set(0)
+bpy.context.view_layer.update()
+
 bpy.context.view_layer.objects.active = arm_obj
 bpy.ops.object.mode_set(mode='POSE')
-for pb in arm_obj.pose.bones:
-    pb.matrix_basis = Matrix.Identity(4)
+
+# Straighten knees by blending leg bones 72% toward upright standing rest pose
+leg_bones = [
+    'mixamorig:LeftUpLeg', 'mixamorig:LeftLeg', 'mixamorig:LeftFoot', 'mixamorig:LeftToeBase',
+    'mixamorig:RightUpLeg', 'mixamorig:RightLeg', 'mixamorig:RightFoot', 'mixamorig:RightToeBase',
+    'mixamorig:Hips', 'mixamorig:Spine', 'mixamorig:Spine1', 'mixamorig:Spine2'
+]
+for bname in leg_bones:
+    pb = arm_obj.pose.bones.get(bname)
+    if pb:
+        pb.rotation_mode = 'QUATERNION'
+        if 'Hips' in bname:
+            pb.rotation_quaternion = pb.rotation_quaternion.slerp(Quaternion((1.0, 0.0, 0.0, 0.0)), 0.55)
+        elif 'Spine' in bname:
+            pb.rotation_quaternion = pb.rotation_quaternion.slerp(Quaternion((1.0, 0.0, 0.0, 0.0)), 0.50)
+        else:
+            pb.rotation_quaternion = pb.rotation_quaternion.slerp(Quaternion((1.0, 0.0, 0.0, 0.0)), 0.72)
+
 bpy.ops.object.mode_set(mode='OBJECT')
+bpy.context.view_layer.update()
+
+# Apply current Armature modifier on sk_mesh so mesh vertices match the upright tactical pose
+bpy.context.view_layer.objects.active = sk_mesh
+for mod in list(sk_mesh.modifiers):
+    if mod.type == 'ARMATURE':
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+
+# Apply pose as the new Rest Pose of the Armature
+bpy.context.view_layer.objects.active = arm_obj
+bpy.ops.object.mode_set(mode='POSE')
+bpy.ops.pose.armature_apply(selected=False)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Re-add Armature modifier binding sk_mesh to arm_obj
+arm_mod = sk_mesh.modifiers.new(name='Armature', type='ARMATURE')
+arm_mod.object = arm_obj
 
 arm_obj.animation_data_clear()
 sk_mesh.animation_data_clear()

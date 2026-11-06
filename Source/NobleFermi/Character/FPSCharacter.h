@@ -59,6 +59,13 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
 	TObjectPtr<class UFPSOperatorGearComponent> OperatorGearComponent;
 
+	/** Modular 3D Tactical Belt Kit (2x STANAG Pouches, M67 Frag, M84 Flashbang) & Hand Proxies */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
+	TObjectPtr<class UFPSBeltGearComponent> BeltGearComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Effects")
+	TObjectPtr<class UFPSBreathVaporComponent> BreathVaporComponent;
+
 	/** 3rd-Person Level IV Ceramic Plate Carrier Procedural Mesh attached to spine_03 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
 	TObjectPtr<UProceduralMeshComponent> PlateCarrierProcMesh;
@@ -151,6 +158,27 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
 	class UFPSBodyMechanicsComponent* GetBodyMechanicsComponent() const { return BodyMechanicsComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Components")
+	class UFPSEquipmentComponent* GetEquipmentComponent() const { return EquipmentComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Gear")
+	class UFPSBeltGearComponent* GetBeltGearComponent() const { return BeltGearComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Effects")
+	class UFPSBreathVaporComponent* GetBreathVaporComponent() const { return BreathVaporComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Movement")
+	bool IsSprinting() const;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Movement")
+	bool IsSliding() const;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Camera")
+	bool IsADS() const { return IsAiming(); }
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Camera")
+	float GetReplicatedAimPitch() const;
 
 	// Tactical Locomotion Animation Blueprint & Assets
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animations")
@@ -487,8 +515,8 @@ private:
 	TObjectPtr<class UAnimSequence> CurrentLocomotionAnim;
 
 	FVector2D CurrentMoveInput = FVector2D::ZeroVector;
-	FRotator CurrentDiveMeshRotation = FRotator(0.0f, -90.0f, 0.0f);
-	FRotator DiveExitMeshRotation = FRotator(0.0f, -90.0f, 0.0f);
+	FRotator CurrentDiveMeshRotation = FRotator(0.0f, 90.0f, 0.0f);
+	FRotator DiveExitMeshRotation = FRotator(0.0f, 90.0f, 0.0f);
 	float DiveExitMeshZOffset = -68.0f;
 	float CurrentDiveMeshZOffset = -96.0f;
 	float DiveRecoveryTimer = 0.0f;

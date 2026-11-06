@@ -1,8 +1,13 @@
 #include "Combat/FPSEquipmentComponent.h"
+#include "Character/FPSCharacter.h"
+#include "Character/FPSAnimInstance.h"
+#include "Character/FPSBeltGearComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
+#include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
@@ -43,7 +48,7 @@ void UFPSEquipmentComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 void UFPSEquipmentComponent::StartCookingLethal()
 {
-	if (CurrentLethalCount <= 0) return;
+	if (CurrentLethalCount <= 0 || bIsThrowInProgress) return;
 
 	if (EquippedLethal == EFPSProjectileType::FragGrenade)
 	{
@@ -54,7 +59,7 @@ void UFPSEquipmentComponent::StartCookingLethal()
 
 void UFPSEquipmentComponent::ReleaseAndThrowLethal()
 {
-	if (CurrentLethalCount <= 0) return;
+	if (CurrentLethalCount <= 0 || bIsThrowInProgress) return;
 
 	float CustomFuse = MaxFragFuseTime;
 	if (bIsCookingFrag)
@@ -71,38 +76,133 @@ void UFPSEquipmentComponent::ReleaseAndThrowLethal()
 	ACharacter* Character = Cast<ACharacter>(GetOwner());
 	if (!Character) return;
 
-	APlayerController* PC = Cast<APlayerController>(Character->GetController());
-	if (!PC || !PC->PlayerCameraManager) return;
+	PendingLethalFuse = CustomFuse;
+	bIsThrowInProgress = true;
 
-	FVector CameraLoc = PC->PlayerCameraManager->GetCameraLocation();
-	FRotator CameraRot = PC->PlayerCameraManager->GetCameraRotation();
-	FVector SpawnLoc = CameraLoc + (CameraRot.Vector() * 50.0f);
-	FVector LaunchVel = (CameraRot.Vector() * ThrowImpulseSpeed) + (Character->GetVelocity() * 0.4f);
-
-	if (GetOwner()->HasAuthority())
+	// Trigger the procedural 4-stage belt-grab throw animation on UFPSAnimInstance
+	if (USkeletalMeshComponent* MeshComp = Character->GetMesh())
 	{
-		Server_ThrowLethal_Implementation(SpawnLoc, LaunchVel, CustomFuse);
+		if (UFPSAnimInstance* FPSAnim = Cast<UFPSAnimInstance>(MeshComp->GetAnimInstance()))
+		{
+			FPSAnim->NotifyGrenadeThrowStarted(EFPSBeltItemType::FragGrenade, TotalThrowAnimDuration);
+		}
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			PendingThrowReleaseTimer,
+			this,
+			&UFPSEquipmentComponent::ExecuteDelayedLethalSpawn,
+			FMath::Max(0.05f, BeltGrabReleaseDelay),
+			false);
+
+		World->GetTimerManager().SetTimer(
+			PendingThrowFinishTimer,
+			this,
+			&UFPSEquipmentComponent::ClearThrowInProgressFlag,
+			FMath::Max(0.10f, TotalThrowAnimDuration),
+			false);
 	}
 	else
 	{
-		Server_ThrowLethal(SpawnLoc, LaunchVel, CustomFuse);
+		ExecuteDelayedLethalSpawn();
+		ClearThrowInProgressFlag();
+	}
+}
+
+void UFPSEquipmentComponent::ExecuteDelayedLethalSpawn()
+{
+	if (CurrentLethalCount <= 0) return;
+
+	ACharacter* Character = Cast<ACharacter>(GetOwner());
+	if (!Character) return;
+
+	FVector SpawnLoc = Character->GetActorLocation() + Character->GetActorForwardVector() * 50.0f + FVector(0.0f, 0.0f, 55.0f);
+	FVector LaunchVel = (Character->GetActorForwardVector() * ThrowImpulseSpeed) + (Character->GetVelocity() * 0.4f);
+
+	if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+	{
+		if (PC->PlayerCameraManager)
+		{
+			const FVector CameraLoc = PC->PlayerCameraManager->GetCameraLocation();
+			const FRotator CameraRot = PC->PlayerCameraManager->GetCameraRotation();
+			SpawnLoc = CameraLoc + (CameraRot.Vector() * 50.0f);
+			LaunchVel = (CameraRot.Vector() * ThrowImpulseSpeed) + (Character->GetVelocity() * 0.4f);
+		}
+	}
+
+	if (GetOwner()->HasAuthority())
+	{
+		Server_ThrowLethal_Implementation(SpawnLoc, LaunchVel, PendingLethalFuse);
+	}
+	else
+	{
+		Server_ThrowLethal(SpawnLoc, LaunchVel, PendingLethalFuse);
 	}
 }
 
 void UFPSEquipmentComponent::ThrowTactical()
+{
+	if (CurrentTacticalCount <= 0 || bIsThrowInProgress) return;
+
+	ACharacter* Character = Cast<ACharacter>(GetOwner());
+	if (!Character) return;
+
+	bIsThrowInProgress = true;
+
+	// Trigger the procedural 4-stage belt-grab throw animation on UFPSAnimInstance for M84 Flashbang
+	if (USkeletalMeshComponent* MeshComp = Character->GetMesh())
+	{
+		if (UFPSAnimInstance* FPSAnim = Cast<UFPSAnimInstance>(MeshComp->GetAnimInstance()))
+		{
+			FPSAnim->NotifyGrenadeThrowStarted(EFPSBeltItemType::Flashbang, TotalThrowAnimDuration);
+		}
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			PendingThrowReleaseTimer,
+			this,
+			&UFPSEquipmentComponent::ExecuteDelayedTacticalSpawn,
+			FMath::Max(0.05f, BeltGrabReleaseDelay),
+			false);
+
+		World->GetTimerManager().SetTimer(
+			PendingThrowFinishTimer,
+			this,
+			&UFPSEquipmentComponent::ClearThrowInProgressFlag,
+			FMath::Max(0.10f, TotalThrowAnimDuration),
+			false);
+	}
+	else
+	{
+		ExecuteDelayedTacticalSpawn();
+		ClearThrowInProgressFlag();
+	}
+}
+
+void UFPSEquipmentComponent::ExecuteDelayedTacticalSpawn()
 {
 	if (CurrentTacticalCount <= 0) return;
 
 	ACharacter* Character = Cast<ACharacter>(GetOwner());
 	if (!Character) return;
 
-	APlayerController* PC = Cast<APlayerController>(Character->GetController());
-	if (!PC || !PC->PlayerCameraManager) return;
+	FVector SpawnLoc = Character->GetActorLocation() + Character->GetActorForwardVector() * 50.0f + FVector(0.0f, 0.0f, 55.0f);
+	FVector LaunchVel = (Character->GetActorForwardVector() * ThrowImpulseSpeed) + (Character->GetVelocity() * 0.4f);
 
-	FVector CameraLoc = PC->PlayerCameraManager->GetCameraLocation();
-	FRotator CameraRot = PC->PlayerCameraManager->GetCameraRotation();
-	FVector SpawnLoc = CameraLoc + (CameraRot.Vector() * 50.0f);
-	FVector LaunchVel = (CameraRot.Vector() * ThrowImpulseSpeed) + (Character->GetVelocity() * 0.4f);
+	if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+	{
+		if (PC->PlayerCameraManager)
+		{
+			const FVector CameraLoc = PC->PlayerCameraManager->GetCameraLocation();
+			const FRotator CameraRot = PC->PlayerCameraManager->GetCameraRotation();
+			SpawnLoc = CameraLoc + (CameraRot.Vector() * 50.0f);
+			LaunchVel = (CameraRot.Vector() * ThrowImpulseSpeed) + (Character->GetVelocity() * 0.4f);
+		}
+	}
 
 	if (GetOwner()->HasAuthority())
 	{
@@ -112,6 +212,11 @@ void UFPSEquipmentComponent::ThrowTactical()
 	{
 		Server_ThrowTactical(SpawnLoc, LaunchVel);
 	}
+}
+
+void UFPSEquipmentComponent::ClearThrowInProgressFlag()
+{
+	bIsThrowInProgress = false;
 }
 
 void UFPSEquipmentComponent::ResupplyEquipment(int32 LethalsToAdd, int32 TacticalsToAdd)

@@ -1,24 +1,140 @@
+// FPSAnimInstance.h
+// Native C++ AnimInstance and AnimInstanceProxy for AFPSCharacter & AFPSCharacterPreviewActor.
+// Evaluates procedural Two-Bone Leg IK (tall 180cm military posture + 0.18 Hz weight-transfer oscillation),
+// thoracic breathing (0.32 Hz), situational head/neck micro-look, Low-Ready Patrol Cradle vs High-Ready/ADS arm IK,
+// and realistic belt-grab reload (STANAG mag from BeltMagComp_1) & grenade throw (M67/M84 from belt) trajectories.
+
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "Animation/AnimInstanceProxy.h"
+#include "BoneIndices.h"
+#include "FPSBeltGearComponent.h"
 #include "FPSAnimInstance.generated.h"
 
 class AFPSCharacter;
-class UFPSCharacterMovementComponent;
-class UFPSBodyMechanicsComponent;
-class AFPSWeaponBase;
+class UFPSAnimInstance;
+class UAnimSequenceBase;
 
 /**
- * AAA Tactical Locomotion Animation Instance
- * Implements:
- * 1. Authoritative movement telemetry aligned with UFPSCharacterMovementComponent velocity tiers
- * 2. Directional locomotion blend space support (Walk, Run, Sprint, Backwards, Crouch Walk)
- * 3. Layered blend per bone at spine_01 for independent upper-body aim/low-ready stances
- * 4. Procedural Left-Hand Two-Bone IK solver (AnimationCore::SolveTwoBoneIK) locking hand_l to Carbine / SM_AK47
- * 5. Full thoracic spine pitch alignment (+-89 deg), procedural flinch / aim punch, and Menu Low-Ready Carbine stance.
+ * Worker-thread-safe animation proxy that computes procedural bone transforms
+ * inside Evaluate(FPoseContext& Output) using FComponentSpacePoseContext.
  */
-UCLASS()
+USTRUCT()
+struct NOBLEFERMI_API FFPSAnimInstanceProxy : public FAnimInstanceProxy
+{
+	GENERATED_BODY()
+
+public:
+	FFPSAnimInstanceProxy()
+		: FAnimInstanceProxy()
+	{}
+
+	FFPSAnimInstanceProxy(UAnimInstance* InAnimInstance)
+		: FAnimInstanceProxy(InAnimInstance)
+	{}
+
+	virtual void Initialize(UAnimInstance* InAnimInstance) override;
+	virtual void CacheBones() override;
+	virtual void PreUpdate(UAnimInstance* InAnimInstance, float DeltaSeconds) override;
+	virtual bool Evaluate(FPoseContext& Output) override;
+
+private:
+	// Cached gameplay state copied from UFPSAnimInstance in PreUpdate
+	float Speed = 0.0f;
+	float Direction = 0.0f;
+	float ForwardSpeed = 0.0f;
+	float RightSpeed = 0.0f;
+	float AimPitch = 0.0f;
+	float AimYaw = 0.0f;
+	bool bIsInAir = false;
+	bool bIsCrouching = false;
+	bool bIsSprinting = false;
+	bool bIsADS = false;
+	bool bIsSliding = false;
+	bool bIsFiring = false;
+	float RecoilImpulseAlpha = 0.0f;
+	float LocomotionCyclePhase = 0.0f;
+	float IdleBreathPhase = 0.0f;
+	float WeightTransferPhase = 0.0f;
+	float HeadLookTime = 0.0f;
+	float SmoothCrouchAlpha = 0.0f;
+	float SmoothSprintAlpha = 0.0f;
+	float SmoothADSAlpha = 0.0f;
+	float SmoothSlideAlpha = 0.0f;
+	float HighReadyAlpha = 0.0f;
+	bool bIsMenuPreview = false;
+	bool bUnarmedRelaxedIdle = false;
+
+	// Reload & Belt-Grab state
+	bool bIsReloading = false;
+	float ReloadProgressAlpha = 0.0f;
+	FVector BeltMag1TargetCS = FVector(-14.5f, 12.0f, 94.0f);
+	FVector BeltFragTargetCS = FVector(14.0f, 12.5f, 95.0f);
+	FVector BeltFlashTargetCS = FVector(19.5f, 4.5f, 94.5f);
+
+	// Grenade throw belt-grab state
+	bool bIsThrowingGrenade = false;
+	float ThrowProgressAlpha = 0.0f;
+	EFPSBeltItemType ActiveThrowItemType = EFPSBeltItemType::FragGrenade;
+
+	// Optional active mocap sequence when moving/jumping/crouching in-game
+	TObjectPtr<UAnimSequenceBase> ActiveSequence = nullptr;
+	float SequencePlayTime = 0.0f;
+
+	// Cached compact pose bone indices
+	FCompactPoseBoneIndex PelvisIdx{INDEX_NONE};
+	FCompactPoseBoneIndex Spine01Idx{INDEX_NONE};
+	FCompactPoseBoneIndex Spine02Idx{INDEX_NONE};
+	FCompactPoseBoneIndex Spine03Idx{INDEX_NONE};
+	FCompactPoseBoneIndex Neck01Idx{INDEX_NONE};
+	FCompactPoseBoneIndex HeadIdx{INDEX_NONE};
+	FCompactPoseBoneIndex ClavicleLIdx{INDEX_NONE};
+	FCompactPoseBoneIndex UpperArmLIdx{INDEX_NONE};
+	FCompactPoseBoneIndex LowerArmLIdx{INDEX_NONE};
+	FCompactPoseBoneIndex HandLIdx{INDEX_NONE};
+	FCompactPoseBoneIndex ClavicleRIdx{INDEX_NONE};
+	FCompactPoseBoneIndex UpperArmRIdx{INDEX_NONE};
+	FCompactPoseBoneIndex LowerArmRIdx{INDEX_NONE};
+	FCompactPoseBoneIndex HandRIdx{INDEX_NONE};
+	FCompactPoseBoneIndex WeaponRIdx{INDEX_NONE};
+	FCompactPoseBoneIndex ThighLIdx{INDEX_NONE};
+	FCompactPoseBoneIndex CalfLIdx{INDEX_NONE};
+	FCompactPoseBoneIndex FootLIdx{INDEX_NONE};
+	FCompactPoseBoneIndex BallLIdx{INDEX_NONE};
+	FCompactPoseBoneIndex ThighRIdx{INDEX_NONE};
+	FCompactPoseBoneIndex CalfRIdx{INDEX_NONE};
+	FCompactPoseBoneIndex FootRIdx{INDEX_NONE};
+	FCompactPoseBoneIndex BallRIdx{INDEX_NONE};
+
+	bool bBonesResolved = false;
+
+	// Anatomical basis vectors derived in component space from rest pose
+	FVector CompUpDir = FVector(0.0f, 0.0f, 1.0f);
+	FVector CompRightDir = FVector(-1.0f, 0.0f, 0.0f);
+	FVector CompForwardDir = FVector(0.0f, 1.0f, 0.0f);
+
+	// Helper methods executed during Evaluate()
+	void ResolveSkeletonBones(const FBoneContainer& BoneContainer);
+	void ApplyRestingIdleAndLocomotion(FComponentSpacePoseContext& CSPose, const TArray<FTransform>& RestCompBases);
+	void ApplySpineBreathingAndHeadLook(FComponentSpacePoseContext& CSPose, const TArray<FTransform>& RestCompBases);
+	void SolveRightArmRifleIK(FComponentSpacePoseContext& CSPose, const TArray<FTransform>& RestCompBases);
+	void SolveLeftHandTwoBoneIK(FComponentSpacePoseContext& CSPose, const TArray<FTransform>& RestCompBases);
+	void SolveLeftHandReloadIK(FComponentSpacePoseContext& CSPose, const TArray<FTransform>& RestCompBases);
+	void SolveGrenadeThrowBeltIK(FComponentSpacePoseContext& CSPose, const TArray<FTransform>& RestCompBases);
+	void PropagateHandChildBones(
+		FComponentSpacePoseContext& CSPose,
+		const TArray<FTransform>& RestCompBases,
+		FCompactPoseBoneIndex HandBoneIdx,
+		const FTransform& NewHandCS);
+};
+
+/**
+ * Native C++ Animation Instance for AFPSCharacter & AFPSCharacterPreviewActor.
+ * Works autonomously without requiring a UAnimBlueprint asset.
+ */
+UCLASS(Transient, Blueprintable)
 class NOBLEFERMI_API UFPSAnimInstance : public UAnimInstance
 {
 	GENERATED_BODY()
@@ -28,166 +144,161 @@ public:
 
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
-	virtual void NativePostEvaluateAnimation() override;
 
-	// Ground Locomotion Telemetry Aligned with UFPSCharacterMovementComponent
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	float GroundSpeed = 0.0f;
+	/** Notifies the anim instance that a shot was fired so upper body recoil impulse plays. */
+	UFUNCTION(BlueprintCallable, Category = "Animation|Combat")
+	void NotifyWeaponFired(float Strength = 1.0f);
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
+	/** Alerts the character into High-Ready posture for the specified duration (e.g. on mouse look, ADS, or fire). */
+	UFUNCTION(BlueprintCallable, Category = "Animation|Combat")
+	void TriggerAlertHighReady(float HoldDurationSeconds = 3.0f);
+
+	/** Starts the procedural belt-grab grenade throw animation (0-25% reach belt, 25-45% pull pin, 45-60% hurl, 60-100% return). */
+	UFUNCTION(BlueprintCallable, Category = "Animation|Combat")
+	void NotifyGrenadeThrowStarted(EFPSBeltItemType ThrowItemType, float DurationSeconds = 0.55f);
+
+	/** Sets an optional mocap sequence to evaluate when moving/jumping/crouching in-game (nullptr = procedural resting idle). */
+	void SetActiveMocapSequence(UAnimSequenceBase* InSequence, float InPlayRate = 1.0f);
+
+	/** Returns true while the grenade throw animation is playing. */
+	bool IsThrowingGrenade() const { return bIsThrowingGrenade; }
+
+	// ---- Locomotion Properties ----
+
+	/** Horizontal ground speed (cm/s). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Locomotion")
+	float Speed = 0.0f;
+
+	/** Movement direction relative to actor rotation [-180, 180]. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Locomotion")
 	float Direction = 0.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	bool bIsMoving = false;
+	/** Signed forward speed along character forward vector (cm/s). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Locomotion")
+	float ForwardSpeed = 0.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	bool bIsAiming = false;
+	/** Signed strafe speed along character right vector (cm/s). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Locomotion")
+	float RightSpeed = 0.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	bool bIsSprinting = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	bool bIsCrouching = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	bool bIsFalling = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	bool bIsSliding = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	bool bIsBallisticDiving = false;
-
-	// Authoritative Movement Speed Thresholds (from UFPSCharacterMovementComponent)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Locomotion|Thresholds")
-	float WalkSpeedThreshold = 450.0f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Locomotion|Thresholds")
-	float CrouchSpeedThreshold = 260.0f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Locomotion|Thresholds")
-	float SprintSpeedThreshold = 750.0f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Locomotion|Thresholds")
-	float SlideSpeedThreshold = 950.0f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Locomotion|Thresholds")
-	float DiveSpeedThreshold = 820.0f;
-
-	// Thoracic Aim Pitch & Leaning
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Procedural Aim")
+	/** Aim pitch angle [-90, 90] for Spine/Head AimOffset. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Aim")
 	float AimPitch = 0.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Procedural Aim")
+	/** Relative Aim Yaw angle [-180, 180]. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Aim")
 	float AimYaw = 0.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Procedural Aim")
-	float ShoulderSideMultiplier = 1.0f;
+	/** True when character is falling or jumping. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Locomotion")
+	bool bIsInAir = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Procedural Aim")
-	float UpperBodyBlendWeight = 1.0f;
+	/** True when character is crouched. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Locomotion")
+	bool bIsCrouching = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Procedural Aim")
-	FRotator ProceduralSpineLean = FRotator::ZeroRotator;
+	/** True when character is sprinting. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Locomotion")
+	bool bIsSprinting = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Procedural Aim")
-	FRotator AimPunchRotation = FRotator::ZeroRotator;
+	/** True when player is Aiming Down Sights. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
+	bool bIsADS = false;
 
-	// Left-Hand Two-Bone IK Solver Data
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Left Hand IK")
-	FVector LeftHandIKLocation = FVector::ZeroVector;
+	/** True when character is power-sliding. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Locomotion")
+	bool bIsSliding = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Left Hand IK")
-	FRotator LeftHandIKRotation = FRotator::ZeroRotator;
+	/** True when weapon is actively firing. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
+	bool bIsFiring = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Left Hand IK")
-	FVector LeftElbowPoleVector = FVector::ZeroVector;
+	/** True when current weapon is reloading. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
+	bool bIsReloading = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Left Hand IK")
-	bool bLeftHandIKValid = false;
+	/** Normalized reload progress [0..1] for procedural left-hand belt-mag grab IK. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
+	float ReloadProgressAlpha = 0.0f;
 
-	// Right-Hand Weapon Grip Target Data
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Weapon IK")
-	FVector RightHandIKLocation = FVector::ZeroVector;
+	/** True when throwing a frag or flashbang grenade from the belt. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
+	bool bIsThrowingGrenade = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Weapon IK")
-	FRotator RightHandIKRotation = FRotator::ZeroRotator;
+	/** Normalized throw progress [0..1]. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
+	float ThrowProgressAlpha = 0.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Weapon IK")
-	FVector RightElbowPoleVector = FVector::ZeroVector;
+	/** Which belt grenade is currently being thrown. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
+	EFPSBeltItemType ActiveThrowItemType = EFPSBeltItemType::FragGrenade;
 
-	// Procedural Gait & Breathing Phase
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	float LocomotionPhase = 0.0f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	float BreathingPhase = 0.0f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Locomotion")
-	float CurrentADSAlpha = 0.0f;
-
-	// Menu Preview Turntable Stance Controls (0 = Low-Ready Carbine, 1 = High-Ready ADS, 2 = Patrol Walk)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Menu Preview")
+	/** True when driving the Hangar menu preview character (`AFPSCharacterPreviewActor`). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Preview")
 	bool bIsMenuPreview = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FPS Menu Preview")
+	/** Stance index in Hangar preview (0 = Unarmed Relaxed Tactical Idle with rifle on table, 1 = High-Ready ADS, 2 = Walk Cycle). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Preview")
 	int32 MenuPoseIndex = 0;
 
-	// Foot IK Offsets
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Foot IK")
-	FVector LeftFootIKOffset = FVector::ZeroVector;
+	/** True when arms should rest in a relaxed unarmed tactical readiness stance (elbows bent ~22 deg at sides). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Preview")
+	bool bUnarmedRelaxedIdle = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Foot IK")
-	FVector RightFootIKOffset = FVector::ZeroVector;
+	/** Blend weight [0 = Low-Ready Patrol Cradle, 1 = High-Ready / ADS]. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
+	float HighReadyAlpha = 0.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Foot IK")
-	float PelvisIKOffset = 0.0f;
+	/** Target High-Ready state requested by Hangar preview button or combat alert timer. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
+	bool bForceHighReady = false;
+
+	// ---- Smoothed Blend Alphas ----
+	float SmoothCrouchAlpha = 0.0f;
+	float SmoothSprintAlpha = 0.0f;
+	float SmoothADSAlpha = 0.0f;
+	float SmoothSlideAlpha = 0.0f;
+	float RecoilImpulseAlpha = 0.0f;
+	float LocomotionCyclePhase = 0.0f;
+	float IdleBreathPhase = 0.0f;
+	float WeightTransferPhase = 0.0f;
+	float HeadLookTime = 0.0f;
+
+	// Component-space belt targets updated on Game Thread from UFPSBeltGearComponent
+	FVector BeltMag1TargetCS = FVector(-14.5f, 12.0f, 94.0f);
+	FVector BeltFragTargetCS = FVector(14.0f, 12.5f, 95.0f);
+	FVector BeltFlashTargetCS = FVector(19.5f, 4.5f, 94.5f);
+
+	// Optional active mocap sequence for moving/jumping/crouching
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequenceBase> ActiveMocapSequence = nullptr;
+
+	float MocapPlayRate = 1.0f;
+	float MocapAccumulatedTime = 0.0f;
 
 protected:
-	UPROPERTY(BlueprintReadOnly, Category = "FPS Owner References")
-	TObjectPtr<AFPSCharacter> OwningCharacter;
+	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override
+	{
+		return &Proxy;
+	}
 
-	UPROPERTY(BlueprintReadOnly, Category = "FPS Owner References")
-	TObjectPtr<UFPSCharacterMovementComponent> OwningMovement;
-
-	UPROPERTY(BlueprintReadOnly, Category = "FPS Owner References")
-	TObjectPtr<UFPSBodyMechanicsComponent> OwningBodyMechanics;
+	virtual void DestroyAnimInstanceProxy(FAnimInstanceProxy* InProxy) override
+	{
+	}
 
 private:
-	// 21-Bone Anatomical Skeletal Indices
-	int32 Pelvis_Index = INDEX_NONE;
-	int32 Spine01_Index = INDEX_NONE;
-	int32 Spine02_Index = INDEX_NONE;
-	int32 Spine03_Index = INDEX_NONE;
-	int32 Neck01_Index = INDEX_NONE;
-	int32 Head_Index = INDEX_NONE;
+	friend struct FFPSAnimInstanceProxy;
 
-	int32 ClavicleL_Index = INDEX_NONE;
-	int32 ClavicleR_Index = INDEX_NONE;
-	int32 UpperArmL_Index = INDEX_NONE;
-	int32 UpperArmR_Index = INDEX_NONE;
-	int32 LowerArmL_Index = INDEX_NONE;
-	int32 LowerArmR_Index = INDEX_NONE;
-	int32 HandL_Index = INDEX_NONE;
-	int32 HandR_Index = INDEX_NONE;
+	UPROPERTY(Transient)
+	FFPSAnimInstanceProxy Proxy;
 
-	int32 ThighL_Index = INDEX_NONE;
-	int32 ThighR_Index = INDEX_NONE;
-	int32 CalfL_Index = INDEX_NONE;
-	int32 CalfR_Index = INDEX_NONE;
-	int32 FootL_Index = INDEX_NONE;
-	int32 FootR_Index = INDEX_NONE;
+	UPROPERTY(Transient)
+	TObjectPtr<AFPSCharacter> OwningFPSCharacter = nullptr;
 
-	TArray<int32> LeftFingerBoneIndices;
-	TArray<int32> RightFingerBoneIndices;
-	TArray<FTransform> RestCompBases;
-	bool bBoneIndicesCached = false;
+	UPROPERTY(Transient)
+	TObjectPtr<UFPSBeltGearComponent> OwningBeltGear = nullptr;
 
-	void CacheBoneIndices();
-	void UpdateIKTargetFromWeapon(AFPSWeaponBase* Weapon);
-	void ApplyLowerBodyLocomotion(TArray<FTransform>& SpaceBases);
-	void ApplySpineAimPitchAndTwist(TArray<FTransform>& SpaceBases);
-	void SolveRightArmRifleIK(TArray<FTransform>& SpaceBases);
-	void SolveLeftHandTwoBoneIK(TArray<FTransform>& SpaceBases);
-	void SolveLeftHandReloadIK(TArray<FTransform>& SpaceBases, AFPSWeaponBase* Weapon);
+	float AlertHighReadyTimer = 0.0f;
+	float ThrowElapsedSeconds = 0.0f;
+	float ThrowTotalDuration = 0.55f;
 };

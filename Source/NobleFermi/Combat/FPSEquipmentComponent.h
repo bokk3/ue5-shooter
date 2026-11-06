@@ -10,7 +10,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFragCookingTickSignature, float, 
 
 /**
  * AAA Tactical Equipment Component
- * Manages player lethal equipment (frag cooking, Semtex, throwing knife) and tactical gear (flashbangs, smoke).
+ * Manages player lethal equipment (frag cooking, Semtex, throwing knife) and tactical gear (flashbangs, smoke),
+ * including the 0.30s belt-grab / pin-pull release animation sync.
  */
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class NOBLEFERMI_API UFPSEquipmentComponent : public UActorComponent
@@ -66,6 +67,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "FPS Equipment|State")
 	float GetFragCookElapsed() const { return FragCookElapsed; }
 
+	UFUNCTION(BlueprintPure, Category = "FPS Equipment|State")
+	bool IsThrowInProgress() const { return bIsThrowInProgress; }
+
 	// Server RPCs
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_ThrowLethal(FVector SpawnLocation, FVector LaunchVelocity, float CustomFuse);
@@ -88,6 +92,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "FPS Equipment|Tuning")
 	float ThrowImpulseSpeed = 1800.0f;
 
+	/** Time (seconds) from initiating throw to projectile release (0-25% belt grab, 25-45% pin pull, 55% release). */
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Equipment|Tuning")
+	float BeltGrabReleaseDelay = 0.30f;
+
+	/** Total duration of the procedural belt-grab throw animation. */
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Equipment|Tuning")
+	float TotalThrowAnimDuration = 0.55f;
+
 	UFUNCTION()
 	void OnRep_EquipmentCounts();
 
@@ -95,5 +107,13 @@ private:
 	bool bIsCookingFrag = false;
 	float FragCookElapsed = 0.0f;
 
+	bool bIsThrowInProgress = false;
+	float PendingLethalFuse = 4.0f;
+	FTimerHandle PendingThrowReleaseTimer;
+	FTimerHandle PendingThrowFinishTimer;
+
+	void ExecuteDelayedLethalSpawn();
+	void ExecuteDelayedTacticalSpawn();
+	void ClearThrowInProgressFlag();
 	void DetonateFragInHand();
 };

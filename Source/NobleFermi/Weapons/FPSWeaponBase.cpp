@@ -620,18 +620,26 @@ void AFPSWeaponBase::Tick(float DeltaTime)
 				MagOffset = FVector(-DropT * 2.0f, 0.0f, -DropT * 28.0f);
 				MagRot = FRotator(DropT * 18.0f, 0.0f, 0.0f);
 			}
-			else if (Alpha >= 0.42f && Alpha < 0.70f)
+			if (Alpha >= 0.22f && Alpha < 0.66f)
 			{
-				// Phase 3: Fresh Mag Slide-In (slides up into magwell)
-				const float InsertT = (Alpha - 0.42f) / (0.70f - 0.42f);
-				MagOffset = FVector(-(1.0f - InsertT) * 1.5f, 0.0f, -(1.0f - InsertT) * 24.0f);
-				MagRot = FRotator((1.0f - InsertT) * 12.0f, 0.0f, 0.0f);
+				// Hide weapon MagazineRoot while hand_l pulls HeldMagComp from BeltMagComp_1 on the belt and guides it into the magwell
+				MagazineRoot->SetVisibility(false, true);
 			}
-			else if (Alpha >= 0.70f && Alpha < 0.76f)
+			else
 			{
-				// Palm Slap Bump
-				const float SlapT = (Alpha - 0.70f) / 0.06f;
-				MagOffset = FVector(0.0f, 0.0f, FMath::Sin(SlapT * PI) * 0.6f);
+				MagazineRoot->SetVisibility(true, true);
+				if (Alpha >= 0.66f && Alpha < 0.75f)
+				{
+					const float InsertT = FMath::Clamp((Alpha - 0.66f) / (0.75f - 0.66f), 0.0f, 1.0f);
+					MagOffset = FVector(-(1.0f - InsertT) * 1.2f, 0.0f, -(1.0f - InsertT) * 12.0f);
+					MagRot = FRotator((1.0f - InsertT) * 8.0f, 0.0f, 0.0f);
+				}
+				else if (Alpha >= 0.75f && Alpha < 0.82f)
+				{
+					// Palm Slap Bump
+					const float SlapT = (Alpha - 0.75f) / 0.07f;
+					MagOffset = FVector(0.0f, 0.0f, FMath::Sin(SlapT * PI) * 0.6f);
+				}
 			}
 
 			MagazineRoot->SetRelativeLocation(MagazineBaseLoc + MagOffset);
@@ -1034,6 +1042,7 @@ void AFPSWeaponBase::AbortReload()
 	CurrentReloadOffsetRot = FRotator::ZeroRotator;
 	if (MagazineRoot)
 	{
+		MagazineRoot->SetVisibility(true, true);
 		MagazineRoot->SetRelativeLocation(MagazineBaseLoc);
 		MagazineRoot->SetRelativeRotation(FRotator::ZeroRotator);
 	}
@@ -1052,6 +1061,7 @@ void AFPSWeaponBase::FinishReload()
 	CurrentReloadOffsetRot = FRotator::ZeroRotator;
 	if (MagazineRoot)
 	{
+		MagazineRoot->SetVisibility(true, true);
 		MagazineRoot->SetRelativeLocation(MagazineBaseLoc);
 		MagazineRoot->SetRelativeRotation(FRotator::ZeroRotator);
 	}

@@ -7633,7 +7633,7 @@ void UMainMenuWidget::HostListenRoom()
 	{
 		const FString TheaterOpt = (SelectedTheaterIndex == 1) ? TEXT("BaiaBrava") : TEXT("RochaVelha");
 		const FString OpenOptions = FString::Printf(TEXT("listen?game=/Script/NobleFermi.FPSMultiplayerGameMode?Theater=%s"), *TheaterOpt);
-		UGameplayStatics::OpenLevel(World, FName(TEXT("/Engine/Maps/Entry")), true, OpenOptions);
+		UGameplayStatics::OpenLevel(World, FName(TEXT("/Game/Maps/MenuMap")), true, OpenOptions);
 	}
 
 }
@@ -7829,6 +7829,10 @@ FReply UMainMenuWidget::HandleQuitClicked()
 FReply UMainMenuWidget::HandleSelectArchetype(int32 ArchetypeIndex)
 
 {
+	if (PreviewActor)
+	{
+		PreviewActor->SetEquippedWeaponArchetype(ArchetypeIndex);
+	}
 
 	if (!SelectedLoadoutDetails.IsValid())
 
