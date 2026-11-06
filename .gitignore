@@ -24,3 +24,5 @@ ThirdParty/*
 Releases/*
 
 scratch/
+NobleFermiLauncher.exe
+*.obj

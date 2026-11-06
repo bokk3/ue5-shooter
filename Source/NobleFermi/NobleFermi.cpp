@@ -143,6 +143,66 @@ namespace NobleFermiSplashProgress
 		return Ctx.FoundHwnd;
 	}
 
+	struct FGameWndSearchCtx
+	{
+		DWORD TargetPid;
+		HWND IgnoreHwnd1;
+		HWND IgnoreHwnd2;
+		HWND FoundGameHwnd;
+	};
+
+	static BOOL CALLBACK EnumGameWndProc(HWND hWnd, LPARAM lParam)
+	{
+		FGameWndSearchCtx* Ctx = reinterpret_cast<FGameWndSearchCtx*>(lParam);
+		DWORD WndPid = 0;
+		GetWindowThreadProcessId(hWnd, &WndPid);
+		if (WndPid == Ctx->TargetPid && hWnd != Ctx->IgnoreHwnd1 && hWnd != Ctx->IgnoreHwnd2)
+		{
+			wchar_t ClassName[128] = { 0 };
+			if (GetClassNameW(hWnd, ClassName, 127) > 0)
+			{
+				if (wcscmp(ClassName, L"TachyonStudioTransparentSplashClass") != 0 &&
+					wcscmp(ClassName, L"NobleFermiActiveSplashClass") != 0 &&
+					wcscmp(ClassName, L"SplashScreenClass") != 0)
+				{
+					if (wcscmp(ClassName, L"UnrealWindow") == 0)
+					{
+						Ctx->FoundGameHwnd = hWnd;
+						return 0; // stop enumeration
+					}
+					int TitleLen = GetWindowTextLengthW(hWnd);
+					if (TitleLen > 0)
+					{
+						Ctx->FoundGameHwnd = hWnd;
+						return 0;
+					}
+				}
+			}
+		}
+		return 1;
+	}
+
+	static HWND FindProcessGameWindow(HWND hIgnore1 = NULL, HWND hIgnore2 = NULL)
+	{
+		FGameWndSearchCtx Ctx{ GetCurrentProcessId(), hIgnore1, hIgnore2, NULL };
+		EnumWindows(&EnumGameWndProc, reinterpret_cast<LPARAM>(&Ctx));
+		return Ctx.FoundGameHwnd;
+	}
+
+	static void SuppressProcessGameWindows(HWND hIgnore1 = NULL, HWND hIgnore2 = NULL)
+	{
+		HWND hGame = FindProcessGameWindow(hIgnore1, hIgnore2);
+		if (hGame && IsWindow(hGame) && IsWindowVisible(hGame))
+		{
+			ShowWindow(hGame, SW_HIDE);
+		}
+		HWND hNative = FindProcessSplashWindow();
+		if (hNative && IsWindow(hNative) && IsWindowVisible(hNative))
+		{
+			ShowWindow(hNative, SW_HIDE);
+		}
+	}
+
 	/** Synthesize in-memory Web Audio track matching LaserCutLogo.tsx:
 	 *  - 0.0s - 2.4s: Laser cut buzz (sawtooth pitch ramp 440Hz -> 880Hz -> 620Hz + spark crackle)
 	 *  - 2.4s - 2.8s: Thermal flash snap pop (triangle 950Hz -> 120Hz) + thermal hiss dissipation
@@ -279,6 +339,28 @@ namespace NobleFermiSplashProgress
 			FPaths::LaunchDir() / TEXT("../../Content/Splash/tachyon_logo_840x470.bgra"),
 			FPaths::LaunchDir() / TEXT("../../../Content/Splash/tachyon_logo_840x470.bgra"),
 			TEXT("Content/Splash/tachyon_logo_840x470.bgra")
+		};
+		for (const FString& Path : Candidates)
+		{
+			if (FPaths::FileExists(Path))
+			{
+				return FPaths::ConvertRelativePathToFull(Path);
+			}
+		}
+		return FString();
+	}
+
+	static FString FindTachyonSplashWavPath()
+	{
+		const TArray<FString> Candidates = {
+			FPaths::ProjectContentDir() / TEXT("Splash/tachyon_splash.wav"),
+			FPaths::ProjectDir() / TEXT("Content/Splash/tachyon_splash.wav"),
+			FPaths::RootDir() / TEXT("Content/Splash/tachyon_splash.wav"),
+			FPaths::RootDir() / TEXT("NobleFermi/Content/Splash/tachyon_splash.wav"),
+			FPaths::LaunchDir() / TEXT("Content/Splash/tachyon_splash.wav"),
+			FPaths::LaunchDir() / TEXT("../../Content/Splash/tachyon_splash.wav"),
+			FPaths::LaunchDir() / TEXT("../../../Content/Splash/tachyon_splash.wav"),
+			TEXT("Content/Splash/tachyon_splash.wav")
 		};
 		for (const FString& Path : Candidates)
 		{
@@ -440,11 +522,25 @@ namespace NobleFermiSplashProgress
 		}
 		const uint32* LogoPixels = (LogoRawBytes.Num() >= WinW * WinH * 4) ? reinterpret_cast<const uint32*>(LogoRawBytes.GetData()) : nullptr;
 
-		// Prepare unified soundtrack (Laser cut buzz + thermal snap/hiss + sub-bass/whoosh/chime)
-		std::vector<uint8> SplashWav = BuildTachyonSplashAudioBuffer();
-		if (SplashWav.size() > 44)
+		// Load authentic master soundtrack (Sword scrape + thermal clash + wide stereo bullet flybys + sub-drone)
+		const FString SplashWavPath = FindTachyonSplashWavPath();
+		TArray<uint8> SplashWavBytes;
+		if (!SplashWavPath.IsEmpty())
 		{
-			PlaySoundW(reinterpret_cast<LPCWSTR>(SplashWav.data()), NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+			FFileHelper::LoadFileToArray(SplashWavBytes, *SplashWavPath);
+		}
+
+		if (SplashWavBytes.Num() > 44)
+		{
+			PlaySoundW(reinterpret_cast<LPCWSTR>(SplashWavBytes.GetData()), NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+		}
+		else
+		{
+			std::vector<uint8> FallbackWav = BuildTachyonSplashAudioBuffer();
+			if (FallbackWav.size() > 44)
+			{
+				PlaySoundW(reinterpret_cast<LPCWSTR>(FallbackWav.data()), NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+			}
 		}
 
 		// Faceted border points (1000x560 scaled to WinW x WinH)
@@ -516,6 +612,16 @@ namespace NobleFermiSplashProgress
 			if (Elapsed >= TotalDuration)
 			{
 				break;
+			}
+
+			// Strictly suppress underlying game window and native splash during desktop transparent hero splash
+			SuppressProcessGameWindows(hWnd, NULL);
+
+			MSG Msg;
+			while (PeekMessageW(&Msg, NULL, 0, 0, PM_REMOVE))
+			{
+				TranslateMessage(&Msg);
+				DispatchMessageW(&Msg);
 			}
 
 			// Clear framebuffer to 100% transparent black
@@ -956,6 +1062,9 @@ namespace NobleFermiSplashProgress
 
 		while (!GStopThread.load())
 		{
+			// Strictly suppress underlying game window until loading reaches 100%
+			SuppressProcessGameWindows(hWnd, NULL);
+
 			MSG Msg;
 			while (PeekMessageW(&Msg, NULL, 0, 0, PM_REMOVE))
 			{
@@ -1125,10 +1234,25 @@ namespace NobleFermiSplashProgress
 
 		DestroyWindow(hWnd);
 		UnregisterClassW(L"NobleFermiActiveSplashClass", GetModuleHandle(NULL));
+
+		// Clean reveal of main game window once loading reaches 100%
+		HWND hGameWnd = FindProcessGameWindow(NULL, NULL);
+		if (hGameWnd && IsWindow(hGameWnd))
+		{
+			ShowWindow(hGameWnd, SW_SHOWNORMAL);
+			UpdateWindow(hGameWnd);
+			SetForegroundWindow(hGameWnd);
+		}
 	}
 
 	static void SplashWorkerLoop()
 	{
+		if (FParse::Param(FCommandLine::Get(), TEXT("NoTachyon")) ||
+			FParse::Param(FCommandLine::Get(), TEXT("nosplash")))
+		{
+			return;
+		}
+
 		HWND hNativeSplash = NULL;
 		for (int32 retry = 0; retry < 50; ++retry)
 		{

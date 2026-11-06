@@ -11,6 +11,20 @@ set "DEV_BIN=%~dp0Binaries\Win64\NobleFermi.exe"
 set "UE_EDITOR=D:\epuc\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe"
 set "UPROJECT=%~dp0NobleFermi.uproject"
 
+REM 0. Primary Launcher: Seamless 3-phase bootloader (Tachyon transparent splash -> Noble Fermi loading bar -> Command Center)
+if exist "%~dp0NobleFermiLauncher.exe" (
+    echo [LAUNCHER] Launching Noble Fermi cinematic intro and bootloader...
+    cd /d "%~dp0"
+    start "" "NobleFermiLauncher.exe" %*
+    exit /b 0
+)
+if exist "%~dp0Packaged\Windows\NobleFermiLauncher.exe" (
+    echo [LAUNCHER] Launching Noble Fermi cinematic intro and bootloader...
+    cd /d "%~dp0Packaged\Windows"
+    start "" "NobleFermiLauncher.exe" %*
+    exit /b 0
+)
+
 REM 1. Priority: Launch optimized packaged game (instant boot, Tachyon laser splash, loading bar)
 if exist "%PKG_BIN%" (
     echo [LAUNCHER] Launching Noble Fermi standalone release...
