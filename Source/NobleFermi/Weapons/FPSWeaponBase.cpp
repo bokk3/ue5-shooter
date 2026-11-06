@@ -97,9 +97,9 @@ AFPSWeaponBase::AFPSWeaponBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponMesh"));
 	RootComponent = WeaponMesh;
-	WeaponMesh->SetCollisionProfileName(TEXT("NoCollision"));
+	WeaponMesh->SetMobility(EComponentMobility::Movable);
 
 	// Guaranteed 3D Procedural Carbine Geometry (100% immune to missing uncooked uasset meshes in packaged builds)
 	CarbineProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CarbineProcMesh"));
@@ -1244,14 +1244,41 @@ void AFPSWeaponBase::ApplyWeaponDataAsset(UFPSWeaponDataAsset* InDataAsset)
 		ReceiverMesh->SetRelativeRotation(FRotator::ZeroRotator);
 		ReceiverMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 		ReceiverMesh->EmptyOverrideMaterials();
-		ReceiverMesh->SetVisibility(true);
+		ReceiverMesh->SetVisibility(true, true);
 		ReceiverMesh->SetHiddenInGame(false);
+
+		// Guarantee authentic gunmetal material on all slots
+		UMaterialInterface* GunmetalMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Weapons/Materials/MI_Weapon_Gunmetal.MI_Weapon_Gunmetal"));
+		if (!GunmetalMat)
+		{
+			GunmetalMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+		}
+		if (GunmetalMat)
+		{
+			const int32 NumMats = ReceiverMesh->GetNumMaterials();
+			for (int32 i = 0; i < FMath::Max(1, NumMats); ++i)
+			{
+				if (!ReceiverMesh->GetMaterial(i))
+				{
+					ReceiverMesh->SetMaterial(i, GunmetalMat);
+				}
+			}
+		}
 
 		// Hide procedural carbine when an authoritative receiver asset is installed
 		if (CarbineProcMesh)
 		{
-			CarbineProcMesh->SetVisibility(false);
+			CarbineProcMesh->SetVisibility(false, true);
 			CarbineProcMesh->SetHiddenInGame(true);
+		}
+	}
+	else
+	{
+		// Fallback to high-detail procedural carbine if receiver asset is not loaded
+		if (CarbineProcMesh)
+		{
+			CarbineProcMesh->SetVisibility(true, true);
+			CarbineProcMesh->SetHiddenInGame(false);
 		}
 	}
 

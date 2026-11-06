@@ -704,7 +704,7 @@ void FFPSAnimInstanceProxy::PropagateHandChildBones(
 	const int32 HandSkelIdx = BoneContainer.GetSkeletonIndex(HandBoneIdx);
 	const bool bIsLeft = (HandBoneIdx == HandLIdx);
 	const float CurlSign = bIsLeft ? -1.0f : 1.0f;
-	const float RelaxedCurlDeg = (bUnarmedRelaxedIdle && HighReadyAlpha < 0.05f) ? (22.0f * CurlSign) : 0.0f;
+	const float RelaxedCurlDeg = (bUnarmedRelaxedIdle && HighReadyAlpha < 0.05f) ? (12.0f * CurlSign) : 0.0f;
 	const FQuat FingerCurlRot = FQuat(FVector::UpVector, FMath::DegreesToRadians(RelaxedCurlDeg));
 
 	for (int32 SkelIdx = HandSkelIdx + 1; SkelIdx < NumBones; ++SkelIdx)
@@ -741,22 +741,22 @@ void FFPSAnimInstanceProxy::SolveRightArmRifleIK(
 	const float BreathOffset = FMath::Sin(IdleBreathPhase) * 0.45f;
 	const float RecoilBack = RecoilImpulseAlpha * 2.8f;
 
-	// Authentic Tier-1 Plate Carrier / Molle Rest ("Thumbs in Vest" / Tactical Rest):
-	// Hands rest naturally high on front Molle straps / upper chest rig near clavicle,
-	// elbows relaxed downward and slightly flared to clear side armor / pouches.
+	// Authentic Natural Stand-At-Ease:
+	// Arms hang naturally alongside the torso, clearing the bulky Level IV plate carrier
+	// and side pouches, with hands resting at hip/upper thigh level and gentle ~18 deg elbow ease.
 	const FVector RelaxedHandR =
 		ChestPos
-		+ CompRightDir * 15.5f
-		+ CompForwardDir * 16.0f
-		- CompUpDir * 9.5f
-		+ CompUpDir * (BreathOffset * 0.95f)
-		+ CompForwardDir * (BreathOffset * 0.45f);
+		+ CompRightDir * 24.5f
+		+ CompForwardDir * 4.5f
+		- CompUpDir * 46.0f
+		+ CompUpDir * (BreathOffset * 0.65f)
+		+ CompForwardDir * (BreathOffset * 0.35f);
 
 	const FVector RelaxedJointR =
 		ChestPos
-		+ CompRightDir * 25.5f
-		- CompForwardDir * 2.0f
-		- CompUpDir * 20.0f;
+		+ CompRightDir * 31.5f
+		- CompForwardDir * 6.5f
+		- CompUpDir * 22.0f;
 
 	// Low-Ready Patrol Cradle: pistol grip held comfortably near right ribcage/pecs
 	const FVector LowReadyHandR =
@@ -850,20 +850,20 @@ void FFPSAnimInstanceProxy::SolveLeftHandTwoBoneIK(
 	const FVector ChestPos = Spine03CS.GetLocation();
 	const float BreathOffsetL = FMath::Sin(IdleBreathPhase) * 0.45f;
 
-	// Authentic Tier-1 Plate Carrier / Molle Rest ("Thumbs in Vest" / Tactical Rest):
+	// Authentic Natural Stand-At-Ease:
 	const FVector RelaxedHandL =
 		ChestPos
-		- CompRightDir * 15.5f
-		+ CompForwardDir * 16.0f
-		- CompUpDir * 9.5f
-		+ CompUpDir * (BreathOffsetL * 0.95f)
-		+ CompForwardDir * (BreathOffsetL * 0.45f);
+		- CompRightDir * 24.5f
+		+ CompForwardDir * 4.5f
+		- CompUpDir * 46.0f
+		+ CompUpDir * (BreathOffsetL * 0.65f)
+		+ CompForwardDir * (BreathOffsetL * 0.35f);
 
 	const FVector RelaxedJointL =
 		ChestPos
-		- CompRightDir * 25.5f
-		- CompForwardDir * 2.0f
-		- CompUpDir * 20.0f;
+		- CompRightDir * 31.5f
+		- CompForwardDir * 6.5f
+		- CompUpDir * 22.0f;
 
 	// Low-Ready Patrol Cradle: Left hand supports the handguard across the chest,
 	// angling the barrel ~18 degrees downward and across the body toward the left hip/front.

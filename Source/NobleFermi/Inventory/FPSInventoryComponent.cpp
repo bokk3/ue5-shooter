@@ -105,27 +105,13 @@ void UFPSInventoryComponent::EquipSlot(int32 SlotIndex)
 	ActiveWeapon = TargetWeapon;
 	ActiveWeapon->SetActorHiddenInGame(false);
 
-	// Primary 3rd-person tactical weapon attachment: attach authoritatively to hand_r / weapon_r
+	// Primary 3rd-person tactical weapon attachment: attach authoritatively to Character Root (Capsule)
+	// so the weapon NEVER inherits 100x FBX bone scales or bone coordinate twists.
+	// AFPSCharacter::Tick() pins the weapon position and aim orientation relative to hand_r every frame.
 	ACharacter* Char = Cast<ACharacter>(GetOwner());
-	if (Char && Char->GetMesh())
+	if (Char && Char->GetRootComponent())
 	{
-		USkeletalMeshComponent* MeshComp = Char->GetMesh();
-		FName SocketName = FName(TEXT("hand_r"));
-
-		// If a calibrated weapon_r socket exists and is properly co-located near the hand (not at origin 0,0,0)
-		if (MeshComp->DoesSocketExist(TEXT("weapon_r")))
-		{
-			const FVector WeaponRSocketLoc = MeshComp->GetSocketLocation(TEXT("weapon_r"));
-			const FVector HandRLoc = MeshComp->GetSocketLocation(TEXT("hand_r"));
-			if (FVector::DistSquared(WeaponRSocketLoc, HandRLoc) < 1225.0f) // within 35cm
-			{
-				SocketName = FName(TEXT("weapon_r"));
-			}
-		}
-
-		ActiveWeapon->AttachToComponent(MeshComp, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
-		ActiveWeapon->SetActorRelativeLocation(ActiveWeapon->GetThirdPersonLocation());
-		ActiveWeapon->SetActorRelativeRotation(ActiveWeapon->GetThirdPersonRotation());
+		ActiveWeapon->AttachToComponent(Char->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
 		ActiveWeapon->SetActorHiddenInGame(false);
 	}
 	else

@@ -195,6 +195,19 @@ void AFPSMenuGameMode::BeginPlay()
 			}), 0.5f, false);
 		}
 
+		int32 PreviewStanceVal = -1;
+		if (FParse::Value(FCommandLine::Get(), TEXT("PreviewStance="), PreviewStanceVal))
+		{
+			FTimerHandle StanceTimerHandle;
+			GetWorldTimerManager().SetTimer(StanceTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this, PreviewStanceVal]()
+			{
+				if (ActivePreviewActor)
+				{
+					ActivePreviewActor->SetPreviewStance(PreviewStanceVal);
+				}
+			}), 0.8f, false);
+		}
+
 		FTimerHandle PreShotSparkHandle;
 		GetWorldTimerManager().SetTimer(PreShotSparkHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
 		{

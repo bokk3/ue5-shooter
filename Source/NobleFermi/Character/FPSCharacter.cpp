@@ -866,7 +866,10 @@ void AFPSCharacter::Tick(float DeltaTime)
 				const FQuat FinalRifleQuat = BaseRifleQuat * DynamicRotOffset.Quaternion();
 				const FVector DynamicLocOffset = FinalRifleQuat.RotateVector(Weapon->GetRecoilOffsetLoc() + Weapon->GetReloadOffsetLoc());
 
-				Weapon->SetActorLocationAndRotation(HandR_Pos + DynamicLocOffset, FinalRifleQuat, false, nullptr, ETeleportType::TeleportPhysics);
+				// Authoritative grip offset aligns right-hand palm with receiver pistol grip
+				const FVector GripOffset(10.56f, 0.0f, 7.04f);
+				const FVector FinalWeaponLoc = HandR_Pos + FinalRifleQuat.RotateVector(GripOffset) + DynamicLocOffset;
+				Weapon->SetActorLocationAndRotation(FinalWeaponLoc, FinalRifleQuat, false, nullptr, ETeleportType::TeleportPhysics);
 			}
 		}
 

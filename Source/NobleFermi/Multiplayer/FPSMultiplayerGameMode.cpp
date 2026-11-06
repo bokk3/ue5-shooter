@@ -3,6 +3,7 @@
 #include "Multiplayer/FPSPlayerState.h"
 #include "Character/FPSCharacter.h"
 #include "Weapons/FPSWeaponBase.h"
+#include "Inventory/FPSInventoryComponent.h"
 #include "Map/FPSCombatArenaMapActor.h"
 #include "Map/FPSCoastalOperationsMapActor.h"
 #include "Economy/FPSEconomySubsystem.h"
@@ -207,7 +208,7 @@ void AFPSMultiplayerGameMode::BeginPlay()
 		FString ShotName = (ActiveTheaterIndex == 1) ? TEXT("gameplay_coastal_operations.png") : TEXT("gameplay_rust_tactical.png");
 		FParse::Value(FCommandLine::Get(), TEXT("ShotName="), ShotName);
 
-		// Action trigger (fire weapon burst for dynamic muzzle flash, brass casing ejection, and HUD recoil right before capture)
+		// Action trigger (aim down sights, fire burst, and log weapon diagnostics right before capture)
 		FTimerHandle ActionTimerHandle;
 		GetWorldTimerManager().SetTimer(ActionTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
 		{
@@ -216,10 +217,29 @@ void AFPSMultiplayerGameMode::BeginPlay()
 			{
 				if (AFPSCharacter* Char = Cast<AFPSCharacter>(PC->GetPawn()))
 				{
+					Char->StartADS();
 					Char->StartFire();
+
+					if (Char->InventoryComponent)
+					{
+						AFPSWeaponBase* Weap = Char->InventoryComponent->GetActiveWeapon();
+						UE_LOG(LogTemp, Warning, TEXT("[DIAG_WEAPON] Weap=%s, Loc=%s, Hidden=%d"),
+							Weap ? *Weap->GetName() : TEXT("NONE"),
+							Weap ? *Weap->GetActorLocation().ToString() : TEXT("NONE"),
+							Weap ? Weap->IsHidden() : -1);
+						if (Weap && Weap->ReceiverMesh)
+						{
+							UE_LOG(LogTemp, Warning, TEXT("[DIAG_WEAPON] ReceiverMesh Valid=1, Mesh=%s, Vis=%d, Hidden=%d, Radius=%.1f, Loc=%s"),
+								Weap->ReceiverMesh->GetStaticMesh() ? *Weap->ReceiverMesh->GetStaticMesh()->GetName() : TEXT("NONE"),
+								Weap->ReceiverMesh->IsVisible(),
+								Weap->ReceiverMesh->bHiddenInGame,
+								Weap->ReceiverMesh->CalcBounds(Weap->ReceiverMesh->GetComponentTransform()).SphereRadius,
+								*Weap->ReceiverMesh->GetComponentLocation().ToString());
+						}
+					}
 				}
 			}
-		}), FMath::Max(0.5f, ShotDelay - 0.5f), false);
+		}), FMath::Max(0.5f, ShotDelay - 1.2f), false);
 
 		FTimerHandle ScreenshotTimerHandle;
 		GetWorldTimerManager().SetTimer(ScreenshotTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this, ShotName]()

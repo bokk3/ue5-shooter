@@ -48,7 +48,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Components")
-	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
+	TObjectPtr<USceneComponent> WeaponMesh;
 
 	/** Embedded Data Asset defining PBR meshes, detached magazine, sockets, and combat ballistics */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Data")
