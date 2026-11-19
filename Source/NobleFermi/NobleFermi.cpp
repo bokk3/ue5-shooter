@@ -10,6 +10,8 @@
 #include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
 #include "HAL/PlatformTime.h"
+#include "CoreGlobals.h"
+#include "Misc/App.h"
 
 #if PLATFORM_WINDOWS
 #include <atomic>
@@ -1283,6 +1285,13 @@ public:
 		FFPSGameplayTags::InitializeNativeGameplayTags();
 
 #if PLATFORM_WINDOWS
+		// The custom splash hides the main window until a game map finishes loading. The editor,
+		// commandlets and dedicated servers never broadcast that, so the window would stay hidden forever.
+		if (GIsEditor || IsRunningCommandlet() || IsRunningDedicatedServer())
+		{
+			return;
+		}
+
 		NobleFermiSplashProgress::GStartTimeSeconds = FPlatformTime::Seconds();
 		NobleFermiSplashProgress::GStopThread = false;
 		NobleFermiSplashProgress::GWorldLoaded = false;
