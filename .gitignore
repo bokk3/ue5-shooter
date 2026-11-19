@@ -36,3 +36,11 @@ Content/Audio/Foley/
 Content/Audio/Mix/
 Content/Audio/DefaultAttenuation.uasset
 Content/Misc/
+# Third-party content copied from Epic's Lyra Starter Game (same README)
+Content/Characters/Heroes/
+Content/Weapons/Rifle/
+Content/Weapons/Pistol/
+Content/Weapons/Shotgun/
+Content/Weapons/Generic/
+Content/Effects/
+Content/PhysicsMaterials/
