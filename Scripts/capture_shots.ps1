@@ -1,5 +1,5 @@
-$exe = "c:\Users\Boris\Documents\antigravity\noble-fermi\Packaged\Windows\NobleFermi\Binaries\Win64\NobleFermi.exe"
-$shotDir = "c:\Users\Boris\Documents\antigravity\noble-fermi\Packaged\Windows\NobleFermi\Docs\Screenshots"
+$exe = "D:\epuc\Projects\noble-fermi\Packaged\Windows\NobleFermi\Binaries\Win64\NobleFermi.exe"
+$shotDir = "D:\epuc\Projects\noble-fermi\Packaged\Windows\NobleFermi\Docs\Screenshots"
 $artDir = "C:\Users\Boris\.gemini\antigravity\brain\c135ce77-4bef-4380-b69a-99d73fc7b5a7"
 
 $shots = @(
