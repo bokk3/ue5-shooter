@@ -750,11 +750,7 @@ void AFPSWeaponBase::FireShot()
 	OnWeaponFired.Broadcast();
 
 	// Weapon Gunshot Audio (Strictly 1 single shot per trigger cycle with dynamic distance attenuation)
-	FVector MuzzleWorldLoc = GetActorLocation() + GetActorForwardVector() * 48.0f + FVector(0.0f, 0.0f, 4.0f);
-	if (AK47StaticMesh && AK47StaticMesh->DoesSocketExist(TEXT("Muzzle_Flash_Socket")))
-	{
-		MuzzleWorldLoc = AK47StaticMesh->GetSocketLocation(TEXT("Muzzle_Flash_Socket"));
-	}
+	const FVector MuzzleWorldLoc = GetMuzzleWorldLocation();
 	if (FireSound)
 	{
 		UFPSAudioSubsystem::PlaySpatialSoundWithFalloff(
@@ -838,14 +834,6 @@ void AFPSWeaponBase::FireShot()
 			float SpreadHalfAngleRad = FMath::DegreesToRadians((ShooterFPSChar && ShooterFPSChar->IsTacticalBot()) ? 2.4f : (CurrentSpread * 0.5f));
 			FVector ShotDirection = FMath::VRandCone(CameraRot.Vector(), SpreadHalfAngleRad);
 
-			FVector TraceEnd = CameraLoc + (ShotDirection * MaxRange);
-
-			FHitResult HitResult;
-			FCollisionQueryParams TraceParams;
-			TraceParams.AddIgnoredActor(this);
-			TraceParams.AddIgnoredActor(PawnOwner);
-			TraceParams.bReturnPhysicalMaterial = true;
-
 			UWorld* World = GetWorld();
 			if (World)
 			{
@@ -865,117 +853,23 @@ void AFPSWeaponBase::FireShot()
 					RadarSubsystem->ReportGunfire(PawnOwner, PawnOwner->GetActorLocation(), ShooterTeam, bIsSuppressed);
 				}
 
-				const bool bShooterInTimeBubble = bIsDiving
-					|| (ShooterFPSChar && ShooterFPSChar->IsFermiTimeBubbleActive())
-					|| AFPSFermiTimeBubble::IsLocationInsideAnyBubble(World, CameraLoc)
-					|| AFPSFermiTimeBubble::IsLocationInsideAnyBubble(World, MuzzleWorldLoc);
+				const FVector ResolvedImpact = ResolveShot(CameraLoc, ShotDirection, MuzzleWorldLoc);
 
-				if (bShooterInTimeBubble)
+				// Networking: an owning client predicts its own shot (tracer, sound, hit marker; damage is
+				// ignored without authority by UFPSHealthComponent) and asks the server to resolve it.
+				// Authority (server bots, listen-server host) resolves directly and replicates cosmetics.
+				if (ShooterFPSChar)
 				{
-					// Case 1: Shooter is inside an active Fermi Bubble
-					// Convert hitscan immediately into a physical 3D dilated slug starting at muzzle/eye location
-					AFPSDilatedBulletActor* DilatedBullet = World->SpawnActor<AFPSDilatedBulletActor>(AFPSDilatedBulletActor::StaticClass(), MuzzleWorldLoc, ShotDirection.Rotation());
-					if (DilatedBullet)
+					if (!ShooterFPSChar->HasAuthority())
 					{
-						DilatedBullet->InitializeSlug(MuzzleWorldLoc, ShotDirection, BaseDamage, MaxRange, PawnOwner);
-					}
-				}
-				else
-				{
-					// Case 2: Shooter is outside. Check if hitscan ray intersects any active Fermi Bubble
-					// First, test world geometry line trace to find hit distance
-					const bool bHitWorld = World->LineTraceSingleByChannel(HitResult, CameraLoc, TraceEnd, ECC_Visibility, TraceParams);
-					const float WorldHitDistance = bHitWorld ? HitResult.Distance : MaxRange;
-
-					FVector BubbleEntryLoc = FVector::ZeroVector;
-					float BubbleEntryDist = 0.0f;
-					const bool bEntersBubble = AFPSFermiTimeBubble::FindEarliestBubbleEntry(World, CameraLoc, TraceEnd, WorldHitDistance, BubbleEntryLoc, BubbleEntryDist);
-
-					if (bEntersBubble && BubbleEntryDist < WorldHitDistance)
-					{
-						// Ray encounters bubble boundary BEFORE hitting world geometry!
-						// Terminate ray at boundary and spawn physical dilated slug cruising inward
-						AFPSBallisticTracer* LeadTracer = World->SpawnActor<AFPSBallisticTracer>(AFPSBallisticTracer::StaticClass(), MuzzleWorldLoc, ShotDirection.Rotation());
-						if (LeadTracer)
+						if (ShooterFPSChar->IsLocallyControlled())
 						{
-							LeadTracer->InitializeTracer(MuzzleWorldLoc, BubbleEntryLoc, false, false);
-						}
-
-						const float RemainingDist = FMath::Max(100.0f, MaxRange - BubbleEntryDist);
-						AFPSDilatedBulletActor* DilatedBullet = World->SpawnActor<AFPSDilatedBulletActor>(AFPSDilatedBulletActor::StaticClass(), BubbleEntryLoc, ShotDirection.Rotation());
-						if (DilatedBullet)
-						{
-							DilatedBullet->InitializeSlug(BubbleEntryLoc, ShotDirection, BaseDamage, RemainingDist, PawnOwner);
+							ShooterFPSChar->ServerFireShot(CameraLoc, ShotDirection);
 						}
 					}
 					else
 					{
-						// Ray does NOT enter any bubble before hitting geometry (or at all). Standard instantaneous hitscan resolution!
-						FVector TracerImpactPoint = TraceEnd;
-						if (bHitWorld)
-						{
-							TracerImpactPoint = HitResult.ImpactPoint;
-							AActor* HitActor = HitResult.GetActor();
-							if (HitActor)
-							{
-								if (AFPSFermiDecoyActor* Decoy = Cast<AFPSFermiDecoyActor>(HitActor))
-								{
-									Decoy->OnDecoyHit(PawnOwner, HitResult.ImpactPoint);
-								}
-								else
-								{
-									UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
-									if (HealthComp)
-									{
-										const bool bIsHead = (HitResult.BoneName == FName(TEXT("head")));
-										const bool bIsArmorProtected = FFPSHumanSkeleton::IsBoneArmorProtected(HitResult.BoneName);
-										const float PreHealth = HealthComp->GetCurrentHealth();
-										const float PreShield = HealthComp->GetCurrentShield();
-
-										HealthComp->ApplyDamage(BaseDamage, PawnOwner, HitResult);
-
-										const bool bKilled = HealthComp->IsDead() || (PreHealth > 0.0f && HealthComp->GetCurrentHealth() <= 0.0f);
-										const bool bShieldBroken = (PreShield > 0.0f && HealthComp->GetCurrentShield() <= 0.0f) || (bIsArmorProtected && PreShield > 0.0f);
-
-										if (ShooterFPSChar)
-										{
-											ShooterFPSChar->NotifyEnemyHit(HitActor, HitResult, bIsHead, bShieldBroken, bKilled);
-										}
-									}
-								}
-							}
-						}
-
-						// Visual tracer streak
-						AFPSBallisticTracer* Tracer = World->SpawnActor<AFPSBallisticTracer>(AFPSBallisticTracer::StaticClass(), MuzzleWorldLoc, ShotDirection.Rotation());
-						if (Tracer)
-						{
-							Tracer->InitializeTracer(MuzzleWorldLoc, TracerImpactPoint, false, false);
-						}
-
-						// Deaf Accessibility / Bullet Flyby: Detect supersonic crack passing near local player
-						if (APlayerController* FirstPC = World->GetFirstPlayerController())
-						{
-							APawn* LocalPawn = FirstPC->GetPawn();
-							if (LocalPawn && LocalPawn != PawnOwner)
-							{
-								if (AFPSCharacter* LocalChar = Cast<AFPSCharacter>(LocalPawn))
-								{
-									if (UFPSHUDWidget* LocalHUD = LocalChar->GetActiveHUDWidget())
-									{
-										const FVector LocalPlayerHead = LocalChar->GetActorLocation() + FVector(0.0f, 0.0f, 60.0f);
-										const FVector ClosestPt = FMath::ClosestPointOnSegment(LocalPlayerHead, MuzzleWorldLoc, TracerImpactPoint);
-										const float FlybyDist = FVector::Dist(ClosestPt, LocalPlayerHead);
-
-										if (FlybyDist <= 450.0f) // Within 4.5 meters
-										{
-											const float FlybyIntensity = FMath::Clamp(1.8f - (FlybyDist / 450.0f) * 0.8f, 1.0f, 2.0f);
-											LocalHUD->AddDirectionalIndicator(MuzzleWorldLoc, FlybyIntensity, EThreatIndicatorType::Gunfire);
-										}
-									}
-								}
-							}
-						}
+						ShooterFPSChar->MulticastFireCosmetic(MuzzleWorldLoc, ResolvedImpact);
 					}
 				}
 			}
@@ -1009,6 +903,282 @@ void AFPSWeaponBase::FireShot()
 	if (FireMode == EFPSFireMode::Burst && ShotsFiredInBurst >= 3)
 	{
 		StopFire();
+	}
+}
+
+FVector AFPSWeaponBase::GetMuzzleWorldLocation() const
+{
+	if (AK47StaticMesh && AK47StaticMesh->DoesSocketExist(TEXT("Muzzle_Flash_Socket")))
+	{
+		return AK47StaticMesh->GetSocketLocation(TEXT("Muzzle_Flash_Socket"));
+	}
+	return GetActorLocation() + GetActorForwardVector() * 48.0f + FVector(0.0f, 0.0f, 4.0f);
+}
+
+FVector AFPSWeaponBase::ResolveShot(const FVector& CameraLoc, const FVector& ShotDirection, const FVector& MuzzleWorldLoc)
+{
+	UWorld* World = GetWorld();
+	APawn* PawnOwner = Cast<APawn>(GetOwner());
+	if (!World || !PawnOwner)
+	{
+		return CameraLoc + (ShotDirection * MaxRange);
+	}
+
+	AFPSCharacter* ShooterFPSChar = Cast<AFPSCharacter>(PawnOwner);
+	const bool bIsDiving = (ShooterFPSChar && ShooterFPSChar->IsBallisticDiving());
+
+	const FVector TraceEnd = CameraLoc + (ShotDirection * MaxRange);
+	FHitResult HitResult;
+	FCollisionQueryParams TraceParams;
+	TraceParams.AddIgnoredActor(this);
+	TraceParams.AddIgnoredActor(PawnOwner);
+	TraceParams.bReturnPhysicalMaterial = true;
+
+	FVector ResolvedImpact = MuzzleWorldLoc;
+
+	const bool bShooterInTimeBubble = bIsDiving
+		|| (ShooterFPSChar && ShooterFPSChar->IsFermiTimeBubbleActive())
+		|| AFPSFermiTimeBubble::IsLocationInsideAnyBubble(World, CameraLoc)
+		|| AFPSFermiTimeBubble::IsLocationInsideAnyBubble(World, MuzzleWorldLoc);
+
+	if (bShooterInTimeBubble)
+	{
+		// Case 1: Shooter is inside an active Fermi Bubble
+		// Convert hitscan immediately into a physical 3D dilated slug starting at muzzle/eye location
+		AFPSDilatedBulletActor* DilatedBullet = World->SpawnActor<AFPSDilatedBulletActor>(AFPSDilatedBulletActor::StaticClass(), MuzzleWorldLoc, ShotDirection.Rotation());
+		if (DilatedBullet)
+		{
+			DilatedBullet->InitializeSlug(MuzzleWorldLoc, ShotDirection, BaseDamage, MaxRange, PawnOwner);
+		}
+	}
+	else
+	{
+		// Case 2: Shooter is outside. Check if hitscan ray intersects any active Fermi Bubble
+		// First, test world geometry line trace to find hit distance
+		const bool bHitWorld = World->LineTraceSingleByChannel(HitResult, CameraLoc, TraceEnd, ECC_Visibility, TraceParams);
+		const float WorldHitDistance = bHitWorld ? HitResult.Distance : MaxRange;
+
+		FVector BubbleEntryLoc = FVector::ZeroVector;
+		float BubbleEntryDist = 0.0f;
+		const bool bEntersBubble = AFPSFermiTimeBubble::FindEarliestBubbleEntry(World, CameraLoc, TraceEnd, WorldHitDistance, BubbleEntryLoc, BubbleEntryDist);
+
+		if (bEntersBubble && BubbleEntryDist < WorldHitDistance)
+		{
+			// Ray encounters bubble boundary BEFORE hitting world geometry!
+			// Terminate ray at boundary and spawn physical dilated slug cruising inward
+			AFPSBallisticTracer* LeadTracer = World->SpawnActor<AFPSBallisticTracer>(AFPSBallisticTracer::StaticClass(), MuzzleWorldLoc, ShotDirection.Rotation());
+			if (LeadTracer)
+			{
+				LeadTracer->InitializeTracer(MuzzleWorldLoc, BubbleEntryLoc, false, false);
+			}
+
+			ResolvedImpact = BubbleEntryLoc;
+			const float RemainingDist = FMath::Max(100.0f, MaxRange - BubbleEntryDist);
+			AFPSDilatedBulletActor* DilatedBullet = World->SpawnActor<AFPSDilatedBulletActor>(AFPSDilatedBulletActor::StaticClass(), BubbleEntryLoc, ShotDirection.Rotation());
+			if (DilatedBullet)
+			{
+				DilatedBullet->InitializeSlug(BubbleEntryLoc, ShotDirection, BaseDamage, RemainingDist, PawnOwner);
+			}
+		}
+		else
+		{
+			// Ray does NOT enter any bubble before hitting geometry (or at all). Standard instantaneous hitscan resolution!
+			FVector TracerImpactPoint = TraceEnd;
+			if (bHitWorld)
+			{
+				TracerImpactPoint = HitResult.ImpactPoint;
+				AActor* HitActor = HitResult.GetActor();
+				if (HitActor)
+				{
+					if (AFPSFermiDecoyActor* Decoy = Cast<AFPSFermiDecoyActor>(HitActor))
+					{
+						Decoy->OnDecoyHit(PawnOwner, HitResult.ImpactPoint);
+					}
+					else
+					{
+						UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
+						if (HealthComp)
+						{
+							const bool bIsHead = (HitResult.BoneName == FName(TEXT("head")));
+							const bool bIsArmorProtected = FFPSHumanSkeleton::IsBoneArmorProtected(HitResult.BoneName);
+							const float PreHealth = HealthComp->GetCurrentHealth();
+							const float PreShield = HealthComp->GetCurrentShield();
+
+							HealthComp->ApplyDamage(BaseDamage, PawnOwner, HitResult);
+
+							const bool bKilled = HealthComp->IsDead() || (PreHealth > 0.0f && HealthComp->GetCurrentHealth() <= 0.0f);
+							const bool bShieldBroken = (PreShield > 0.0f && HealthComp->GetCurrentShield() <= 0.0f) || (bIsArmorProtected && PreShield > 0.0f);
+
+							if (ShooterFPSChar && (ShooterFPSChar->IsLocallyControlled() || ShooterFPSChar->IsTacticalBot()))
+							{
+								ShooterFPSChar->NotifyEnemyHit(HitActor, HitResult, bIsHead, bShieldBroken, bKilled);
+							}
+						}
+					}
+				}
+			}
+
+			ResolvedImpact = TracerImpactPoint;
+
+			// Visual tracer streak
+			AFPSBallisticTracer* Tracer = World->SpawnActor<AFPSBallisticTracer>(AFPSBallisticTracer::StaticClass(), MuzzleWorldLoc, ShotDirection.Rotation());
+			if (Tracer)
+			{
+				Tracer->InitializeTracer(MuzzleWorldLoc, TracerImpactPoint, false, false);
+			}
+
+			// Deaf Accessibility / Bullet Flyby: Detect supersonic crack passing near local player
+			if (APlayerController* FirstPC = World->GetFirstPlayerController())
+			{
+				APawn* LocalPawn = FirstPC->GetPawn();
+				if (LocalPawn && LocalPawn != PawnOwner)
+				{
+					if (AFPSCharacter* LocalChar = Cast<AFPSCharacter>(LocalPawn))
+					{
+						if (UFPSHUDWidget* LocalHUD = LocalChar->GetActiveHUDWidget())
+						{
+							const FVector LocalPlayerHead = LocalChar->GetActorLocation() + FVector(0.0f, 0.0f, 60.0f);
+							const FVector ClosestPt = FMath::ClosestPointOnSegment(LocalPlayerHead, MuzzleWorldLoc, TracerImpactPoint);
+							const float FlybyDist = FVector::Dist(ClosestPt, LocalPlayerHead);
+
+							if (FlybyDist <= 450.0f) // Within 4.5 meters
+							{
+								const float FlybyIntensity = FMath::Clamp(1.8f - (FlybyDist / 450.0f) * 0.8f, 1.0f, 2.0f);
+								LocalHUD->AddDirectionalIndicator(MuzzleWorldLoc, FlybyIntensity, EThreatIndicatorType::Gunfire);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return ResolvedImpact;
+}
+
+void AFPSWeaponBase::ServerHandleClientShot(const FVector& TraceOrigin, const FVector& ShotDirection)
+{
+	AFPSCharacter* ShooterFPSChar = Cast<AFPSCharacter>(GetOwner());
+	UWorld* World = GetWorld();
+	if (!World || !ShooterFPSChar || !ShooterFPSChar->HasAuthority() || ShooterFPSChar->IsDead())
+	{
+		return;
+	}
+
+	// The client finishes reloading slightly before the server (RPC latency), so complete the
+	// server-side reload early when the remaining time is within tolerance.
+	if (CurrentState == EFPSWeaponState::Reloading)
+	{
+		if (ReloadElapsedTime >= ReloadDuration - ServerReloadTolerance)
+		{
+			FinishReload();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Verbose, TEXT("[Net] Rejected shot from %s: still reloading"), *ShooterFPSChar->GetName());
+			return;
+		}
+	}
+
+	if (CurrentAmmo <= 0)
+	{
+		UE_LOG(LogTemp, Verbose, TEXT("[Net] Rejected shot from %s: no ammo"), *ShooterFPSChar->GetName());
+		return;
+	}
+
+	// Rate limit with a small burst budget so packet bunching doesn't drop legitimate shots
+	const double Now = World->GetTimeSeconds();
+	if (LastServerShotTime >= 0.0)
+	{
+		ServerShotBudget = FMath::Min(ServerShotBurstAllowance, ServerShotBudget + (float)((Now - LastServerShotTime) / GetTimeBetweenShots()));
+	}
+	LastServerShotTime = Now;
+	if (ServerShotBudget < 1.0f)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Net] Rejected shot from %s: fire rate exceeded"), *ShooterFPSChar->GetName());
+		return;
+	}
+	ServerShotBudget -= 1.0f;
+
+	// The origin must be near the shooter (the over-the-shoulder camera sits on a boom behind the pawn)
+	if (FVector::Dist(TraceOrigin, ShooterFPSChar->GetPawnViewLocation()) > MaxServerShotOriginDistance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Net] Rejected shot from %s: origin too far from pawn"), *ShooterFPSChar->GetName());
+		return;
+	}
+
+	// The direction must roughly match the server's view of the shooter's aim
+	const FVector SafeDir = ShotDirection.GetSafeNormal();
+	if (SafeDir.IsNearlyZero())
+	{
+		return;
+	}
+	const FVector ServerAimDir = ShooterFPSChar->GetBaseAimRotation().Vector();
+	const float AngleDeg = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(SafeDir, ServerAimDir), -1.0f, 1.0f)));
+	if (AngleDeg > MaxSpread + MaxServerAimDeviationDeg)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Net] Rejected shot from %s: aim deviation %.1f deg"), *ShooterFPSChar->GetName(), AngleDeg);
+		return;
+	}
+
+	CurrentAmmo--;
+
+	// TODO(netcode): rewind hitboxes to the client's fire timestamp before tracing (lag compensation).
+	const FVector MuzzleWorldLoc = GetMuzzleWorldLocation();
+	const FVector ResolvedImpact = ResolveShot(TraceOrigin, SafeDir, MuzzleWorldLoc);
+	ShooterFPSChar->MulticastFireCosmetic(MuzzleWorldLoc, ResolvedImpact);
+}
+
+void AFPSWeaponBase::PlayRemoteFireCosmetics(const FVector& MuzzleWorldLoc, const FVector& ImpactPoint, bool bSpawnTracer, bool bPlaySound)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	OnWeaponFired.Broadcast();
+
+	if (bPlaySound && FireSound)
+	{
+		UFPSAudioSubsystem::PlaySpatialSoundWithFalloff(
+			this,
+			FireSound,
+			MuzzleWorldLoc,
+			bIsSuppressed ? 0.45f : 0.90f,
+			250.0f,
+			GunshotMaxAudibleDistance,
+			FMath::RandRange(0.985f, 1.015f),
+			EFPSAudioChannel::SFX
+		);
+	}
+
+	if (bSpawnTracer)
+	{
+		if (AFPSBallisticTracer* Tracer = World->SpawnActor<AFPSBallisticTracer>(AFPSBallisticTracer::StaticClass(), MuzzleWorldLoc, (ImpactPoint - MuzzleWorldLoc).Rotation()))
+		{
+			Tracer->InitializeTracer(MuzzleWorldLoc, ImpactPoint, false, false);
+		}
+	}
+
+	// Visual-audio gunfire indicator for the local player
+	if (APlayerController* FirstPC = World->GetFirstPlayerController())
+	{
+		if (AFPSCharacter* LocalChar = Cast<AFPSCharacter>(FirstPC->GetPawn()))
+		{
+			if (LocalChar != GetOwner())
+			{
+				if (UFPSHUDWidget* LocalHUD = LocalChar->GetActiveHUDWidget())
+				{
+					const float ShotDist = FVector::Dist(MuzzleWorldLoc, LocalChar->GetActorLocation());
+					if (ShotDist <= GunshotMaxAudibleDistance)
+					{
+						const float Attenuation = FMath::Clamp(1.0f - (ShotDist / GunshotMaxAudibleDistance), 0.25f, 1.0f);
+						LocalHUD->AddDirectionalIndicator(MuzzleWorldLoc, (bIsSuppressed ? 0.75f : 1.5f) * Attenuation, EThreatIndicatorType::Gunfire);
+					}
+				}
+			}
+		}
 	}
 }
 

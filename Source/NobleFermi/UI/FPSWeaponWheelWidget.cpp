@@ -407,18 +407,10 @@ void UFPSWeaponWheelWidget::HideAndSelectWeapon()
 	{
 		const FFPSWeaponWheelEntry& SelectedEntry = ArsenalEntries[HighlightedIndex];
 
-		if (UFPSInventoryComponent* Inv = OwningCharacter->GetInventoryComponent())
+		// Load the Weapon Data Asset; the character applies it locally and on the server
+		if (UFPSWeaponDataAsset* LoadedAsset = LoadObject<UFPSWeaponDataAsset>(nullptr, *SelectedEntry.AssetPath))
 		{
-			// Load Weapon Data Asset
-			UFPSWeaponDataAsset* LoadedAsset = LoadObject<UFPSWeaponDataAsset>(nullptr, *SelectedEntry.AssetPath);
-			if (LoadedAsset)
-			{
-				AFPSWeaponBase* ActiveWep = Inv->GetActiveWeapon();
-				if (ActiveWep)
-				{
-					ActiveWep->ApplyWeaponDataAsset(LoadedAsset);
-				}
-			}
+			OwningCharacter->SelectWeaponArchetype(LoadedAsset);
 		}
 	}
 }

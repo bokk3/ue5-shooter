@@ -153,6 +153,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Actions")
 	void RefillBotAmmo();
 
+	// --- Networking -------------------------------------------------------------------------
+	// Weapons are spawned locally on every machine (not replicated actors), so RPCs route
+	// through the owning AFPSCharacter. These are the weapon-side halves of those RPCs.
+
+	/** Resolves one shot: hitscan, Fermi bubble slug conversion and decoy hits. Damage only lands with authority (see UFPSHealthComponent). Returns the impact point used for tracers. */
+	FVector ResolveShot(const FVector& TraceOrigin, const FVector& ShotDirection, const FVector& MuzzleWorldLoc);
+
+	/** Server only: validates a shot reported by the owning client (ammo, fire rate, origin, aim), then resolves it and replicates cosmetics. */
+	void ServerHandleClientShot(const FVector& TraceOrigin, const FVector& ShotDirection);
+
+	/** Sound, tracer and HUD gunfire indicator for a shot fired on another machine. */
+	void PlayRemoteFireCosmetics(const FVector& MuzzleWorldLoc, const FVector& ImpactPoint, bool bSpawnTracer, bool bPlaySound);
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
+	FVector GetMuzzleWorldLocation() const;
+
 	// Getters
 	UFUNCTION(BlueprintPure, Category = "Weapon|Stats")
 	FString GetWeaponName() const { return WeaponDisplayName.ToString(); }
@@ -366,6 +382,22 @@ protected:
 	FVector MagazineBaseLoc = FVector(8.0f, 0.0f, -2.8f);
 	FVector CurrentReloadOffsetLoc = FVector::ZeroVector;
 	FRotator CurrentReloadOffsetRot = FRotator::ZeroRotator;
+
+	// Server-side shot validation
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Networking")
+	float MaxServerShotOriginDistance = 600.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Networking")
+	float MaxServerAimDeviationDeg = 12.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Networking")
+	float ServerReloadTolerance = 0.35f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Networking")
+	float ServerShotBurstAllowance = 3.0f;
+
+	double LastServerShotTime = -1.0;
+	float ServerShotBudget = 3.0f;
 
 private:
 	void FinishReload();

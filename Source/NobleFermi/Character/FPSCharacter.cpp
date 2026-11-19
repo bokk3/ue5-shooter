@@ -16,6 +16,7 @@
 #include "Combat/FPSEquipmentComponent.h"
 #include "BodyMechanics/FPSBodyMechanicsComponent.h"
 #include "Weapons/FPSWeaponBase.h"
+#include "Weapons/FPSWeaponDataAsset.h"
 #include "Multiplayer/FPSPlayerState.h"
 #include "Economy/FPSEconomySubsystem.h"
 #include "Radar/FPSRadarSubsystem.h"
@@ -1439,8 +1440,12 @@ void AFPSCharacter::HandleOnDamageTaken(float Damage, AActor* Attacker, const FH
 		ShotDir = (GetActorLocation() - Attacker->GetActorLocation()).GetSafeNormal();
 	}
 
+	// Shatter, helmet pop and accolades are decided by the server and multicast from there.
+	// Clients still get the HUD indicator above and the limb flinch below.
+	const bool bServerDecides = HasAuthority();
+
 	// 1. Level IV Ceramic Plate Shatter (spine_02 / spine_03 shield depleted from >0 to 0)
-	if (bShieldBroken && !bIsArmorPlateShattered)
+	if (bServerDecides && bShieldBroken && !bIsArmorPlateShattered)
 	{
 		const FVector ImpactLoc = HitResult.ImpactPoint.IsNearlyZero()
 			? (GetActorLocation() + FVector(0.0f, 0.0f, 35.0f))
@@ -1455,7 +1460,7 @@ void AFPSCharacter::HandleOnDamageTaken(float Damage, AActor* Attacker, const FH
 	}
 
 	// 2. Lethal Headshot Ballistic Helmet Pop
-	if (bIsHeadshot && HealthComponent && HealthComponent->IsDead() && !bIsHelmetPopped)
+	if (bServerDecides && bIsHeadshot && HealthComponent && HealthComponent->IsDead() && !bIsHelmetPopped)
 	{
 		MulticastPopBallisticHelmet(ShotDir);
 	}
@@ -1944,6 +1949,19 @@ void AFPSCharacter::Reload()
 	if (InventoryComponent && InventoryComponent->GetActiveWeapon())
 	{
 		InventoryComponent->GetActiveWeapon()->Reload();
+
+		if (!HasAuthority() && IsLocallyControlled())
+		{
+			ServerReloadWeapon();
+		}
+	}
+}
+
+void AFPSCharacter::SyncActiveWeaponSlotToServer()
+{
+	if (InventoryComponent && !HasAuthority() && IsLocallyControlled())
+	{
+		ServerEquipWeaponSlot(InventoryComponent->GetActiveSlotIndex());
 	}
 }
 
@@ -1952,6 +1970,7 @@ void AFPSCharacter::EquipPrimary()
 	if (InventoryComponent)
 	{
 		InventoryComponent->EquipSlot(0);
+		SyncActiveWeaponSlotToServer();
 	}
 }
 
@@ -1960,6 +1979,7 @@ void AFPSCharacter::EquipSecondary()
 	if (InventoryComponent)
 	{
 		InventoryComponent->EquipSlot(1);
+		SyncActiveWeaponSlotToServer();
 	}
 }
 
@@ -1968,6 +1988,7 @@ void AFPSCharacter::EquipSidearm()
 	if (InventoryComponent)
 	{
 		InventoryComponent->EquipSlot(2);
+		SyncActiveWeaponSlotToServer();
 	}
 }
 
@@ -1976,6 +1997,7 @@ void AFPSCharacter::CycleNextWeapon()
 	if (InventoryComponent)
 	{
 		InventoryComponent->CycleNextWeapon();
+		SyncActiveWeaponSlotToServer();
 	}
 }
 
@@ -1984,6 +2006,78 @@ void AFPSCharacter::CyclePreviousWeapon()
 	if (InventoryComponent)
 	{
 		InventoryComponent->CyclePreviousWeapon();
+		SyncActiveWeaponSlotToServer();
+	}
+}
+
+void AFPSCharacter::ServerFireShot_Implementation(FVector_NetQuantize10 TraceOrigin, FVector_NetQuantizeNormal ShotDirection)
+{
+	if (AFPSWeaponBase* Weapon = GetCurrentWeapon())
+	{
+		Weapon->ServerHandleClientShot(TraceOrigin, ShotDirection);
+	}
+}
+
+void AFPSCharacter::MulticastFireCosmetic_Implementation(FVector_NetQuantize10 MuzzleLocation, FVector_NetQuantize10 ImpactPoint)
+{
+	// The shooter already played everything locally, and a dedicated server has nothing to show
+	if (IsLocallyControlled() || GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+
+	if (AFPSWeaponBase* Weapon = GetCurrentWeapon())
+	{
+		// On a listen server the tracer was already spawned while resolving the shot here. Bots also
+		// played their sound in FireShot; remote players' shots were resolved silently.
+		const bool bResolvedHere = HasAuthority();
+		Weapon->PlayRemoteFireCosmetics(MuzzleLocation, ImpactPoint, !bResolvedHere, !(bResolvedHere && bIsTacticalBot));
+	}
+}
+
+void AFPSCharacter::ServerReloadWeapon_Implementation()
+{
+	if (AFPSWeaponBase* Weapon = GetCurrentWeapon())
+	{
+		Weapon->Reload();
+	}
+}
+
+void AFPSCharacter::ServerEquipWeaponSlot_Implementation(int32 SlotIndex)
+{
+	if (InventoryComponent && SlotIndex >= 0 && SlotIndex < 3)
+	{
+		InventoryComponent->EquipSlot(SlotIndex);
+	}
+}
+
+void AFPSCharacter::SelectWeaponArchetype(UFPSWeaponDataAsset* WeaponData)
+{
+	if (!WeaponData)
+	{
+		return;
+	}
+
+	if (AFPSWeaponBase* Weapon = GetCurrentWeapon())
+	{
+		Weapon->ApplyWeaponDataAsset(WeaponData);
+	}
+
+	if (!HasAuthority() && IsLocallyControlled())
+	{
+		ServerSelectWeaponArchetype(WeaponData);
+	}
+}
+
+void AFPSCharacter::ServerSelectWeaponArchetype_Implementation(UFPSWeaponDataAsset* WeaponData)
+{
+	// TODO(netcode): validate against the player's unlocked loadout once loadouts are server-owned
+	if (WeaponData)
+	{
+		if (AFPSWeaponBase* Weapon = GetCurrentWeapon())
+		{
+			Weapon->ApplyWeaponDataAsset(WeaponData);
+		}
 	}
 }
 

@@ -438,6 +438,33 @@ public:
 	UFUNCTION(NetMulticast, Unreliable, BlueprintCallable, Category = "FPS Character|Trauma")
 	void MulticastPopBallisticHelmet(FVector ShotDirection);
 
+	// --- Server-authoritative weapon RPCs ---------------------------------------------------
+	// Weapons are local (non-replicated) actors on every machine, so the character carries the RPCs.
+
+	/** Owning client -> server: resolve a shot the client already predicted locally. */
+	UFUNCTION(Server, Reliable)
+	void ServerFireShot(FVector_NetQuantize10 TraceOrigin, FVector_NetQuantizeNormal ShotDirection);
+
+	/** Server -> other clients: play tracer and sound for a shot the server resolved. */
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastFireCosmetic(FVector_NetQuantize10 MuzzleLocation, FVector_NetQuantize10 ImpactPoint);
+
+	/** Owning client -> server: start reloading the active weapon. */
+	UFUNCTION(Server, Reliable)
+	void ServerReloadWeapon();
+
+	/** Owning client -> server: keep the server's active weapon slot in sync with the client. */
+	UFUNCTION(Server, Reliable)
+	void ServerEquipWeaponSlot(int32 SlotIndex);
+
+	void SyncActiveWeaponSlotToServer();
+
+	/** Swap the active weapon's archetype (weapon wheel). Applies locally and on the server so damage, fire rate and spread match. */
+	void SelectWeaponArchetype(class UFPSWeaponDataAsset* WeaponData);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSelectWeaponArchetype(class UFPSWeaponDataAsset* WeaponData);
+
 	// Responsive Tactical Bot AI & Acoustic Decoy-Bait API
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Tactical Bot")
 	void InitializeAsTacticalBot(int32 InBotIndex, const FString& InCallsign, EFPSPlayerTeam InTeam);
