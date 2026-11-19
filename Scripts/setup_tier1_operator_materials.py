@@ -5,7 +5,7 @@ unreal.log_warning("========================================================")
 unreal.log_warning(">>> IMPORTING CLEAN OPERATOR MESHES & PBR MATERIALS <<<")
 unreal.log_warning("========================================================")
 
-base_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi\Content\Characters\BaseMale"
+base_dir = r"D:\epuc\Projects\noble-fermi\Content\Characters\BaseMale"
 sk_fbx = os.path.join(base_dir, "SK_BaseMale.fbx")
 posed_fbx = os.path.join(base_dir, "SM_Soldier_Posed.fbx")
 

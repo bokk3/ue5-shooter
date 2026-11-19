@@ -5,7 +5,7 @@ import glob
 def log(msg):
     unreal.log_warning(f"[WEAPON_THUMBNAIL_IMPORT] {msg}")
 
-ROOT = r"C:\Users\Boris\Documents\antigravity\noble-fermi"
+ROOT = r"D:\epuc\Projects\noble-fermi"
 SRC_DIR = os.path.join(ROOT, "Content", "Weapons", "Thumbnails")
 DEST_PATH = "/Game/Weapons/Thumbnails"
 DATA_PATH = "/Game/Weapons/Data"

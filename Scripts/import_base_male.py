@@ -4,7 +4,7 @@ import sys
 
 print(">>> IMPORTING SK_BASEMALE & SM_AK47 FBX ASSETS INTO UNREAL ENGINE 5.8 <<<")
 
-base_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi\Content\Characters\BaseMale"
+base_dir = r"D:\epuc\Projects\noble-fermi\Content\Characters\BaseMale"
 sk_fbx_path = os.path.join(base_dir, "SK_BaseMale.fbx")
 ak_fbx_path = os.path.join(base_dir, "SM_AK47.fbx")
 destination_path = "/Game/Characters/BaseMale"

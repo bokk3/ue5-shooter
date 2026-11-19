@@ -16,7 +16,7 @@ Creates under /Game/Environment/Favela:
 import os
 import unreal
 
-ROOT = r"C:\Users\Boris\Documents\antigravity\noble-fermi"
+ROOT = r"D:\epuc\Projects\noble-fermi"
 TEX_SRC = os.path.join(ROOT, "SourceArt", "Favela", "Textures")
 MESH_SRC = os.path.join(ROOT, "SourceArt", "Favela", "Meshes")
 BASE = "/Game/Environment/Favela"

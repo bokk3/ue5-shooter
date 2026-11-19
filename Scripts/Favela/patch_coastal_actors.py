@@ -1,6 +1,6 @@
 import os
 
-root = r"C:\Users\Boris\Documents\antigravity\noble-fermi\Source\NobleFermi\Map"
+root = r"D:\epuc\Projects\noble-fermi\Source\NobleFermi\Map"
 
 # 1. Patch FPSCoastalOperationsMapActor.cpp
 coastal_cpp = os.path.join(root, "FPSCoastalOperationsMapActor.cpp")

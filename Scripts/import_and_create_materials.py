@@ -4,11 +4,11 @@ import sys
 
 print(">>> IMPORTING OPERATOR TEXTURES AND CREATING TACTICAL MASTER MATERIAL <<<")
 
-texture_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi\Content\Characters\BaseMale\Textures"
+texture_dir = r"D:\epuc\Projects\noble-fermi\Content\Characters\BaseMale\Textures"
 destination_path = "/Game/Characters/BaseMale/Textures"
 material_path = "/Game/Characters/BaseMale/Materials"
 
-os.makedirs(r"C:\Users\Boris\Documents\antigravity\noble-fermi\Content\Characters\BaseMale\Materials", exist_ok=True)
+os.makedirs(r"D:\epuc\Projects\noble-fermi\Content\Characters\BaseMale\Materials", exist_ok=True)
 
 # -------------------------------------------------------------------------
 # Step 1: Import Textures

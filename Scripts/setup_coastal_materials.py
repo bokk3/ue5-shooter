@@ -80,7 +80,7 @@ mat_water = create_pbr_material("M_Coastal_OceanWater", unreal.LinearColor(0.08,
 # Import Static Meshes
 import os
 
-project_root = "C:/Users/Boris/Documents/antigravity/noble-fermi"
+project_root = "D:/epuc/Projects/noble-fermi"
 fbx_files = [
     ("SM_Seawall_Curved", f"{project_root}/Content/Environment/Coastal/Meshes/SM_Seawall_Curved.fbx", [mat_concrete, mat_metal]),
     ("SM_Tetrapod_Concrete", f"{project_root}/Content/Environment/Coastal/Meshes/SM_Tetrapod_Concrete.fbx", [mat_concrete]),

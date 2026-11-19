@@ -26,9 +26,9 @@ public class Win32 {
 "@
 Add-Type -TypeDefinition $code
 
-$exePath = "C:\Users\Boris\Documents\antigravity\noble-fermi\Packaged\Windows\NobleFermi\Binaries\Win64\NobleFermi.exe"
+$exePath = "D:\epuc\Projects\noble-fermi\Packaged\Windows\NobleFermi\Binaries\Win64\NobleFermi.exe"
 if (-not (Test-Path $exePath)) {
-    $exePath = "C:\Users\Boris\Documents\antigravity\noble-fermi\Binaries\Win64\NobleFermi.exe"
+    $exePath = "D:\epuc\Projects\noble-fermi\Binaries\Win64\NobleFermi.exe"
 }
 
 Write-Host "Launching Noble Fermi at $exePath..."
@@ -37,7 +37,7 @@ $process = Start-Process -FilePath $exePath -ArgumentList "/Engine/Maps/Entry?ga
 Write-Host "Waiting 12 seconds for world generation, player pawn spawn, and HUD initialization..."
 Start-Sleep -Seconds 12
 
-$outDir = "C:\Users\Boris\Documents\antigravity\noble-fermi\Saved\Screenshots"
+$outDir = "D:\epuc\Projects\noble-fermi\Saved\Screenshots"
 if (-not (Test-Path $outDir)) {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 }

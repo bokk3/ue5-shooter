@@ -18,7 +18,7 @@ anim_names = [
     "Anim_Operator_Reload"
 ]
 
-anims_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi\Content\Characters\BaseMale\Animations"
+anims_dir = r"D:\epuc\Projects\noble-fermi\Content\Characters\BaseMale\Animations"
 tasks = []
 for anim_name in anim_names:
     fbx_file = os.path.join(anims_dir, f"{anim_name}.fbx")

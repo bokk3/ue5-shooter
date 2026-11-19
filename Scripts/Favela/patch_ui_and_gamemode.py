@@ -1,6 +1,6 @@
 import os
 
-source_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi\Source\NobleFermi"
+source_dir = r"D:\epuc\Projects\noble-fermi\Source\NobleFermi"
 
 # 1. Patch FPSMultiplayerGameMode.cpp
 gm_cpp = os.path.join(source_dir, "Multiplayer", "FPSMultiplayerGameMode.cpp")

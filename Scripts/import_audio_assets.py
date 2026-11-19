@@ -3,7 +3,7 @@ import os
 
 print(">>> IMPORTING NOBLE FERMI AUDIO ASSETS INTO UNREAL ENGINE 5.8 <<<")
 
-project_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi"
+project_dir = r"D:\epuc\Projects\noble-fermi"
 audio_dir = os.path.join(project_dir, "Content", "Audio")
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()

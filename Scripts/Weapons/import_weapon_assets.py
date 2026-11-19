@@ -10,7 +10,7 @@ log("===========================================================================
 log("  NOBLE FERMI // ARSENAL IMPORT PIPELINE (FBX, SOCKETS, PBR MATS, DATA ASSETS) ")
 log("================================================================================")
 
-PROCESSED_DIR = r"C:\Users\Boris\Documents\antigravity\noble-fermi\SourceArt\Weapons\Processed"
+PROCESSED_DIR = r"D:\epuc\Projects\noble-fermi\SourceArt\Weapons\Processed"
 MESH_DEST_PATH = "/Game/Weapons/Meshes"
 MAT_DEST_PATH = "/Game/Weapons/Materials"
 DATA_DEST_PATH = "/Game/Weapons/Data"

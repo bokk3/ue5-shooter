@@ -86,8 +86,8 @@ weapons = [
     }
 ]
 
-proc_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi\SourceArt\Weapons\Processed"
-out_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi\Content\Weapons\Thumbnails"
+proc_dir = r"D:\epuc\Projects\noble-fermi\SourceArt\Weapons\Processed"
+out_dir = r"D:\epuc\Projects\noble-fermi\Content\Weapons\Thumbnails"
 os.makedirs(out_dir, exist_ok=True)
 
 for w in weapons:

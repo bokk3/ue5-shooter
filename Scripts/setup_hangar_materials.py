@@ -80,7 +80,7 @@ mat_turntable_neon  = create_pbr_material("M_Turntable_CyanNeon", unreal.LinearC
 mat_turntable_deck  = create_pbr_material("M_Turntable_Deck", unreal.LinearColor(0.08, 0.09, 0.11, 1.0), 0.68, 0.15, 0.14)
 
 # Import FBX Meshes
-project_root = "C:/Users/Boris/Documents/antigravity/noble-fermi"
+project_root = "D:/epuc/Projects/noble-fermi"
 fbx_tasks = [
     ("SM_Cargo_Jet_C17", f"{project_root}/Content/Environment/Hangar/Meshes/SM_Cargo_Jet_C17.fbx", mesh_dir, [mat_c17_fuselage, mat_c17_details]),
     ("SM_Hangar_GantryCrane", f"{project_root}/Content/Environment/Hangar/Meshes/SM_Hangar_GantryCrane.fbx", mesh_dir, [mat_gantry_yellow, mat_gantry_steel]),

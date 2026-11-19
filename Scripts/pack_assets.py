@@ -2,7 +2,7 @@ import os
 import subprocess
 import sys
 
-project_root = r"C:\Users\Boris\Documents\antigravity\noble-fermi"
+project_root = r"D:\epuc\Projects\noble-fermi"
 unreal_pak = r"D:\epuc\UE_5.8\Engine\Binaries\Win64\UnrealPak.exe"
 pak_output = os.path.join(project_root, "Packaged", "Windows", "NobleFermi", "Content", "Paks", "NobleFermi-Windows_0_P.pak")
 response_file = os.path.join(project_root, "Intermediate", "pak_response.txt")

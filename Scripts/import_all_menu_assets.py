@@ -5,7 +5,7 @@ import sys
 print(">>> IMPORTING MENU ENVIRONMENT & POSED SOLDIER ASSETS INTO UNREAL ENGINE 5.8 <<<")
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-proj_dir = r"C:\Users\Boris\Documents\antigravity\noble-fermi"
+proj_dir = r"D:\epuc\Projects\noble-fermi"
 
 mat_body = unreal.EditorAssetLibrary.load_asset("/Game/Characters/BaseMale/Materials/M_Operator_BaseBody")
 mat_visor = unreal.EditorAssetLibrary.load_asset("/Game/Characters/BaseMale/Materials/M_Soldier_Visor")

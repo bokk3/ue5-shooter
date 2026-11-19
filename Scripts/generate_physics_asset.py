@@ -34,7 +34,7 @@ if phys_asset:
 assets = unreal.EditorAssetLibrary.list_assets("/Game/Characters/BaseMale", recursive=True)
 log(f"Current Assets in /Game/Characters/BaseMale: {assets}")
 
-with open(r"C:\Users\Boris\Documents\antigravity\noble-fermi\Scripts\physics_asset_created.txt", "w") as f:
+with open(r"D:\epuc\Projects\noble-fermi\Scripts\physics_asset_created.txt", "w") as f:
     f.write("\n".join(out))
 
 sys.exit(0)
