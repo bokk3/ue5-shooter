@@ -77,6 +77,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FPS Character|Gear")
 	void BuildProceduralTacticalGear();
 
+	/** Retires legacy rig pieces (spring-arm camera, proc gear) when the sample Blueprint drives locomotion. */
+	void SetupSampleLocomotionRig();
+
 	/** 3rd-Person Level IV Ceramic Plate Carrier attached to spine_03 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS Character|Gear")
 	TObjectPtr<UStaticMeshComponent> ChestCarrierMesh;
@@ -283,6 +286,18 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "FPS Character|State")
 	bool IsDead() const { return bIsDead; }
+
+	/**
+	 * When true, a Blueprint child built on the Game Animation Sample's character owns locomotion:
+	 * its mesh/AnimBP (motion matching), movement input, gait speeds, crouch and camera. This C++ class
+	 * keeps combat (weapons, health, netcode, Fermi abilities) and stops forcing the legacy SK_BaseMale
+	 * rig, hand-posed UFPSAnimInstance, spring-arm camera and legacy movement bindings.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animation")
+	bool bUseSampleLocomotion = false;
+
+	UFUNCTION(BlueprintPure, Category = "FPS Character|Animation")
+	bool UsesSampleLocomotion() const { return bUseSampleLocomotion; }
 
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Fermi Engine")
 	bool IsFermiDecoyActive() const;

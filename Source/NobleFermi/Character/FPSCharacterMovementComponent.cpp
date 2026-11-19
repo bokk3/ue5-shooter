@@ -167,6 +167,19 @@ void UFPSCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float De
 
 float UFPSCharacterMovementComponent::GetMaxSpeed() const
 {
+	// With the Game Animation Sample driving locomotion, its Blueprint sets MaxWalkSpeed per gait every
+	// tick (walk/run/sprint/crouch). Honor that so speeds match the motion-matching data; dive and slide
+	// keep their own launch speeds.
+	if (const AFPSCharacter* FPSOwner = Cast<AFPSCharacter>(CharacterOwner))
+	{
+		if (FPSOwner->UsesSampleLocomotion()
+			&& CurrentFPSMode != EFPSMovementMode::BallisticDiving
+			&& CurrentFPSMode != EFPSMovementMode::Sliding)
+		{
+			return Super::GetMaxSpeed();
+		}
+	}
+
 	float BaseSpeed = WalkSpeed;
 	switch (CurrentFPSMode)
 	{

@@ -26,3 +26,13 @@ Releases/*
 scratch/
 NobleFermiLauncher.exe
 *.obj
+
+# Third-party content copied from Epic's Game Animation Sample (not versioned; see Scripts/ThirdPartyContent/README.md)
+Content/Blueprints/
+Content/Characters/UEFN_Mannequin/
+Content/Input/
+Content/Levels/
+Content/Audio/Foley/
+Content/Audio/Mix/
+Content/Audio/DefaultAttenuation.uasset
+Content/Misc/

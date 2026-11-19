@@ -72,6 +72,8 @@ AFPSMultiplayerGameMode::AFPSMultiplayerGameMode()
 	PrimaryActorTick.bCanEverTick = true;
 
 	DefaultPawnClass = AFPSCharacter::StaticClass();
+	BotPawnClass = AFPSCharacter::StaticClass();
+	OperatorPawnClass = TSoftClassPtr<AFPSCharacter>(FSoftObjectPath(TEXT("/Game/NobleFermi/Characters/BP_FPSOperator.BP_FPSOperator_C")));
 	PlayerStateClass = AFPSPlayerState::StaticClass();
 	GameStateClass = AFPSMultiplayerGameState::StaticClass();
 }
@@ -79,6 +81,20 @@ AFPSMultiplayerGameMode::AFPSMultiplayerGameMode()
 void AFPSMultiplayerGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
+
+	// Prefer the motion-matched operator Blueprint; keep the C++ character if it's unavailable
+	if (!OperatorPawnClass.IsNull() && !FParse::Param(FCommandLine::Get(), TEXT("LegacyOperator")))
+	{
+		if (UClass* OperatorClass = OperatorPawnClass.LoadSynchronous())
+		{
+			DefaultPawnClass = OperatorClass;
+			BotPawnClass = OperatorClass;
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[GameMode] %s not found; using legacy AFPSCharacter rig"), *OperatorPawnClass.ToString());
+		}
+	}
 
 	// Check URL Option "?Theater=Coastal" or "?Theater=Rust" or command line "-Theater=Coastal"
 	FString TheaterOption = UGameplayStatics::ParseOption(Options, TEXT("Theater"));
@@ -315,7 +331,7 @@ void AFPSMultiplayerGameMode::SpawnSingleTacticalBot(int32 BotIndex)
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-	if (AFPSCharacter* BotChar = World->SpawnActor<AFPSCharacter>(AFPSCharacter::StaticClass(), SpawnLoc, SpawnRot, SpawnParams))
+	if (AFPSCharacter* BotChar = World->SpawnActor<AFPSCharacter>(BotPawnClass ? *BotPawnClass : AFPSCharacter::StaticClass(), SpawnLoc, SpawnRot, SpawnParams))
 	{
 		BotChar->SpawnDefaultController();
 		BotChar->InitializeAsTacticalBot(SafeIdx, BotCallsigns[SafeIdx], EFPSPlayerTeam::Bravo);

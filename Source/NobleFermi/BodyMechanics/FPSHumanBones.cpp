@@ -531,5 +531,18 @@ void FFPSHumanSkeleton::InitializeRegistry()
 		AddBone(B);
 	}
 
+	// UE5 / UEFN mannequin skeletons (Game Animation Sample, Lyra) split the chest and neck further.
+	// Alias the extra bones to the closest registered zone so damage and armor match the 21-bone rig.
+	auto AddAlias = [](const TCHAR* Alias, const TCHAR* Existing)
+	{
+		if (const int32* Index = BoneNameToIndexMap.Find(FName(Existing)))
+		{
+			BoneNameToIndexMap.Add(FName(Alias), *Index);
+		}
+	};
+	AddAlias(TEXT("spine_04"), TEXT("spine_03"));
+	AddAlias(TEXT("spine_05"), TEXT("spine_03"));
+	AddAlias(TEXT("neck_02"), TEXT("neck_01"));
+
 	bIsInitialized = true;
 }

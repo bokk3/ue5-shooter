@@ -5,6 +5,8 @@
 #include "Multiplayer/FPSPlayerState.h"
 #include "FPSMultiplayerGameMode.generated.h"
 
+class AFPSCharacter;
+
 class AFPSMultiplayerGameState;
 class AFPSCombatArenaMapActor;
 class AFPSCoastalOperationsMapActor;
@@ -31,6 +33,18 @@ public:
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 	void EnsureCombatArenaExists();
+
+	/**
+	 * Operator pawn for players and bots: a Blueprint child of AFPSCharacter that uses the Game
+	 * Animation Sample locomotion. Falls back to plain AFPSCharacter if the asset isn't present
+	 * (e.g. the third-party sample content hasn't been imported on this machine).
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Multiplayer")
+	TSoftClassPtr<AFPSCharacter> OperatorPawnClass;
+
+	/** Class used for bots (resolved in InitGame). */
+	UPROPERTY(Transient)
+	TSubclassOf<AFPSCharacter> BotPawnClass;
 
 	UPROPERTY(BlueprintAssignable, Category = "FPS Multiplayer")
 	FOnKillfeedEventSignature OnKillfeedEvent;

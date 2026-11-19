@@ -341,8 +341,8 @@ void AFPSCharacter::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
-	// Bridge 1: Sync 3rd-person cosmetic loadout in construction/editor
-	if (!bIsTacticalBot)
+	// Bridge 1: Sync 3rd-person cosmetic loadout in construction/editor (legacy SK_BaseMale material slots only)
+	if (!bIsTacticalBot && !bUseSampleLocomotion)
 	{
 		if (UGameInstance* GI = GetGameInstance())
 		{
@@ -377,8 +377,13 @@ void AFPSCharacter::BeginPlay()
 
 	InitializeHUD();
 
-	// Tactical Operator Mesh & Animation Runtime Fallbacks + Material Configuration
-	if (GetMesh())
+	if (bUseSampleLocomotion)
+	{
+		SetupSampleLocomotionRig();
+	}
+
+	// Tactical Operator Mesh & Animation Runtime Fallbacks + Material Configuration (legacy SK_BaseMale rig)
+	if (GetMesh() && !bUseSampleLocomotion)
 	{
 		if (!GetMesh()->GetSkeletalMeshAsset())
 		{
@@ -555,8 +560,8 @@ void AFPSCharacter::BeginPlay()
 		if (USoundBase* S2 = LoadStepSound(TEXT("/Game/Audio/Footsteps/Metal/FS_Metal_02.FS_Metal_02"))) FootstepMetalSounds.Add(S2);
 	}
 
-	// Bridge 1: In-Game 3rd-Person Cosmetic Loadout Sync from economy subsystem
-	if (!bIsTacticalBot && (IsLocallyControlled() || GetNetMode() == NM_Standalone))
+	// Bridge 1: In-Game 3rd-Person Cosmetic Loadout Sync from economy subsystem (legacy rig only)
+	if (!bIsTacticalBot && !bUseSampleLocomotion && (IsLocallyControlled() || GetNetMode() == NM_Standalone))
 	{
 		if (UGameInstance* GI = GetGameInstance())
 		{
@@ -571,6 +576,33 @@ void AFPSCharacter::BeginPlay()
 			}
 		}
 	}
+}
+
+void AFPSCharacter::SetupSampleLocomotionRig()
+{
+	// The sample Blueprint supplies mesh, AnimBP and camera. Retire the legacy rig pieces that would
+	// otherwise compete with it.
+	if (CameraBoom)
+	{
+		CameraBoom->Deactivate();
+	}
+	if (FollowCamera)
+	{
+		FollowCamera->Deactivate();
+	}
+	if (Mesh1P)
+	{
+		Mesh1P->SetVisibility(false);
+	}
+	if (PlateCarrierProcMesh) { PlateCarrierProcMesh->SetVisibility(false); PlateCarrierProcMesh->SetHiddenInGame(true); }
+	if (BallisticHelmetProcMesh) { BallisticHelmetProcMesh->SetVisibility(false); BallisticHelmetProcMesh->SetHiddenInGame(true); }
+	if (ChestCarrierMesh) { ChestCarrierMesh->SetVisibility(false); ChestCarrierMesh->SetHiddenInGame(true); }
+	if (BallisticHelmetMesh) { BallisticHelmetMesh->SetVisibility(false); BallisticHelmetMesh->SetHiddenInGame(true); }
+
+	UE_LOG(LogTemp, Log, TEXT("[Locomotion] %s uses Game Animation Sample locomotion (mesh %s, anim %s)"),
+		*GetName(),
+		GetMesh() && GetMesh()->GetSkeletalMeshAsset() ? *GetMesh()->GetSkeletalMeshAsset()->GetName() : TEXT("none"),
+		GetMesh() && GetMesh()->GetAnimClass() ? *GetMesh()->GetAnimClass()->GetName() : TEXT("none"));
 }
 
 UAbilitySystemComponent* AFPSCharacter::GetAbilitySystemComponent() const
@@ -740,13 +772,17 @@ void AFPSCharacter::Tick(float DeltaTime)
 	{
 		TickTacticalBotAI(DeltaTime);
 	}
-	else
+	else if (!bUseSampleLocomotion)
 	{
 		UpdateThirdPersonCamera(RealDeltaTime);
 	}
 
-	UpdateBallisticDivePosture(RealDeltaTime);
-	UpdateLocomotionAnimation(DeltaTime);
+	// The sample's AnimBP and camera own mesh pose and view when bUseSampleLocomotion is set
+	if (!bUseSampleLocomotion)
+	{
+		UpdateBallisticDivePosture(RealDeltaTime);
+		UpdateLocomotionAnimation(DeltaTime);
+	}
 
 	// Physical Surface Footstep Cadence Tracking
 	if (GetCharacterMovement() && GetCharacterMovement()->IsMovingOnGround() && !bIsDead && !IsBallisticDiving())
@@ -1778,13 +1814,18 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 		HeroComponent->InitializePlayerInput(PlayerInputComponent);
 	}
 
-	PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &AFPSCharacter::MoveForward);
-	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &AFPSCharacter::MoveRight);
-	PlayerInputComponent->BindAxis(TEXT("Turn"), this, &AFPSCharacter::Turn);
-	PlayerInputComponent->BindAxis(TEXT("LookUp"), this, &AFPSCharacter::LookUp);
+	// Movement, look, jump, sprint and crouch come from the sample Blueprint's Enhanced Input when
+	// bUseSampleLocomotion is set; binding them here too would double the input.
+	if (!bUseSampleLocomotion)
+	{
+		PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &AFPSCharacter::MoveForward);
+		PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &AFPSCharacter::MoveRight);
+		PlayerInputComponent->BindAxis(TEXT("Turn"), this, &AFPSCharacter::Turn);
+		PlayerInputComponent->BindAxis(TEXT("LookUp"), this, &AFPSCharacter::LookUp);
 
-	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &AFPSCharacter::OnJumpOrDivePressed);
-	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Released, this, &ACharacter::StopJumping);
+		PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &AFPSCharacter::OnJumpOrDivePressed);
+		PlayerInputComponent->BindAction(TEXT("Jump"), IE_Released, this, &ACharacter::StopJumping);
+	}
 
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Pressed, this, &AFPSCharacter::StartFire);
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Released, this, &AFPSCharacter::StopFire);
@@ -1794,13 +1835,16 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	PlayerInputComponent->BindAction(TEXT("Reload"), IE_Pressed, this, &AFPSCharacter::Reload);
 
-	PlayerInputComponent->BindAction(TEXT("Sprint"), IE_Pressed, this, &AFPSCharacter::StartSprint);
-	PlayerInputComponent->BindAction(TEXT("Sprint"), IE_Released, this, &AFPSCharacter::StopSprint);
+	if (!bUseSampleLocomotion)
+	{
+		PlayerInputComponent->BindAction(TEXT("Sprint"), IE_Pressed, this, &AFPSCharacter::StartSprint);
+		PlayerInputComponent->BindAction(TEXT("Sprint"), IE_Released, this, &AFPSCharacter::StopSprint);
 
-	PlayerInputComponent->BindAction(TEXT("Crouch"), IE_Pressed, this, &AFPSCharacter::StartCrouchOrSlide);
-	PlayerInputComponent->BindAction(TEXT("Crouch"), IE_Released, this, &AFPSCharacter::StopCrouchOrSlide);
+		PlayerInputComponent->BindAction(TEXT("Crouch"), IE_Pressed, this, &AFPSCharacter::StartCrouchOrSlide);
+		PlayerInputComponent->BindAction(TEXT("Crouch"), IE_Released, this, &AFPSCharacter::StopCrouchOrSlide);
 
-	PlayerInputComponent->BindAction(TEXT("ShoulderSwap"), IE_Pressed, this, &AFPSCharacter::ToggleShoulderSwap);
+		PlayerInputComponent->BindAction(TEXT("ShoulderSwap"), IE_Pressed, this, &AFPSCharacter::ToggleShoulderSwap);
+	}
 
 	// The Fermi Paradox Engine Bindings
 	PlayerInputComponent->BindAction(TEXT("BallisticDive"), IE_Pressed, this, &AFPSCharacter::TriggerBallisticDive);
