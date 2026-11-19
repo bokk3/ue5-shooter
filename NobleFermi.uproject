@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "5.8",
+	"EngineAssociation": "{55A447E4-407A-778D-0516-6E99F6810ED3}",
 	"Category": "",
 	"Description": "Competitive PvP third-person shooter (prototype)",
 	"Modules": [
