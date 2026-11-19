@@ -406,7 +406,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			bLaunchedGame = true;
 			if (!TargetExePath.empty())
 			{
-				std::wstring CmdArgs = L"\"" + TargetExePath + L"\" -nosplash -d3d11 -windowed -ResX=1280 -ResY=720 -log -NoTachyon";
+				std::wstring CmdArgs = L"\"" + TargetExePath + L"\" -nosplash -d3d11 -windowed -ResX=1280 -ResY=720 -NoTachyon";
 				if (wcslen(lpCmdLine) > 0)
 				{
 					CmdArgs += L" ";

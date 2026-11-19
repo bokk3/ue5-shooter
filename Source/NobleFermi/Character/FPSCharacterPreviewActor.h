@@ -339,6 +339,8 @@ private:
 	void ApplyWeaponFinish();
 
 	float AimBreathTimer = 0.0f;
+	float IntroTransitionTimer = 0.0f;
+	bool bHasTriggeredSplashTransition = false;
 	FVector BaseWeaponLoc = FVector(52.0f, 10.0f, 140.0f);
 	FRotator BaseWeaponRot = FRotator(0.0f, 0.0f, 0.0f);
 

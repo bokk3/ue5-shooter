@@ -29,21 +29,21 @@ REM 1. Priority: Launch optimized packaged game (instant boot, Tachyon laser spl
 if exist "%PKG_BIN%" (
     echo [LAUNCHER] Launching Noble Fermi standalone release...
     cd /d "%~dp0Packaged\Windows\NobleFermi\Binaries\Win64"
-    start "" "NobleFermi.exe" -d3d11 -windowed -ResX=1280 -ResY=720 -log %*
+    start "" "NobleFermi.exe" -d3d11 -windowed -ResX=1280 -ResY=720 %*
     exit /b 0
 )
 
 if exist "%PKG_ROOT%" (
     echo [LAUNCHER] Launching Noble Fermi packaged build...
     cd /d "%~dp0Packaged\Windows"
-    start "" "NobleFermi.exe" -d3d11 -windowed -ResX=1280 -ResY=720 -log %*
+    start "" "NobleFermi.exe" -d3d11 -windowed -ResX=1280 -ResY=720 %*
     exit /b 0
 )
 
 if exist "%DEV_BIN%" (
     echo [LAUNCHER] Launching development binary...
     cd /d "%~dp0Binaries\Win64"
-    start "" "NobleFermi.exe" -d3d11 -windowed -ResX=1280 -ResY=720 -log %*
+    start "" "NobleFermi.exe" -d3d11 -windowed -ResX=1280 -ResY=720  %*
     exit /b 0
 )
 
@@ -53,7 +53,7 @@ if exist "%UE_EDITOR%" if exist "%UPROJECT%" (
     set "DOTNET_ROOT=D:\epuc\UE_5.8\Engine\Binaries\ThirdParty\DotNet\10.0\win-x64"
     set "PATH=D:\epuc\UE_5.8\Engine\Binaries\Win64;%~dp0Binaries\Win64;%DOTNET_ROOT%;%PATH%"
     cd /d "D:\epuc\UE_5.8\Engine\Binaries\Win64"
-    start "" "%UE_EDITOR%" "%UPROJECT%" /Game/Maps/MenuMap?game=/Script/NobleFermi.FPSMenuGameMode -game -d3d11 -windowed -ResX=1280 -ResY=720 -log %*
+    start "" "%UE_EDITOR%" "%UPROJECT%" /Game/Maps/MenuMap?game=/Script/NobleFermi.FPSMenuGameMode -game -d3d11 -windowed -ResX=1280 -ResY=720 %*
     exit /b 0
 )
 

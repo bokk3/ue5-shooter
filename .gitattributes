@@ -24,3 +24,6 @@ WebData/** linguist-documentation
 *.html linguist-detectable=false
 *.css linguist-detectable=false
 *.js linguist-detectable=false
+
+# Raw BGRA texture dumps loaded at runtime
+*.bgra filter=lfs diff=lfs merge=lfs -text

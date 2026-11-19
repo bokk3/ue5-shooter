@@ -26,6 +26,8 @@ struct NOBLEFERMI_API FFPSAnimInstanceProxy : public FAnimInstanceProxy
 {
 	GENERATED_BODY()
 
+	friend class UFPSAnimInstance;
+
 public:
 	FFPSAnimInstanceProxy()
 		: FAnimInstanceProxy()
@@ -66,6 +68,8 @@ private:
 	float HighReadyAlpha = 0.0f;
 	bool bIsMenuPreview = false;
 	bool bUnarmedRelaxedIdle = false;
+	bool bIsInspectingWeapon = false;
+	float WeaponInspectionAlpha = 0.0f;
 
 	// Reload & Belt-Grab state
 	bool bIsReloading = false;
@@ -94,10 +98,16 @@ private:
 	FCompactPoseBoneIndex UpperArmLIdx{INDEX_NONE};
 	FCompactPoseBoneIndex LowerArmLIdx{INDEX_NONE};
 	FCompactPoseBoneIndex HandLIdx{INDEX_NONE};
+	FCompactPoseBoneIndex Index01LIdx{INDEX_NONE};
+	FCompactPoseBoneIndex Middle01LIdx{INDEX_NONE};
+	FCompactPoseBoneIndex Pinky01LIdx{INDEX_NONE};
 	FCompactPoseBoneIndex ClavicleRIdx{INDEX_NONE};
 	FCompactPoseBoneIndex UpperArmRIdx{INDEX_NONE};
 	FCompactPoseBoneIndex LowerArmRIdx{INDEX_NONE};
 	FCompactPoseBoneIndex HandRIdx{INDEX_NONE};
+	FCompactPoseBoneIndex Index01RIdx{INDEX_NONE};
+	FCompactPoseBoneIndex Middle01RIdx{INDEX_NONE};
+	FCompactPoseBoneIndex Pinky01RIdx{INDEX_NONE};
 	FCompactPoseBoneIndex WeaponRIdx{INDEX_NONE};
 	FCompactPoseBoneIndex ThighLIdx{INDEX_NONE};
 	FCompactPoseBoneIndex CalfLIdx{INDEX_NONE};
@@ -110,11 +120,21 @@ private:
 
 	bool bBonesResolved = false;
 
+	// Authoritative component-space weapon receiver transform evaluated per frame
+	FVector CurrentReceiverOriginCS = FVector::ZeroVector;
+	FQuat CurrentRifleQuatCS = FQuat::Identity;
+
+public:
 	// Anatomical basis vectors derived in component space from rest pose
 	FVector CompUpDir = FVector(0.0f, 0.0f, 1.0f);
-	FVector CompRightDir = FVector(-1.0f, 0.0f, 0.0f);
-	FVector CompForwardDir = FVector(0.0f, 1.0f, 0.0f);
+	FVector CompRightDir = FVector(1.0f, 0.0f, 0.0f);
+	FVector CompForwardDir = FVector(0.0f, -1.0f, 0.0f);
 
+	void ComputeUnifiedRiflePoseCS(const FVector& ChestPos, FVector& OutReceiverOriginCS, FQuat& OutRifleQuatCS) const;
+	FVector GetCurrentReceiverOriginCS() const { return CurrentReceiverOriginCS; }
+	FQuat GetCurrentRifleQuatCS() const { return CurrentRifleQuatCS; }
+
+private:
 	// Helper methods executed during Evaluate()
 	void ResolveSkeletonBones(const FBoneContainer& BoneContainer);
 	void ApplyRestingIdleAndLocomotion(FComponentSpacePoseContext& CSPose, const TArray<FTransform>& RestCompBases);
@@ -162,6 +182,27 @@ public:
 
 	/** Returns true while the grenade throw animation is playing. */
 	bool IsThrowingGrenade() const { return bIsThrowingGrenade; }
+
+	/** Returns the rest pose component-space anatomical axes. */
+	FVector GetCompUpDir() const { return Proxy.CompUpDir; }
+	FVector GetCompRightDir() const { return Proxy.CompRightDir; }
+	FVector GetCompForwardDir() const { return Proxy.CompForwardDir; }
+
+	/** Returns the authoritative component-space origin of the rifle receiver. */
+	UFUNCTION(BlueprintPure, Category = "Animation|Combat")
+	FVector GetCurrentReceiverOriginCS() const { return CurrentReceiverOriginCS; }
+
+	/** Returns the authoritative component-space orientation of the rifle receiver. */
+	UFUNCTION(BlueprintPure, Category = "Animation|Combat")
+	FQuat GetCurrentRifleQuatCS() const { return CurrentRifleQuatCS; }
+
+	void ComputeUnifiedRiflePoseCS(const FVector& ChestPos, FVector& OutReceiverOriginCS, FQuat& OutRifleQuatCS) const;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animation|Combat")
+	FVector CurrentReceiverOriginCS = FVector::ZeroVector;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animation|Combat")
+	FQuat CurrentRifleQuatCS = FQuat::Identity;
 
 	// ---- Locomotion Properties ----
 
@@ -253,7 +294,25 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Combat")
 	bool bForceHighReady = false;
 
+	/** True when the Hangar operator is performing the tactical mag-check & barrel-wipe inspection routine. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Preview")
+	bool bIsInspectingWeapon = false;
+
+	/** Normalized progress [0..1] of the tactical mag-check & barrel-wipe routine. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Animation|Preview")
+	float WeaponInspectionAlpha = 0.0f;
+
+	/** Restarts the Hangar pre-deployment mag-check & barrel-wipe routine from the beginning (e.g. on splash-to-menu transition). */
+	UFUNCTION(BlueprintCallable, Category = "Animation|Preview")
+	void RestartWeaponInspectionCycle()
+	{
+		InspectionCycleTimer = 0.0f;
+		bIsInspectingWeapon = true;
+		WeaponInspectionAlpha = 0.0f;
+	}
+
 	// ---- Smoothed Blend Alphas ----
+	float InspectionCycleTimer = 0.0f;
 	float SmoothCrouchAlpha = 0.0f;
 	float SmoothSprintAlpha = 0.0f;
 	float SmoothADSAlpha = 0.0f;

@@ -860,8 +860,10 @@ void UFPSBeltGearComponent::UpdateReloadBeltGrabState(bool bIsReloading, float R
 	// During reload [0.30 .. 0.75]:
 	// hand_l grabs the magazine out of BeltMagComp_1 (leaving the empty Kydex pouch on the belt!)
 	// and carries HeldMagComp into the rifle's magwell.
-	const bool bNewMag1Grabbed = bIsReloading && (ReloadAlpha >= 0.30f && ReloadAlpha <= 0.85f);
-	const bool bNewHeldMagVis  = bIsReloading && (ReloadAlpha >= 0.30f && ReloadAlpha <= 0.73f);
+	// When ReloadAlpha < 0.0f (Hangar mag-check sentinel), show HeldMagComp in the left palm without emptying the belt pouch.
+	const bool bIsInspectMagCheck = bIsReloading && (ReloadAlpha < 0.0f);
+	const bool bNewMag1Grabbed = bIsReloading && !bIsInspectMagCheck && (ReloadAlpha >= 0.30f && ReloadAlpha <= 0.85f);
+	const bool bNewHeldMagVis  = bIsInspectMagCheck || (bIsReloading && (ReloadAlpha >= 0.30f && ReloadAlpha <= 0.73f));
 
 	if (bNewMag1Grabbed != bMag1Grabbed)
 	{
@@ -984,14 +986,22 @@ void UFPSBeltGearComponent::UpdateBeltTransforms()
 	PinBeltItem(BeltFragComp,  EFPSBeltItemType::FragGrenade);
 	PinBeltItem(BeltFlashComp, EFPSBeltItemType::Flashbang);
 
-	// Pin active hand-held proxy meshes to the operator's hands
+	// Pin active hand-held proxy meshes to the operator's palm & curled fingers (80% from hand_l wrist to middle_01_l knuckle)
 	if (bHeldMagVisible && HeldMagComp && TargetBodyMesh)
 	{
 		const FVector HandLPos = TargetBodyMesh->GetBoneLocation(FName(TEXT("hand_l")), EBoneSpaces::WorldSpace);
+		const FVector Middle01LPos = TargetBodyMesh->GetBoneLocation(FName(TEXT("middle_01_l")), EBoneSpaces::WorldSpace);
+		const FVector LeftPalmCenterWorld = (!Middle01LPos.ContainsNaN() && !Middle01LPos.IsNearlyZero(1e-3f))
+			? FMath::Lerp(HandLPos, Middle01LPos, 0.80f)
+			: HandLPos;
 		const FVector LowerArmLPos = TargetBodyMesh->GetBoneLocation(FName(TEXT("lowerarm_l")), EBoneSpaces::WorldSpace);
 		const FVector ForearmDir = (HandLPos - LowerArmLPos).GetSafeNormal();
-		const FQuat HandQuat = FRotationMatrix::MakeFromXZ(ForearmDir.IsNearlyZero() ? Fwd : ForearmDir, Up).ToQuat();
-		HeldMagComp->SetWorldLocationAndRotation(HandLPos + Up * 2.5f + Fwd * 2.0f, HandQuat);
+		// Orient the 3D STANAG magazine so its top feed lips & brass 5.56mm rounds (+Z) point up toward the canted magwell,
+		// and anchor its body directly inside LeftPalmCenterWorld so the gloved fingers wrap tightly around the magazine ribs!
+		const FVector MagUpDir = (Up * 0.88f + Fwd * 0.22f + Right * 0.42f).GetSafeNormal();
+		const FVector MagCurveDir = FVector::CrossProduct(Fwd, MagUpDir).GetSafeNormal();
+		const FQuat MagQuat = FRotationMatrix::MakeFromXZ(MagCurveDir.IsNearlyZero() ? ForearmDir : MagCurveDir, MagUpDir).ToQuat();
+		HeldMagComp->SetWorldLocationAndRotation(LeftPalmCenterWorld + MagUpDir * 1.5f, MagQuat);
 		HeldMagComp->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 	}
 
