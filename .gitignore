@@ -44,3 +44,6 @@ Content/Weapons/Shotgun/
 Content/Weapons/Generic/
 Content/Effects/
 Content/PhysicsMaterials/
+
+# Python bytecode from the pipeline scripts
+__pycache__/
