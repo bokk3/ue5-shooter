@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"EngineAssociation": "5.8",
 	"Category": "",
-	"Description": "AAA FPS Game with CommonUI Start Menu",
+	"Description": "Competitive PvP third-person shooter (prototype)",
 	"Modules": [
 		{
 			"Name": "NobleFermi",
@@ -51,7 +51,10 @@
 		},
 		{
 			"Name": "Fab",
-			"Enabled": false
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
 		}
 	]
 }
