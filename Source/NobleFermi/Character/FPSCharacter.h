@@ -296,6 +296,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FPS Character|Animation")
 	bool bUseSampleLocomotion = false;
 
+	/** Over-the-shoulder camera used with sample locomotion (fixed, no lag). */
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Character|Animation", meta = (EditCondition = "bUseSampleLocomotion"))
+	float SampleCameraArmLength = 240.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Character|Animation", meta = (EditCondition = "bUseSampleLocomotion"))
+	FVector SampleCameraSocketOffset = FVector(0.0f, 55.0f, 70.0f);
+
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Animation")
 	bool UsesSampleLocomotion() const { return bUseSampleLocomotion; }
 

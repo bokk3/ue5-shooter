@@ -1,4 +1,5 @@
 #include "Weapons/FPSWeaponBase.h"
+#include "Character/FPSOperatorAnimInstance.h"
 #include "Weapons/FPSWeaponDataAsset.h"
 #include "Combat/FPSHealthComponent.h"
 #include "Combat/FPSBallisticTracer.h"
@@ -748,6 +749,7 @@ void AFPSWeaponBase::FireShot()
 	ShotsFiredInBurst++;
 	OnAmmoChanged.Broadcast(CurrentAmmo, ReserveAmmo);
 	OnWeaponFired.Broadcast();
+	PlayOwnerAction(EFPSOperatorAction::Fire);
 
 	// Weapon Gunshot Audio (Strictly 1 single shot per trigger cycle with dynamic distance attenuation)
 	const FVector MuzzleWorldLoc = GetMuzzleWorldLocation();
@@ -1138,6 +1140,7 @@ void AFPSWeaponBase::PlayRemoteFireCosmetics(const FVector& MuzzleWorldLoc, cons
 	}
 
 	OnWeaponFired.Broadcast();
+	PlayOwnerAction(EFPSOperatorAction::Fire);
 
 	if (bPlaySound && FireSound)
 	{
@@ -1182,6 +1185,18 @@ void AFPSWeaponBase::PlayRemoteFireCosmetics(const FVector& MuzzleWorldLoc, cons
 	}
 }
 
+void AFPSWeaponBase::PlayOwnerAction(EFPSOperatorAction Action, float DurationSeconds) const
+{
+	// Operator (Game Animation Sample) characters only; the legacy rig animates the weapon procedurally.
+	if (UFPSOperatorAnimInstance* Anim = UFPSOperatorAnimInstance::Get(Cast<ACharacter>(GetOwner())))
+	{
+		if (GetNetMode() != NM_DedicatedServer)
+		{
+			Anim->PlayWeaponAction(Action, DurationSeconds);
+		}
+	}
+}
+
 void AFPSWeaponBase::Reload()
 {
 	if (CurrentState == EFPSWeaponState::Reloading) return;
@@ -1194,6 +1209,7 @@ void AFPSWeaponBase::Reload()
 	bIsEmptyReload = (CurrentAmmo == 0);
 	ReloadDuration = bIsEmptyReload ? EmptyReloadDuration : TacticalReloadDuration;
 	ReloadElapsedTime = 0.0f;
+	PlayOwnerAction(EFPSOperatorAction::Reload, ReloadDuration);
 
 	if (ReloadSound)
 	{

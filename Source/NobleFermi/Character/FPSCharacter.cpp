@@ -1,4 +1,5 @@
 #include "Character/FPSCharacter.h"
+#include "Character/FPSOperatorAnimInstance.h"
 #include "Lyra/Pawn/FPSPawnExtensionComponent.h"
 #include "Lyra/Pawn/FPSHeroComponent.h"
 #include "Lyra/Equipment/FPSEquipmentManagerComponent.h"
@@ -580,16 +581,58 @@ void AFPSCharacter::BeginPlay()
 
 void AFPSCharacter::SetupSampleLocomotionRig()
 {
-	// The sample Blueprint supplies mesh, AnimBP and camera. Retire the legacy rig pieces that would
-	// otherwise compete with it.
+	// The sample Blueprint supplies mesh and AnimBP. Retire the legacy rig pieces that would otherwise
+	// compete with it, and replace the sample's cinematic camera rigs with a fixed over-the-shoulder
+	// camera: in competitive play the view must be predictable and identical for everyone.
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (Component && Component->GetClass()->GetName().Contains(TEXT("GameplayCamera")))
+		{
+			Component->Deactivate();
+		}
+	}
 	if (CameraBoom)
 	{
-		CameraBoom->Deactivate();
+		CameraBoom->Activate();
+		CameraBoom->bUsePawnControlRotation = true;
+		CameraBoom->TargetArmLength = SampleCameraArmLength;
+		CameraBoom->SocketOffset = SampleCameraSocketOffset;
+		CameraBoom->bEnableCameraLag = false;
+		CameraBoom->bEnableCameraRotationLag = false;
+		CameraBoom->bDoCollisionTest = true;
 	}
 	if (FollowCamera)
 	{
-		FollowCamera->Deactivate();
+		FollowCamera->Activate();
+		FollowCamera->bUsePawnControlRotation = false;
 	}
+
+	// Shooter rotation: the body faces the aim direction (the sample's strafe mode) so the weapon
+	// layer's aim offset stays within range. The sample Blueprint reads these each frame.
+	TArray<FString> BlueprintVariables;
+	for (TFieldIterator<FProperty> It(GetClass()); It; ++It)
+	{
+		const UClass* DeclaringClass = It->GetOwnerClass();
+		if (!DeclaringClass || DeclaringClass->HasAnyClassFlags(CLASS_Native))
+		{
+			continue; // only the sample Blueprint's own variables
+		}
+		BlueprintVariables.Add(FString::Printf(TEXT("%s:%s"), *It->GetName(), *It->GetCPPType()));
+		// The sample keeps its input intents (sprint, walk, strafe, aim) in the CharacterInputState struct.
+		if (const FStructProperty* InputState = CastField<FStructProperty>(*It); InputState && It->GetName() == TEXT("CharacterInputState"))
+		{
+			void* StateData = InputState->ContainerPtrToValuePtr<void>(this);
+			for (TFieldIterator<FBoolProperty> Field(InputState->Struct); Field; ++Field)
+			{
+				if (Field->GetName().Contains(TEXT("Strafe")))
+				{
+					Field->SetPropertyValue_InContainer(StateData, true);
+					BlueprintVariables.Add(FString::Printf(TEXT("(set %s.%s = true)"), *It->GetName(), *Field->GetName()));
+				}
+			}
+		}
+	}
+	UE_LOG(LogTemp, Log, TEXT("[Locomotion] sample Blueprint variables on %s: %s"), *GetClass()->GetName(), *FString::Join(BlueprintVariables, TEXT(", ")));
 	if (Mesh1P)
 	{
 		Mesh1P->SetVisibility(false);
@@ -1474,6 +1517,14 @@ void AFPSCharacter::HandleOnDamageTaken(float Damage, AActor* Attacker, const FH
 	if (ShotDir.IsNearlyZero() && Attacker)
 	{
 		ShotDir = (GetActorLocation() - Attacker->GetActorLocation()).GetSafeNormal();
+	}
+
+	if (UFPSOperatorAnimInstance* OperatorAnim = UFPSOperatorAnimInstance::Get(this))
+	{
+		if (GetNetMode() != NM_DedicatedServer)
+		{
+			OperatorAnim->PlayHitReact(ShotDir, Damage);
+		}
 	}
 
 	// Shatter, helmet pop and accolades are decided by the server and multicast from there.

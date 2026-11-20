@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "FPSWeaponBase.generated.h"
 
+enum class EFPSOperatorAction : uint8;
+
 class USkeletalMeshComponent;
 class UStaticMeshComponent;
 class USceneComponent;
@@ -165,6 +167,9 @@ public:
 
 	/** Sound, tracer and HUD gunfire indicator for a shot fired on another machine. */
 	void PlayRemoteFireCosmetics(const FVector& MuzzleWorldLoc, const FVector& ImpactPoint, bool bSpawnTracer, bool bPlaySound);
+
+	/** Plays the matching Lyra action on the owner's operator anim instance, if it uses one (not on dedicated servers). */
+	void PlayOwnerAction(EFPSOperatorAction Action, float DurationSeconds = 0.0f) const;
 
 	UFUNCTION(BlueprintPure, Category = "Weapon|Transforms")
 	FVector GetMuzzleWorldLocation() const;

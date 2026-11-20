@@ -9,5 +9,6 @@ public class NobleFermiEditorTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.Latest;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 		ExtraModuleNames.Add("NobleFermi");
+		ExtraModuleNames.Add("NobleFermiEditor");
 	}
 }

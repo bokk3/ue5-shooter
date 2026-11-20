@@ -18,10 +18,11 @@ Noble Fermi uses assets from Epic's free **Game Animation Sample** (UE 5.8): the
 
 This brings in about 2,030 files (≈1.95 GB) under `Content/Blueprints`, `Content/Characters/UEFN_Mannequin`, `Content/Input`, `Content/Levels`, `Content/Audio/Foley`, `Content/Audio/Mix` and `Content/Misc`. The plugins they need are already enabled in `NobleFermi.uproject`.
 
-4. Copy the UEFN Mannequin IK rig, which the retarget step below needs:
+4. Copy two more sample assets: the UEFN Mannequin IK rig (for the Lyra retarget below) and `LevelVisuals` (the level blocks in `L_Range` look it up):
 
    ```powershell
    Copy-Item D:\epuc\Projects\GameAnimationSample\Content\Characters\UEFN_Mannequin\Rigs\IK_UEFN_Mannequin.uasset Content\Characters\UEFN_Mannequin\Rigs\
+   Copy-Item D:\epuc\Projects\GameAnimationSample\Content\Levels\LevelPrototyping\LevelVisuals.uasset Content\Levels\LevelPrototyping\
    ```
 
 ## Lyra Starter Game (weapon animations)
@@ -58,3 +59,21 @@ Rifle, pistol and shotgun animations (locomotion, aim offsets, fire, reload, equ
    Pass 2 uses up the Lyra-skeleton sequences in this project (they become redirectors). To redo it, re-run `copy_lyra_content.py` after deleting `Content/Characters/Heroes`. Setting `LYRA_RETARGET_REBUILD_ONLY=1` reruns just the hit-react rebuild.
 
    The result is 317 assets in `/Game/Characters/UEFN_Mannequin/Animations/Lyra/`, under Lyra's sub-folder names (`Actions`, `AimOffsets`, `Locomotion/Rifle`, ...). The retargeter is `/Game/Characters/UEFN_Mannequin/Rigs/RTG_LyraManny_to_UEFN`, built from Lyra's `IK_Mannequin` and the sample's `IK_UEFN_Mannequin`, with chains auto-mapped and bones auto-aligned. Feminine (`MF_`) variants and emotes are skipped. The commandlet reports a crash while shutting Python down, *after* `LYRA_RETARGET_DONE` is logged; by then everything is saved.
+
+## Operator animation blueprint
+
+`/Game/NobleFermi/Characters/ABP_FPSOperator` (committed) is generated, not hand-edited. It is a copy of the sample's `SandboxCharacter_CMC_ABP`, re-parented onto `UFPSOperatorAnimInstance`, with a weapon layer inserted before the Output Pose by the `NobleFermiEditor` module (`UFPSAnimGraphTools::AddWeaponUpperBodyLayer`):
+
+```
+sample motion matching ──────────────────────────────────────────────┐ base
+Lyra hold pose → aim offset (AimYaw, AimPitch) ─┐                    │
+  rifle / pistol (bUsePistolPose) ──────────────┴→ [NF_UpperBody] ──→ layered blend from spine_01 (WeaponLayerAlpha) → [NF_FullBody] → Output Pose
+```
+
+Fire, reload and equip play in `NF_UpperBody`; hit reacts play in `NF_FullBody`. `UFPSOperatorAnimInstance` drives both (and `WeaponLayerAlpha` drops to 0 while the sample plays a traversal montage). To regenerate it after the sample or Lyra content changes (build the `NobleFermiEditor` target first):
+
+```powershell
+& "D:\epuc\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" NobleFermi.uproject -run=pythonscript -script="$PWD\Scripts\ThirdPartyContent\create_operator_anim_blueprint.py" -unattended -nullrhi
+```
+
+It also points `BP_FPSOperator` at the result. Set `NF_ANIM_DUMP=<file>` to write a text dump of the graph before and after.
