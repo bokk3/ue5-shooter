@@ -61,8 +61,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FPS Multiplayer")
 	void TriggerTacticalNuke(AController* InstigatingPlayer);
 
+	/**
+	 * Theater 2 is the mechanics test range (L_Range, or ?Theater=Range): hand-built map, no procedural
+	 * arena, players at TeamAlpha starts and ?Bots=N (default 2) bots at TeamBravo starts.
+	 */
+	static constexpr int32 RangeTheaterIndex = 2;
+
 	UFUNCTION(BlueprintPure, Category = "FPS Map")
 	int32 GetActiveTheaterIndex() const { return ActiveTheaterIndex; }
+
+	const TCHAR* GetTheaterDisplayName() const;
 
 	UFUNCTION(BlueprintPure, Category = "FPS Map")
 	AFPSCombatArenaMapActor* GetActiveArena() const { return ActiveArena; }

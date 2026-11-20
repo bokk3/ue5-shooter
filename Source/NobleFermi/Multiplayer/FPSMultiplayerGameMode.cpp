@@ -102,7 +102,13 @@ void AFPSMultiplayerGameMode::InitGame(const FString& MapName, const FString& Op
 	{
 		FParse::Value(FCommandLine::Get(), TEXT("Theater="), TheaterOption);
 	}
-	if (TheaterOption.Equals(TEXT("Coastal"), ESearchCase::IgnoreCase) ||
+	if (TheaterOption.Equals(TEXT("Range"), ESearchCase::IgnoreCase) || MapName.Contains(TEXT("L_Range")))
+	{
+		// Mechanics test range: the map is hand-built, so no procedural arena; a couple of bots as targets.
+		ActiveTheaterIndex = RangeTheaterIndex;
+		TargetTacticalBotCount = FMath::Clamp(UGameplayStatics::GetIntOption(Options, TEXT("Bots"), 2), 0, 4);
+	}
+	else if (TheaterOption.Equals(TEXT("Coastal"), ESearchCase::IgnoreCase) ||
 		TheaterOption.Equals(TEXT("BaiaBrava"), ESearchCase::IgnoreCase) ||
 		TheaterOption.Equals(TEXT("Baia"), ESearchCase::IgnoreCase))
 	{
@@ -127,15 +133,25 @@ void AFPSMultiplayerGameMode::InitGame(const FString& MapName, const FString& Op
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] InitGame: Initializing 128-tick tactical multiplayer match in Theater %d (%s)..."),
-		ActiveTheaterIndex, ActiveTheaterIndex == 1 ? TEXT("Favela // Baía Brava") : TEXT("Favela // Rocha Velha"));
+		ActiveTheaterIndex, GetTheaterDisplayName());
 
 	EnsureCombatArenaExists();
+}
+
+const TCHAR* AFPSMultiplayerGameMode::GetTheaterDisplayName() const
+{
+	switch (ActiveTheaterIndex)
+	{
+	case 1:                 return TEXT("Favela // Baía Brava");
+	case RangeTheaterIndex: return TEXT("Mechanics Range");
+	default:                return TEXT("Favela // Rocha Velha");
+	}
 }
 
 void AFPSMultiplayerGameMode::EnsureCombatArenaExists()
 {
 	UWorld* World = GetWorld();
-	if (!World) return;
+	if (!World || ActiveTheaterIndex == RangeTheaterIndex) return; // the range map brings its own geometry and starts
 
 	if (ActiveTheaterIndex == 1)
 	{
@@ -210,7 +226,7 @@ void AFPSMultiplayerGameMode::BeginPlay()
 	EnsureCombatArenaExists();
 	SpawnInitialTacticalBots();
 	UE_LOG(LogTemp, Warning, TEXT("[FPSGameMode] BeginPlay: Match in progress on %s. Arena: %s"),
-		ActiveTheaterIndex == 1 ? TEXT("Favela // Baía Brava") : TEXT("Favela // Rocha Velha"),
+		GetTheaterDisplayName(),
 		*GetNameSafe(ActiveTheaterIndex == 1 ? (AActor*)ActiveCoastalArena : (AActor*)ActiveArena));
 
 	// Auto screenshot verification if -TakeGameplayShot is passed on command line
@@ -324,9 +340,20 @@ void AFPSMultiplayerGameMode::SpawnSingleTacticalBot(int32 BotIndex)
 	};
 
 	const int32 SafeIdx = FMath::Clamp(BotIndex, 0, 3);
-	const FVector BaseSpawnLoc = (ActiveTheaterIndex == 1) ? CoastalBravoSpawnPoints[SafeIdx] : BravoSpawnPoints[SafeIdx];
+	FVector BaseSpawnLoc = (ActiveTheaterIndex == 1) ? CoastalBravoSpawnPoints[SafeIdx] : BravoSpawnPoints[SafeIdx];
+	FRotator SpawnRot = (ActiveTheaterIndex == 1) ? FRotator(0.0f, 90.0f, 0.0f) : FRotator(0.0f, 180.0f, 0.0f);
+	if (ActiveTheaterIndex == RangeTheaterIndex)
+	{
+		TArray<AActor*> BotStarts;
+		UGameplayStatics::GetAllActorsWithTag(this, FName("TeamBravo"), BotStarts);
+		if (BotStarts.Num() > 0)
+		{
+			const AActor* Start = BotStarts[BotIndex % BotStarts.Num()];
+			BaseSpawnLoc = Start->GetActorLocation();
+			SpawnRot = Start->GetActorRotation();
+		}
+	}
 	const FVector SpawnLoc = BaseSpawnLoc + FVector(FMath::FRandRange(-80.0f, 80.0f), FMath::FRandRange(-80.0f, 80.0f), 0.0f);
-	const FRotator SpawnRot = (ActiveTheaterIndex == 1) ? FRotator(0.0f, 90.0f, 0.0f) : FRotator(0.0f, 180.0f, 0.0f);
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
