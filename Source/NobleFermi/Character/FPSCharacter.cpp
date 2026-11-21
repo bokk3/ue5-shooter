@@ -607,6 +607,24 @@ void AFPSCharacter::SetupSampleLocomotionRig()
 		FollowCamera->bUsePawnControlRotation = false;
 	}
 
+	// Debug captures: -NFCamDebug=Yaw,Pitch,ArmLength orbits the camera around the character (body-relative),
+	// e.g. -NFCamDebug=-90,-5,160 looks at the weapon side from the right.
+	FString CamDebug;
+	if (CameraBoom && FParse::Value(FCommandLine::Get(), TEXT("NFCamDebug="), CamDebug))
+	{
+		TArray<FString> Parts;
+		CamDebug.ParseIntoArray(Parts, TEXT(","));
+		if (Parts.Num() == 3)
+		{
+			CameraBoom->bUsePawnControlRotation = false;
+			CameraBoom->SetRelativeRotation(FRotator(FCString::Atof(*Parts[1]), FCString::Atof(*Parts[0]), 0.0f));
+			CameraBoom->TargetArmLength = FCString::Atof(*Parts[2]);
+			CameraBoom->SocketOffset = FVector::ZeroVector;
+			CameraBoom->TargetOffset = FVector(0.0f, 0.0f, 45.0f);
+			CameraBoom->bDoCollisionTest = false;
+		}
+	}
+
 	// Shooter rotation: the body faces the aim direction (the sample's strafe mode) so the weapon
 	// layer's aim offset stays within range. The sample Blueprint reads these each frame.
 	TArray<FString> BlueprintVariables;
@@ -646,6 +664,86 @@ void AFPSCharacter::SetupSampleLocomotionRig()
 		*GetName(),
 		GetMesh() && GetMesh()->GetSkeletalMeshAsset() ? *GetMesh()->GetSkeletalMeshAsset()->GetName() : TEXT("none"),
 		GetMesh() && GetMesh()->GetAnimClass() ? *GetMesh()->GetAnimClass()->GetName() : TEXT("none"));
+}
+
+void AFPSCharacter::KeepOnlyOperatorCameraActive()
+{
+	// The view comes from the first active camera component; the sample Blueprint has its own spring arm
+	// camera and re-enables cameras when possessed, so this runs every tick for the local operator.
+	TInlineComponentArray<UCameraComponent*> Cameras(this);
+	for (UCameraComponent* Camera : Cameras)
+	{
+		if (Camera != FollowCamera && Camera->IsActive())
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Locomotion] deactivating sample camera %s"), *Camera->GetName());
+			Camera->Deactivate();
+		}
+	}
+	if (FollowCamera && !FollowCamera->IsActive())
+	{
+		FollowCamera->Activate();
+	}
+}
+
+void AFPSCharacter::AttachWeaponToOperatorHand(AFPSWeaponBase* Weapon)
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	USceneComponent* WeaponRoot = Weapon ? Weapon->GetRootComponent() : nullptr;
+	if (!MeshComp || !WeaponRoot)
+	{
+		return;
+	}
+	static const FName HandBone(TEXT("hand_r"));
+
+	// Where the right hand holds our weapon models, in weapon space (X forward, Z up). Same point the
+	// legacy rig uses (its GripOffset is the weapon origin seen from the hand).
+	static const FVector WeaponGripPoint(-10.56f, 0.0f, -7.04f);
+
+	const UFPSWeaponDataAsset* Data = Weapon->WeaponDataAsset.Get();
+	const bool bPistol = Data && Data->Archetype == EFPSWeaponArchetype::Pistol;
+	const FTransform& GripInHand = bPistol ? OperatorPistolGripInHand : OperatorRifleGripInHand;
+
+	// Weapon space -> grip frame (move the grip point to the origin) -> hand_r space.
+	const FTransform WeaponInHand = FTransform(-WeaponGripPoint) * GripInHand;
+
+	if (WeaponRoot->GetAttachParent() != MeshComp || WeaponRoot->GetAttachSocketName() != HandBone)
+	{
+		Weapon->AttachToComponent(MeshComp, FAttachmentTransformRules::SnapToTargetNotIncludingScale, HandBone);
+	}
+	if (!WeaponRoot->GetRelativeTransform().Equals(WeaponInHand, 0.01f))
+	{
+		Weapon->SetActorRelativeTransform(WeaponInHand);
+	}
+	Weapon->SetActorHiddenInGame(false);
+
+	// Grip check (-NFGripLog): how well the weapon lines up with the aim and the left hand.
+	static const bool bGripLog = FParse::Param(FCommandLine::Get(), TEXT("NFGripLog"));
+	if (bGripLog && IsLocallyControlled() && GetWorld()->GetTimeSeconds() - LastGripLogTime > 2.0f)
+	{
+		LastGripLogTime = GetWorld()->GetTimeSeconds();
+		const FTransform WeaponXf = Weapon->GetActorTransform();
+		const FVector Grip = WeaponXf.TransformPosition(WeaponGripPoint);
+		const FVector Barrel = WeaponXf.GetUnitAxis(EAxis::X);
+		const FVector Aim = GetBaseAimRotation().Vector();
+		const FVector HandL = MeshComp->GetBoneLocation(TEXT("hand_l"));
+		const FVector HandR = MeshComp->GetBoneLocation(HandBone);
+		const UFPSOperatorAnimInstance* OperatorAnim = UFPSOperatorAnimInstance::Get(this);
+		UE_LOG(LogTemp, Log, TEXT("[Grip] %s: barrel-vs-aim %.1f deg | hand_l to IK target %.1f cm (IK alpha %.2f) | hand_l to foregrip %.1f cm | hand_r to grip %.1f cm | weapon roll %.1f"),
+			bPistol ? TEXT("pistol") : TEXT("rifle"),
+			FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(Barrel, Aim), -1.0f, 1.0f))),
+			OperatorAnim ? FVector::Dist(HandL, OperatorAnim->LeftHandIKLocation) : -1.0f,
+			OperatorAnim ? OperatorAnim->LeftHandIKAlpha : -1.0f,
+			FVector::Dist(HandL, Weapon->GetForegripWorldLocation()),
+			FVector::Dist(HandR, Grip), WeaponXf.Rotator().Roll);
+
+		// The grip rotation (relative to hand_r) that would put the barrel exactly on the aim, upright.
+		const FQuat HandQ = MeshComp->GetBoneQuaternion(HandBone, EBoneSpaces::WorldSpace);
+		const FQuat Desired = FRotationMatrix::MakeFromXZ(Aim, FVector::UpVector).ToQuat();
+		const FRotator Suggested = (HandQ.Inverse() * Desired).Rotator();
+		UE_LOG(LogTemp, Log, TEXT("[Grip] suggested %sGripInHand rotation: P=%.3f Y=%.3f R=%.3f (aim pitch %.1f, anim AimPitch %.1f AimYaw %.1f)"),
+			bPistol ? TEXT("Pistol") : TEXT("Rifle"), Suggested.Pitch, Suggested.Yaw, Suggested.Roll,
+			Aim.Rotation().Pitch, OperatorAnim ? OperatorAnim->AimPitch : 0.0f, OperatorAnim ? OperatorAnim->AimYaw : 0.0f);
+	}
 }
 
 UAbilitySystemComponent* AFPSCharacter::GetAbilitySystemComponent() const
@@ -883,7 +981,15 @@ void AFPSCharacter::Tick(float DeltaTime)
 	{
 		if (InventoryComponent)
 		{
-			if (AFPSWeaponBase* Weapon = InventoryComponent->GetActiveWeapon())
+			if (bUseSampleLocomotion && IsLocallyControlled())
+			{
+				KeepOnlyOperatorCameraActive();
+			}
+			if (AFPSWeaponBase* Weapon = InventoryComponent->GetActiveWeapon(); Weapon && bUseSampleLocomotion)
+			{
+				AttachWeaponToOperatorHand(Weapon);
+			}
+			else if (Weapon)
 			{
 				Weapon->SetActorHiddenInGame(false);
 				Weapon->SetActorScale3D(FVector(1.0f, 1.0f, 1.0f));

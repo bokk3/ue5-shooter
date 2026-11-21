@@ -53,6 +53,20 @@ struct FFPSWeaponLayerSettings
 	/** 0..1 weight of the whole weapon layer (0 while the sample plays traversal montages etc.). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Layer")
 	FName WeaponLayerAlphaVariable = TEXT("WeaponLayerAlpha");
+
+	/** Left-hand IK onto the weapon's foregrip, after everything else. None skips it. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Layer|Left Hand IK")
+	FName LeftHandIKLocationVariable = TEXT("LeftHandIKLocation");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Layer|Left Hand IK")
+	FName LeftHandIKAlphaVariable = TEXT("LeftHandIKAlpha");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Layer|Left Hand IK")
+	FName LeftHandBone = TEXT("hand_l");
+
+	/** The IK keeps the arm's animated bend by using this bone (the elbow) as its pole. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Layer|Left Hand IK")
+	FName LeftElbowBone = TEXT("lowerarm_l");
 };
 
 /**

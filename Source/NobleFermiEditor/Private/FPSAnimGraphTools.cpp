@@ -1,6 +1,9 @@
 #include "FPSAnimGraphTools.h"
 
 #include "AnimGraphNode_BlendListByBool.h"
+#include "AnimGraphNode_ComponentToLocalSpace.h"
+#include "AnimGraphNode_LocalToComponentSpace.h"
+#include "AnimGraphNode_TwoBoneIK.h"
 #include "AnimGraphNode_LayeredBoneBlend.h"
 #include "AnimGraphNode_Root.h"
 #include "AnimGraphNode_RotationOffsetBlendSpace.h"
@@ -319,7 +322,42 @@ bool UFPSAnimGraphTools::AddWeaponUpperBodyLayer(UAnimBlueprint* AnimBlueprint, 
 	UAnimGraphNode_Slot* FullSlot = Spawn<UAnimGraphNode_Slot>(Graph, X - 300, Y,
 		[&](UAnimGraphNode_Slot* Node) { Node->Node.SlotName = Settings.FullBodySlot; });
 	Connect(Graph, FindPoseOutput(Layer, OutLog), FindPin(FullSlot, {TEXT("Source")}, EGPD_Input, OutLog), OutLog);
-	Connect(Graph, FindPoseOutput(FullSlot, OutLog), ResultPin, OutLog);
+	UEdGraphPin* FinalPose = FindPoseOutput(FullSlot, OutLog);
+
+	// Left hand onto the weapon's foregrip (world-space target from the anim instance), elbow as pole.
+	if (!Settings.LeftHandIKLocationVariable.IsNone())
+	{
+		UAnimGraphNode_LocalToComponentSpace* ToComponent = Spawn<UAnimGraphNode_LocalToComponentSpace>(Graph, X - 100, Y - 300,
+			[](UAnimGraphNode_LocalToComponentSpace*) {});
+		UAnimGraphNode_TwoBoneIK* HandIK = Spawn<UAnimGraphNode_TwoBoneIK>(Graph, X + 150, Y - 300,
+			[&](UAnimGraphNode_TwoBoneIK* Node)
+			{
+				Node->Node.IKBone.BoneName = Settings.LeftHandBone;
+				Node->Node.EffectorLocationSpace = BCS_WorldSpace;
+				Node->Node.JointTargetLocationSpace = BCS_BoneSpace;
+				Node->Node.JointTarget = FBoneSocketTarget(Settings.LeftElbowBone, false);
+				Node->Node.JointTargetLocation = FVector::ZeroVector;
+				Node->Node.bAllowStretching = false;
+			});
+		UAnimGraphNode_ComponentToLocalSpace* ToLocal = Spawn<UAnimGraphNode_ComponentToLocalSpace>(Graph, X + 450, Y - 300,
+			[](UAnimGraphNode_ComponentToLocalSpace*) {});
+
+		Connect(Graph, FinalPose, FindPin(ToComponent, {TEXT("LocalPose"), TEXT("Local Pose")}, EGPD_Input, OutLog), OutLog);
+		Connect(Graph, FindPoseOutput(ToComponent, OutLog), FindPin(HandIK, {TEXT("ComponentPose"), TEXT("Component Pose")}, EGPD_Input, OutLog), OutLog);
+		Connect(Graph, FindPoseOutput(HandIK, OutLog), FindPin(ToLocal, {TEXT("ComponentPose"), TEXT("Component Pose")}, EGPD_Input, OutLog), OutLog);
+		if (UK2Node_VariableGet* Target = SpawnVariableGet(Graph, Owner, Settings.LeftHandIKLocationVariable, X - 100, Y - 150, OutLog))
+		{
+			Connect(Graph, Target->FindPin(Settings.LeftHandIKLocationVariable),
+				FindPin(HandIK, {TEXT("EffectorLocation"), TEXT("Effector Location")}, EGPD_Input, OutLog), OutLog);
+		}
+		if (UK2Node_VariableGet* IKAlpha = SpawnVariableGet(Graph, Owner, Settings.LeftHandIKAlphaVariable, X - 100, Y - 80, OutLog))
+		{
+			Connect(Graph, IKAlpha->FindPin(Settings.LeftHandIKAlphaVariable),
+				FindPin(HandIK, {TEXT("Alpha")}, EGPD_Input, OutLog), OutLog);
+		}
+		FinalPose = FindPoseOutput(ToLocal, OutLog);
+	}
+	Connect(Graph, FinalPose, ResultPin, OutLog);
 
 	if (USkeleton* Skeleton = AnimBlueprint->TargetSkeleton)
 	{

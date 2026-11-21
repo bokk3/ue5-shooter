@@ -303,6 +303,27 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "FPS Character|Animation", meta = (EditCondition = "bUseSampleLocomotion"))
 	FVector SampleCameraSocketOffset = FVector(0.0f, 55.0f, 70.0f);
 
+	/**
+	 * With sample locomotion the weapon is attached rigidly to hand_r, so the Lyra animations alone place it.
+	 * These are the weapon grip (receiver pistol grip, X forward, Z up) relative to hand_r. Location comes
+	 * from Lyra's hold poses (Scripts/ThirdPartyContent/measure_weapon_grip.py); rotation from the running
+	 * game, since the aim offset and spine blend change the pose: launch with -NFGripLog and use the
+	 * logged "suggested ...GripInHand rotation" with the aim level.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Character|Animation", meta = (EditCondition = "bUseSampleLocomotion"))
+	FTransform OperatorRifleGripInHand = FTransform(FRotator(10.4f, -170.0f, -15.6f), FVector(-5.654f, 0.039f, 0.418f));
+
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Character|Animation", meta = (EditCondition = "bUseSampleLocomotion"))
+	FTransform OperatorPistolGripInHand = FTransform(FRotator(-8.34f, 174.826f, -14.722f), FVector(-5.705f, -0.04f, 0.203f));
+
+	float LastGripLogTime = -100.0f;
+
+	/** Leaves FollowCamera as the only active camera (the sample Blueprint brings its own). */
+	void KeepOnlyOperatorCameraActive();
+
+	/** Attaches the active weapon to hand_r at the measured grip (sample locomotion only). */
+	void AttachWeaponToOperatorHand(class AFPSWeaponBase* Weapon);
+
 	UFUNCTION(BlueprintPure, Category = "FPS Character|Animation")
 	bool UsesSampleLocomotion() const { return bUseSampleLocomotion; }
 

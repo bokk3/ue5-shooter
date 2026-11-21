@@ -122,6 +122,15 @@ void UFPSOperatorAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	const bool bArmed = Weapon != nullptr && Data && Data->Archetype != EFPSWeaponArchetype::Melee;
 	const float Target = (bArmed && !Character->IsDead() && !IsForeignMontagePlaying()) ? 1.0f : 0.0f;
 	WeaponLayerAlpha = FMath::FInterpConstantTo(WeaponLayerAlpha, Target, DeltaSeconds, WeaponLayerBlendSpeed);
+
+	// Left hand on the foregrip for two-handed weapons, except while an action animates it.
+	const bool bHandFree = GetWorld() && GetWorld()->GetTimeSeconds() >= LeftHandBusyUntil;
+	const float IKTarget = (bArmed && !bUsePistolPose && bHandFree && WeaponLayerAlpha > 0.99f) ? 1.0f : 0.0f;
+	LeftHandIKAlpha = FMath::FInterpConstantTo(LeftHandIKAlpha, IKTarget, DeltaSeconds, LeftHandIKBlendSpeed);
+	if (Weapon)
+	{
+		LeftHandIKLocation = Weapon->GetForegripWorldLocation() + Weapon->GetActorQuat().RotateVector(LeftWristFromForegrip);
+	}
 }
 
 bool UFPSOperatorAnimInstance::IsForeignMontagePlaying() const
@@ -172,6 +181,10 @@ void UFPSOperatorAnimInstance::PlayWeaponAction(EFPSOperatorAction Action, float
 	const float Rate = (DurationSeconds > 0.05f && Length > 0.05f) ? Length / DurationSeconds : 1.0f;
 	const float BlendIn = Action == EFPSOperatorAction::Fire ? 0.03f : 0.15f;
 	PlaySlotAnimationAsDynamicMontage(Anim, UpperBodySlot, BlendIn, 0.2f, Rate);
+	if (Action != EFPSOperatorAction::Fire && GetWorld())
+	{
+		LeftHandBusyUntil = GetWorld()->GetTimeSeconds() + Length / FMath::Max(Rate, 0.01f);
+	}
 }
 
 void UFPSOperatorAnimInstance::PlayHitReact(const FVector& WorldHitDirection, float Damage)

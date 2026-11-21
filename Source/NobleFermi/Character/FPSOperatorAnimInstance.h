@@ -87,6 +87,21 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Operator Anims|Weapon Layer")
 	float WeaponLayerAlpha = 0.0f;
 
+	/** World-space target for the left wrist: under the weapon's foregrip. */
+	UPROPERTY(BlueprintReadOnly, Category = "Operator Anims|Weapon Layer")
+	FVector LeftHandIKLocation = FVector::ZeroVector;
+
+	/** 0 for pistols and while a weapon action (reload, equip, melee, grenade) needs the left hand. */
+	UPROPERTY(BlueprintReadOnly, Category = "Operator Anims|Weapon Layer")
+	float LeftHandIKAlpha = 0.0f;
+
+	/** Left wrist relative to the foregrip, in weapon space (X forward, Y right, Z up), cm. */
+	UPROPERTY(EditDefaultsOnly, Category = "Operator Anims|Weapon Layer")
+	FVector LeftWristFromForegrip = FVector(-4.0f, -3.0f, -7.0f);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Operator Anims|Weapon Layer")
+	float LeftHandIKBlendSpeed = 6.0f;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Operator Anims|Slots")
 	FName UpperBodySlot = TEXT("NF_UpperBody");
 
@@ -128,6 +143,9 @@ private:
 
 	TWeakObjectPtr<AFPSCharacter> OwnerCharacter;
 	TWeakObjectPtr<const class AFPSWeaponBase> LastWeapon;
+
+	/** World time until which a non-fire weapon action owns the left hand. */
+	float LeftHandBusyUntil = 0.0f;
 
 	/** Hard references to everything above once loaded, so playback never hitches mid-match. */
 	UPROPERTY(Transient)
