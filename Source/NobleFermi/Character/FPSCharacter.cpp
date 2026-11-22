@@ -41,6 +41,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 #include "InputCoreTypes.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -587,8 +588,6 @@ namespace
 	 * Debug captures: -NFCamDebug=Yaw,Pitch,ArmLength[,Height] orbits the camera around the character's head
 	 * (yaw relative to the body: 0 behind, 180 in front, -90 from the right), e.g. -NFCamDebug=-90,-5,90.
 	 * Called after the regular camera code, which otherwise rewrites the boom every tick.
-	 * Note: the sample Blueprint's GameplayCamera (Gameplay Cameras plugin) currently renders the operator's
-	 * view, not FollowCamera on this boom, so this only moves the legacy rig's view for now.
 	 */
 	void ApplyDebugCameraOrbit(USpringArmComponent* CameraBoom, float ActorYaw, bool bLocallyControlled)
 	{
@@ -596,7 +595,7 @@ namespace
 		{
 			FString Value;
 			TArray<FString> Parts;
-			if (FParse::Value(FCommandLine::Get(), TEXT("NFCamDebug="), Value) && Value.ParseIntoArray(Parts, TEXT(",")) >= 3)
+			if (FParse::Value(FCommandLine::Get(), TEXT("NFCamDebug="), Value, /*bShouldStopOnSeparator=*/ false) && Value.ParseIntoArray(Parts, TEXT(",")) >= 3)
 			{
 				return FVector4(FCString::Atof(*Parts[0]), FCString::Atof(*Parts[1]), FCString::Atof(*Parts[2]),
 					Parts.Num() >= 4 ? FCString::Atof(*Parts[3]) : 15.0f);
@@ -688,22 +687,58 @@ void AFPSCharacter::SetupSampleLocomotionRig()
 		GetMesh() && GetMesh()->GetAnimClass() ? *GetMesh()->GetAnimClass()->GetName() : TEXT("none"));
 }
 
+namespace { bool bLoggedOperatorViewOnce = false; }
+
 void AFPSCharacter::KeepOnlyOperatorCameraActive()
 {
 	// The view comes from the first active camera component; the sample Blueprint has its own spring arm
 	// camera and re-enables cameras when possessed, so this runs every tick for the local operator.
+	// The sample's GameplayCamera (Gameplay Cameras plugin) runs its own camera system and writes the result
+	// into a transient CineCamera it owns; the Blueprint can re-activate it after possession, so keep it off.
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (Component && Component->IsActive() && Component->GetClass()->GetName().Contains(TEXT("GameplayCamera")))
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Locomotion] deactivating sample camera system %s"), *Component->GetName());
+			Component->Deactivate();
+		}
+	}
 	TInlineComponentArray<UCameraComponent*> Cameras(this);
 	for (UCameraComponent* Camera : Cameras)
 	{
 		if (Camera != FollowCamera && Camera->IsActive())
 		{
-			UE_LOG(LogTemp, Log, TEXT("[Locomotion] deactivating sample camera %s"), *Camera->GetName());
+			UE_LOG(LogTemp, Log, TEXT("[Locomotion] deactivating sample camera %s (%s)"), *Camera->GetName(), *Camera->GetClass()->GetName());
 			Camera->Deactivate();
 		}
 	}
 	if (FollowCamera && !FollowCamera->IsActive())
 	{
 		FollowCamera->Activate();
+	}
+	bFindCameraComponentWhenViewTarget = true;
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC && PC->GetViewTarget() != this)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Locomotion] view target was %s, setting it back to %s"), *GetNameSafe(PC->GetViewTarget()), *GetName());
+		PC->SetViewTarget(this);
+	}
+
+	// One report a few seconds in: which camera actually renders, so a rig taking over the view shows in the log.
+	if (PC && PC->PlayerCameraManager && !bLoggedOperatorViewOnce && GetWorld() && GetWorld()->GetTimeSeconds() > 6.0)
+	{
+		bLoggedOperatorViewOnce = true;
+		TArray<FString> CameraStates;
+		for (UCameraComponent* Camera : Cameras)
+		{
+			CameraStates.Add(FString::Printf(TEXT("%s(%s,%s) at %s"), *Camera->GetName(), *Camera->GetClass()->GetName(),
+				Camera->IsActive() ? TEXT("active") : TEXT("off"), *Camera->GetComponentLocation().ToCompactString()));
+		}
+		UE_LOG(LogTemp, Log, TEXT("[Camera] view target %s, camera manager %s, view at %s rot %s | FollowCamera at %s | cameras: %s"),
+			*GetNameSafe(PC->GetViewTarget()), *PC->PlayerCameraManager->GetClass()->GetName(),
+			*PC->PlayerCameraManager->GetCameraLocation().ToCompactString(), *PC->PlayerCameraManager->GetCameraRotation().ToCompactString(),
+			FollowCamera ? *FollowCamera->GetComponentLocation().ToCompactString() : TEXT("none"), *FString::Join(CameraStates, TEXT("; ")));
 	}
 }
 
@@ -727,7 +762,7 @@ void AFPSCharacter::AttachOperatorHelmet()
 
 	FTransform OnHead = OperatorHelmetOnHead;
 	FString Override;
-	if (FParse::Value(FCommandLine::Get(), TEXT("NFHelmet="), Override))
+	if (FParse::Value(FCommandLine::Get(), TEXT("NFHelmet="), Override, /*bShouldStopOnSeparator=*/ false))
 	{
 		TArray<FString> Parts;
 		Override.ParseIntoArray(Parts, TEXT(","));
