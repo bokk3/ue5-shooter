@@ -36,6 +36,8 @@
 #include "Combat/FPSBallisticTracer.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Animation/AnimSequence.h"
+#include "AnimationRuntime.h"
+#include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "GameFramework/PlayerController.h"
@@ -579,6 +581,44 @@ void AFPSCharacter::BeginPlay()
 	}
 }
 
+namespace
+{
+	/**
+	 * Debug captures: -NFCamDebug=Yaw,Pitch,ArmLength[,Height] orbits the camera around the character's head
+	 * (yaw relative to the body: 0 behind, 180 in front, -90 from the right), e.g. -NFCamDebug=-90,-5,90.
+	 * Called after the regular camera code, which otherwise rewrites the boom every tick.
+	 * Note: the sample Blueprint's GameplayCamera (Gameplay Cameras plugin) currently renders the operator's
+	 * view, not FollowCamera on this boom, so this only moves the legacy rig's view for now.
+	 */
+	void ApplyDebugCameraOrbit(USpringArmComponent* CameraBoom, float ActorYaw, bool bLocallyControlled)
+	{
+		static const FVector4 CamDebug = []()
+		{
+			FString Value;
+			TArray<FString> Parts;
+			if (FParse::Value(FCommandLine::Get(), TEXT("NFCamDebug="), Value) && Value.ParseIntoArray(Parts, TEXT(",")) >= 3)
+			{
+				return FVector4(FCString::Atof(*Parts[0]), FCString::Atof(*Parts[1]), FCString::Atof(*Parts[2]),
+					Parts.Num() >= 4 ? FCString::Atof(*Parts[3]) : 15.0f);
+			}
+			return FVector4(0.0f, 0.0f, -1.0f, 0.0f);
+		}();
+		if (!CameraBoom || CamDebug.Z <= 0.0f || !bLocallyControlled)
+		{
+			return;
+		}
+		CameraBoom->bUsePawnControlRotation = false;
+		CameraBoom->SetUsingAbsoluteRotation(true);
+		CameraBoom->SetWorldRotation(FRotator(CamDebug.Y, ActorYaw + CamDebug.X, 0.0f));
+		CameraBoom->TargetArmLength = CamDebug.Z;
+		CameraBoom->SocketOffset = FVector::ZeroVector;
+		CameraBoom->TargetOffset = FVector(0.0f, 0.0f, CamDebug.W);
+		CameraBoom->bDoCollisionTest = false;
+		CameraBoom->bEnableCameraLag = false;
+		CameraBoom->bEnableCameraRotationLag = false;
+	}
+}
+
 void AFPSCharacter::SetupSampleLocomotionRig()
 {
 	// The sample Blueprint supplies mesh and AnimBP. Retire the legacy rig pieces that would otherwise
@@ -605,24 +645,6 @@ void AFPSCharacter::SetupSampleLocomotionRig()
 	{
 		FollowCamera->Activate();
 		FollowCamera->bUsePawnControlRotation = false;
-	}
-
-	// Debug captures: -NFCamDebug=Yaw,Pitch,ArmLength orbits the camera around the character (body-relative),
-	// e.g. -NFCamDebug=-90,-5,160 looks at the weapon side from the right.
-	FString CamDebug;
-	if (CameraBoom && FParse::Value(FCommandLine::Get(), TEXT("NFCamDebug="), CamDebug))
-	{
-		TArray<FString> Parts;
-		CamDebug.ParseIntoArray(Parts, TEXT(","));
-		if (Parts.Num() == 3)
-		{
-			CameraBoom->bUsePawnControlRotation = false;
-			CameraBoom->SetRelativeRotation(FRotator(FCString::Atof(*Parts[1]), FCString::Atof(*Parts[0]), 0.0f));
-			CameraBoom->TargetArmLength = FCString::Atof(*Parts[2]);
-			CameraBoom->SocketOffset = FVector::ZeroVector;
-			CameraBoom->TargetOffset = FVector(0.0f, 0.0f, 45.0f);
-			CameraBoom->bDoCollisionTest = false;
-		}
 	}
 
 	// Shooter rotation: the body faces the aim direction (the sample's strafe mode) so the weapon
@@ -658,7 +680,7 @@ void AFPSCharacter::SetupSampleLocomotionRig()
 	if (PlateCarrierProcMesh) { PlateCarrierProcMesh->SetVisibility(false); PlateCarrierProcMesh->SetHiddenInGame(true); }
 	if (BallisticHelmetProcMesh) { BallisticHelmetProcMesh->SetVisibility(false); BallisticHelmetProcMesh->SetHiddenInGame(true); }
 	if (ChestCarrierMesh) { ChestCarrierMesh->SetVisibility(false); ChestCarrierMesh->SetHiddenInGame(true); }
-	if (BallisticHelmetMesh) { BallisticHelmetMesh->SetVisibility(false); BallisticHelmetMesh->SetHiddenInGame(true); }
+	AttachOperatorHelmet();
 
 	UE_LOG(LogTemp, Log, TEXT("[Locomotion] %s uses Game Animation Sample locomotion (mesh %s, anim %s)"),
 		*GetName(),
@@ -683,6 +705,60 @@ void AFPSCharacter::KeepOnlyOperatorCameraActive()
 	{
 		FollowCamera->Activate();
 	}
+}
+
+void AFPSCharacter::AttachOperatorHelmet()
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	const USkeletalMesh* BodyMesh = MeshComp ? MeshComp->GetSkeletalMeshAsset() : nullptr;
+	UStaticMesh* HelmetAsset = OperatorHelmetMesh.IsNull() ? nullptr : OperatorHelmetMesh.LoadSynchronous();
+	if (!BallisticHelmetMesh || !BodyMesh || !HelmetAsset)
+	{
+		if (BallisticHelmetMesh) { BallisticHelmetMesh->SetVisibility(false); BallisticHelmetMesh->SetHiddenInGame(true); }
+		return;
+	}
+	static const FName HeadBone(TEXT("head"));
+	const FReferenceSkeleton& RefSkeleton = BodyMesh->GetRefSkeleton();
+	const int32 HeadIndex = RefSkeleton.FindBoneIndex(HeadBone);
+	if (HeadIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	FTransform OnHead = OperatorHelmetOnHead;
+	FString Override;
+	if (FParse::Value(FCommandLine::Get(), TEXT("NFHelmet="), Override))
+	{
+		TArray<FString> Parts;
+		Override.ParseIntoArray(Parts, TEXT(","));
+		if (Parts.Num() >= 6)
+		{
+			OnHead.SetLocation(FVector(FCString::Atof(*Parts[0]), FCString::Atof(*Parts[1]), FCString::Atof(*Parts[2])));
+			OnHead.SetRotation(FRotator(FCString::Atof(*Parts[4]), FCString::Atof(*Parts[3]), FCString::Atof(*Parts[5])).Quaternion());
+			if (Parts.Num() >= 7)
+			{
+				OnHead.SetScale3D(FVector(FCString::Atof(*Parts[6])));
+			}
+		}
+	}
+
+	// The head bone's own axes are arbitrary; express the placement in the character's frame (as seen in
+	// component space in the reference pose) and convert it to the bone.
+	const FTransform HeadRef = FAnimationRuntime::GetComponentSpaceTransformRefPose(RefSkeleton, HeadIndex);
+	const FQuat CharacterToComponent = MeshComp->GetRelativeRotation().Quaternion().Inverse();
+	const FTransform HelmetInComponent(CharacterToComponent * OnHead.GetRotation(),
+		HeadRef.GetLocation() + CharacterToComponent.RotateVector(OnHead.GetLocation()), OnHead.GetScale3D());
+	const FTransform HelmetOnBone = HelmetInComponent.GetRelativeTransform(HeadRef);
+
+	BallisticHelmetMesh->SetStaticMesh(HelmetAsset);
+	BallisticHelmetMesh->AttachToComponent(MeshComp, FAttachmentTransformRules::SnapToTargetNotIncludingScale, HeadBone);
+	BallisticHelmetMesh->SetRelativeTransform(HelmetOnBone);
+	BallisticHelmetMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BallisticHelmetMesh->SetCastShadow(true);
+	BallisticHelmetMesh->SetHiddenInGame(false);
+	BallisticHelmetMesh->SetVisibility(true, true);
+	UE_LOG(LogTemp, Log, TEXT("[Helmet] %s wears %s: on head %s (bone-relative %s)"), *GetName(), *HelmetAsset->GetName(),
+		*OnHead.ToString(), *HelmetOnBone.ToString());
 }
 
 void AFPSCharacter::AttachWeaponToOperatorHand(AFPSWeaponBase* Weapon)
@@ -984,6 +1060,7 @@ void AFPSCharacter::Tick(float DeltaTime)
 			if (bUseSampleLocomotion && IsLocallyControlled())
 			{
 				KeepOnlyOperatorCameraActive();
+				ApplyDebugCameraOrbit(CameraBoom, GetActorRotation().Yaw, true);
 			}
 			if (AFPSWeaponBase* Weapon = InventoryComponent->GetActiveWeapon(); Weapon && bUseSampleLocomotion)
 			{
@@ -1168,6 +1245,8 @@ void AFPSCharacter::UpdateThirdPersonCamera(float DeltaTime)
 		CameraBoom->TargetArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, TargetArmLength, DeltaTime, 14.0f);
 		CameraBoom->SocketOffset = FMath::VInterpTo(CameraBoom->SocketOffset, TargetSocketOffset, DeltaTime, 14.0f);
 	}
+
+	ApplyDebugCameraOrbit(CameraBoom, GetActorRotation().Yaw, IsLocallyControlled());
 	FollowCamera->SetFieldOfView(FMath::FInterpTo(FollowCamera->FieldOfView, TargetFOV, DeltaTime, 18.0f));
 
 	// Competitive Tactical Post-Process Management (Depth of Field & Motion Blur)
@@ -2919,7 +2998,7 @@ void AFPSCharacter::UpdatePhysicalArmorAndHelmetDebris(float DeltaTime)
 		HelmetFlightTimer -= DeltaTime;
 		HelmetVelocity.Z -= 1380.0f * DeltaTime;
 
-		FVector BaseLoc = BallisticHelmetProcMesh ? BallisticHelmetProcMesh->GetComponentLocation() : (BallisticHelmetMesh ? BallisticHelmetMesh->GetComponentLocation() : FVector::ZeroVector);
+		FVector BaseLoc = (BallisticHelmetProcMesh && !bUseSampleLocomotion) ? BallisticHelmetProcMesh->GetComponentLocation() : (BallisticHelmetMesh ? BallisticHelmetMesh->GetComponentLocation() : FVector::ZeroVector);
 		FVector NewLoc = BaseLoc + HelmetVelocity * DeltaTime;
 		if (NewLoc.Z < 12.0f)
 		{
@@ -3264,6 +3343,10 @@ void AFPSCharacter::RedeployOperator()
 	}
 	if (ChestCarrierMesh) { ChestCarrierMesh->SetVisibility(false); ChestCarrierMesh->SetHiddenInGame(true); }
 	if (BallisticHelmetMesh) { BallisticHelmetMesh->SetVisibility(false); BallisticHelmetMesh->SetHiddenInGame(true); }
+	if (bUseSampleLocomotion)
+	{
+		AttachOperatorHelmet();
+	}
 	if (EjectedPlateShardMesh)
 	{
 		EjectedPlateShardMesh->SetVisibility(false);

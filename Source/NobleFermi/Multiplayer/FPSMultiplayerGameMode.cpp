@@ -2,6 +2,9 @@
 #include "Multiplayer/FPSMultiplayerGameState.h"
 #include "Multiplayer/FPSPlayerState.h"
 #include "Character/FPSCharacter.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Weapons/FPSWeaponBase.h"
 #include "Inventory/FPSInventoryComponent.h"
 #include "Map/FPSCombatArenaMapActor.h"
@@ -298,6 +301,88 @@ void AFPSMultiplayerGameMode::BeginPlay()
 			}), 5.0f, false);
 		}), ShotDelay, false);
 	}
+
+	float ActionTestDelay = 0.0f;
+	if (FParse::Param(FCommandLine::Get(), TEXT("NFActionTest")) || FParse::Value(FCommandLine::Get(), TEXT("NFActionTest="), ActionTestDelay))
+	{
+		RunOperatorActionTest();
+	}
+}
+
+void AFPSMultiplayerGameMode::RunOperatorActionTest()
+{
+	float StartDelay = GIsEditor ? 8.0f : 14.0f;
+	FParse::Value(FCommandLine::Get(), TEXT("NFActionTest="), StartDelay);
+	UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("DisableAllScreenMessages"));
+
+	const FString ShotDir = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots"), TEXT("ActionTest"));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree(*ShotDir);
+
+	struct FStep
+	{
+		float Time;
+		const TCHAR* Name;
+		TFunction<void(AFPSCharacter&)> Action; // may be empty: screenshot only
+		bool bScreenshot;
+	};
+	const TArray<FStep> Steps = {
+		{ 0.0f,  TEXT("rifle_idle"),    nullptr, true },
+		{ 1.0f,  TEXT("rifle_fire"),    [](AFPSCharacter& C) { C.StartFire(); }, false },
+		{ 1.25f, TEXT("rifle_fire"),    nullptr, true },
+		{ 1.5f,  TEXT("rifle_stop"),    [](AFPSCharacter& C) { C.StopFire(); }, false },
+		{ 2.5f,  TEXT("rifle_reload"),  [](AFPSCharacter& C) { C.Reload(); }, false },
+		{ 3.3f,  TEXT("rifle_reload"),  nullptr, true },
+		{ 4.3f,  TEXT("rifle_reload_late"), nullptr, true },
+		{ 7.0f,  TEXT("pistol_equip"),  [](AFPSCharacter& C) { C.EquipSidearm(); }, false },
+		{ 7.35f, TEXT("pistol_equip"),  nullptr, true },
+		{ 10.0f, TEXT("pistol_idle"),   nullptr, true },
+		{ 11.0f, TEXT("pistol_fire"),   [](AFPSCharacter& C) { C.StartFire(); }, false },
+		{ 11.15f, TEXT("pistol_fire"),  nullptr, true },
+		{ 11.4f, TEXT("pistol_stop"),   [](AFPSCharacter& C) { C.StopFire(); }, false },
+		{ 12.5f, TEXT("pistol_reload"), [](AFPSCharacter& C) { C.Reload(); }, false },
+		{ 13.3f, TEXT("pistol_reload"), nullptr, true },
+		{ 17.0f, TEXT("done"),          nullptr, false },
+	};
+
+	for (int32 Index = 0; Index < Steps.Num(); ++Index)
+	{
+		const FStep& Step = Steps[Index];
+		const bool bLast = Index == Steps.Num() - 1;
+		FTimerHandle Handle;
+		GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this, Step, bLast, ShotDir]()
+		{
+			if (bLast)
+			{
+				UE_LOG(LogTemp, Log, TEXT("[ActionTest] done, exiting"));
+				FGenericPlatformMisc::RequestExit(false);
+				return;
+			}
+			APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+			AFPSCharacter* Char = PC ? Cast<AFPSCharacter>(PC->GetPawn()) : nullptr;
+			if (!Char)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[ActionTest] %s: no local character"), Step.Name);
+				return;
+			}
+			if (Step.Action)
+			{
+				Step.Action(*Char);
+			}
+			const AFPSWeaponBase* Weapon = Char->GetCurrentWeapon();
+			const UAnimInstance* Anim = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr;
+			const UAnimMontage* Montage = Anim ? Anim->GetCurrentActiveMontage() : nullptr;
+			UE_LOG(LogTemp, Log, TEXT("[ActionTest] %s%s: weapon %s ammo %d | montage %s"),
+				Step.Name, Step.Action ? TEXT(" (action)") : TEXT(""),
+				Weapon ? *Weapon->GetName() : TEXT("none"), Weapon ? Weapon->GetCurrentAmmo() : -1,
+				Montage ? *Montage->GetName() : TEXT("none"));
+			if (Step.bScreenshot)
+			{
+				const FString File = FPaths::Combine(ShotDir, FString::Printf(TEXT("%s.png"), Step.Name));
+				FScreenshotRequest::RequestScreenshot(File, false, false);
+			}
+		}), StartDelay + Step.Time, false);
+	}
+	UE_LOG(LogTemp, Log, TEXT("[ActionTest] scheduled %d steps starting in %.1fs, screenshots in %s"), Steps.Num(), StartDelay, *ShotDir);
 }
 
 void AFPSMultiplayerGameMode::SpawnInitialTacticalBots()

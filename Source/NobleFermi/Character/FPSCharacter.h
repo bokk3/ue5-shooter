@@ -9,6 +9,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class USkeletalMeshComponent;
 class UStaticMeshComponent;
+class UStaticMesh;
 class UProceduralMeshComponent;
 class UFPSCharacterMovementComponent;
 class UFPSHealthComponent;
@@ -317,6 +318,23 @@ public:
 	FTransform OperatorPistolGripInHand = FTransform(FRotator(-8.34f, 174.826f, -14.722f), FVector(-5.705f, -0.04f, 0.203f));
 
 	float LastGripLogTime = -100.0f;
+
+	/** Helmet the operator wears (sample locomotion), on the head bone. Imported by Scripts/import_operator_helmet.py. */
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Character|Gear", meta = (EditCondition = "bUseSampleLocomotion"))
+	TSoftObjectPtr<UStaticMesh> OperatorHelmetMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(
+		TEXT("/Game/NobleFermi/Characters/Gear/Helmet/combat_helmet_camo/StaticMeshes/SM_CombatHelmet.SM_CombatHelmet")));
+
+	/**
+	 * Helmet placement relative to the head bone, in a frame that is upright and faces the character's
+	 * forward in the reference pose (X forward, Y right, Z up, cm), so the numbers read like "2 cm forward,
+	 * 9 cm up". Rotation corrects the model's own axes. Tune live with
+	 * -NFHelmet=Forward,Right,Up,Yaw,Pitch,Roll[,Scale] and copy the values here.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "FPS Character|Gear", meta = (EditCondition = "bUseSampleLocomotion"))
+	FTransform OperatorHelmetOnHead = FTransform(FRotator::ZeroRotator, FVector(2.0f, 0.0f, 9.0f));
+
+	/** Puts OperatorHelmetMesh on the head (BallisticHelmetMesh, so the headshot helmet pop still works). */
+	void AttachOperatorHelmet();
 
 	/** Leaves FollowCamera as the only active camera (the sample Blueprint brings its own). */
 	void KeepOnlyOperatorCameraActive();

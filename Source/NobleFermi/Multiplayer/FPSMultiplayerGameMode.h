@@ -90,6 +90,13 @@ protected:
 	void SpawnSingleTacticalBot(int32 BotIndex);
 
 private:
+	/**
+	 * -NFActionTest[=StartDelaySeconds]: scripted check of the operator's weapon animations. Fires and
+	 * reloads the rifle, switches to the pistol, fires and reloads it, screenshots each step to
+	 * Saved/Screenshots/ActionTest and exits. Add -NFGripLog for the grip measurements.
+	 */
+	void RunOperatorActionTest();
+
 	UPROPERTY()
 	int32 ActiveTheaterIndex = 0;
 

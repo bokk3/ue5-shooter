@@ -181,6 +181,11 @@ void UFPSOperatorAnimInstance::PlayWeaponAction(EFPSOperatorAction Action, float
 	const float Rate = (DurationSeconds > 0.05f && Length > 0.05f) ? Length / DurationSeconds : 1.0f;
 	const float BlendIn = Action == EFPSOperatorAction::Fire ? 0.03f : 0.15f;
 	PlaySlotAnimationAsDynamicMontage(Anim, UpperBodySlot, BlendIn, 0.2f, Rate);
+	if (Action != EFPSOperatorAction::Fire)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[OperatorAnim] %s plays %s in %s at rate %.2f"),
+			*GetNameSafe(OwnerCharacter.Get()), *Anim->GetName(), *UpperBodySlot.ToString(), Rate);
+	}
 	if (Action != EFPSOperatorAction::Fire && GetWorld())
 	{
 		LeftHandBusyUntil = GetWorld()->GetTimeSeconds() + Length / FMath::Max(Rate, 0.01f);
