@@ -205,6 +205,23 @@ Source/NobleFermi/
     └── FPSInventoryComponent.h / .cpp      # Weapon inventory & weapon_r bone socket attachment
 ```
 
+### Generated 3D assets (Trellis)
+
+- **What's in UE.** 152 of the 160 asset prompts in `Scripts/Trellis/prompts.py` are imported as static meshes in
+  `/Game/NobleFermi/Generated/<batch>/<category>/<Name>/StaticMeshes/SM_<Name>`. They are at real-world scale, face
+  +X and stand on +Z. Batches 04 to 08 (gameplay items, favela, coastal, industrial, range/hangar) are complete or
+  nearly complete.
+- **The 8 that aren't imported.** They are listed with reasons in `asset_specs.REJECTED`:
+  - Speedloader_357, BattleBelt, DropLegHolster
+  - FlashHider, Grip_Vertical, Grip_Angled
+  - Container40_Blue, Container_Open
+- **Pipeline.** `Scripts/Trellis/studio.py` generates and downloads models on the Asset Studio server
+  (`NF_STUDIO_URL`, default `https://win-main.tail6948f.ts.net`), using a token in `%USERPROFILE%\.nf_studio_token`. Then `sort_packs.py` → `render_views.py`/`sheet.py` →
+  `asset_specs.py` → `clean_assets.py` (Blender) → `import_assets.py` (UE commandlet). See
+  `Scripts/Trellis/README.md`.
+- **Source files.** The source GLBs live in `SourceArt/Trellis` (several GB, not in git). That folder's README
+  tracks per-asset status.
+
 ---
 
 ## 5. Planned Features & Development Roadmap
