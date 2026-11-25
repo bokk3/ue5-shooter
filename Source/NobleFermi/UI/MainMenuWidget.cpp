@@ -508,6 +508,20 @@ public:
 			FSlateDrawElement::MakeLines(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), B3, ESlateDrawEffect::None, StrokeCol, true, 1.4f);
 			FSlateDrawElement::MakeLines(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), B4, ESlateDrawEffect::None, MWTheme::CyanAccent, true, 1.4f);
 		}
+		else if (IconIndex == 6) // 07: Framed Grid (ASSET GALLERY)
+		{
+			const TArray<TArray<FVector2D>> Frames = {
+				{ Pt(3, 4), Pt(12, 4), Pt(12, 12), Pt(3, 12), Pt(3, 4) },
+				{ Pt(16, 4), Pt(25, 4), Pt(25, 12), Pt(16, 12), Pt(16, 4) },
+				{ Pt(3, 16), Pt(12, 16), Pt(12, 24), Pt(3, 24), Pt(3, 16) },
+				{ Pt(16, 16), Pt(25, 16), Pt(25, 24), Pt(16, 24), Pt(16, 16) },
+			};
+			for (int32 i = 0; i < Frames.Num(); ++i)
+			{
+				FSlateDrawElement::MakeLines(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), Frames[i], ESlateDrawEffect::None,
+					i == 3 ? MWTheme::CyanAccent : StrokeCol, true, 1.5f);
+			}
+		}
 		else // 06: Mechanical Gear Cog (SYSTEM OPTIONS)
 		{
 			TArray<FVector2D> GearOuter;
@@ -2966,6 +2980,21 @@ void UMainMenuWidget::SetPreviewActor(AFPSCharacterPreviewActor* InPreviewActor)
 
 
 
+namespace
+{
+	/** Opens L_AssetGallery (Scripts/Trellis/create_gallery_map.py) as the operator: Range theater, so no arena and no bots. */
+	void OpenAssetGallery(UUserWidget* Widget)
+	{
+		if (APlayerController* PC = Widget->GetOwningPlayer())
+		{
+			PC->SetInputMode(FInputModeGameOnly());
+			PC->bShowMouseCursor = false;
+		}
+		UGameplayStatics::OpenLevel(Widget, FName(TEXT("/Game/NobleFermi/Maps/L_AssetGallery")), true,
+			TEXT("game=/Script/NobleFermi.FPSMultiplayerGameMode?Theater=Range?Bots=0"));
+	}
+}
+
 TSharedRef<SWidget> UMainMenuWidget::RebuildWidget()
 {
 		// Left Navigation Row Builder matching Docs/Menu_Mockup_Reference.jpg (01..06 with Vector Icons & Dividers)
@@ -3117,7 +3146,26 @@ TSharedRef<SWidget> UMainMenuWidget::RebuildWidget()
 							// 06: SYSTEM OPTIONS (Graphics / Audio / Controls)
 							+ SVerticalBox::Slot().AutoHeight()
 							[
-								MakeMockupSideNavItem(TEXT("06"), 5, TEXT("SYSTEM OPTIONS"), TEXT("GRAPHICS / AUDIO / CONTROLS"), EFPSMenuSection::Settings, TabIndicatorSettings, false)
+								MakeMockupSideNavItem(TEXT("06"), 5, TEXT("SYSTEM OPTIONS"), TEXT("GRAPHICS / AUDIO / CONTROLS"), EFPSMenuSection::Settings, TabIndicatorSettings)
+							]
+							// 07: ASSET GALLERY (walk every imported model at real scale; opens L_AssetGallery)
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(SFPSInteractiveNavRowWidget)
+								.Section(EFPSMenuSection::Home)
+								.NumStr(TEXT("07"))
+								.IconIndex(6)
+								.Title(TEXT("ASSET GALLERY"))
+								.Subtitle(TEXT("ALL MODELS AT REAL SCALE"))
+								.ShowBottomDivider(false)
+								.IsSelected(false)
+								.OnClicked_Lambda([this]()
+								{
+									OpenAssetGallery(this);
+									return FReply::Handled();
+								})
+								.SparkOverlay(SparkOverlay)
+								.MenuWidget(this)
 							]
 							// Spacer pushing bottom watermark down
 							+ SVerticalBox::Slot()
@@ -3405,6 +3453,27 @@ TSharedRef<SWidget> UMainMenuWidget::BuildHeader()
 					.Text(FText::FromString(TEXT("LOADOUT")))
 					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
 					.ColorAndOpacity(MWTheme::AmberAccent)
+				]
+			]
+			// GALLERY Quick Link (also 07 in the left navigation)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(0.0f, 0.0f, 10.0f, 0.0f)
+			[
+				SNew(SButton)
+				.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+				.ToolTipText(FText::FromString(TEXT("Open the asset gallery: every imported model at real scale")))
+				.OnClicked_Lambda([this]()
+				{
+					OpenAssetGallery(this);
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("▦ GALLERY")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+					.ColorAndOpacity(MWTheme::CyanAccent)
 				]
 			]
 			// SETTINGS Quick Link
