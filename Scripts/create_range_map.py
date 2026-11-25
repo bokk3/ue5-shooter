@@ -7,6 +7,10 @@ Layout (X is forward from the spawn line, Y is right; 1 unit = 1 cm):
   * cover course (Y = +1500): crouch-height and standing-height walls, pillars, a ramp
   * two TeamBravo starts far down range for bots (?Bots=N, default 2)
   * sun, sky light, sky atmosphere and height fog; no Lumen-heavy content, no landscape
+  * dressing from the Trellis props (Content/NobleFermi/Generated, see Scripts/Trellis): a ready room behind
+    the spawn (lockers, racks, briefing table, workbench, supplies), real targets, distance markers and a
+    backstop on the lane, a row of real cover (Y = +2300), a panel shoot house (Y = -2450) and parked vehicles.
+    Props that aren't imported are skipped, so the map still builds without them.
 
 Uses the sample's level-prototyping kit (grid material, traversable level blocks), so the sample content
 must be imported (Scripts/ThirdPartyContent/README.md). The game mode treats any map named L_Range as
@@ -22,6 +26,7 @@ GRID = "/Game/Levels/LevelPrototyping/Materials/M_Grid"
 SOLID = "/Game/Levels/LevelPrototyping/Materials/MI_Solid_Blue"
 TRAVERSABLE = "/Game/Levels/LevelPrototyping/LevelBlock_Traversable"
 LEVEL_VISUALS = "/Game/Levels/LevelPrototyping/LevelVisuals"
+GENERATED = "/Game/NobleFermi/Generated"                   # Trellis props (Scripts/Trellis); optional
 SPAWN_X = -1500.0
 
 log = unreal.log
@@ -92,6 +97,41 @@ def text(name, folder, x, y, z, words, size=60.0):
     return label(a, name, folder)
 
 
+def find_generated_meshes():
+    """Trellis props imported by Scripts/Trellis/import_assets.py, by name (SM_<Name> -> Name)."""
+    registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    found = {}
+    for data in registry.get_assets_by_path(GENERATED, recursive=True):
+        name = str(data.asset_name)
+        if str(data.asset_class_path.asset_name) == "StaticMesh" and name.startswith("SM_"):
+            found[name[3:]] = str(data.package_name)
+    log(f"[Range] {len(found)} generated props under {GENERATED}")
+    return found
+
+
+generated = find_generated_meshes()
+missing_props = set()
+
+
+def prop(name, folder, mesh_name, x, y, yaw=0.0, z=0.0):
+    """Generated prop standing at height z, centred on (x, y). The props face +X; yaw 180 faces the spawn line.
+    Returns None (and the map still builds) when the prop isn't imported."""
+    path = generated.get(mesh_name)
+    mesh = unreal.load_asset(path) if path else None
+    if mesh is None:
+        missing_props.add(mesh_name)
+        return None
+    a = eas.spawn_actor_from_class(unreal.StaticMeshActor, V(x, y, 500), R(roll=0, pitch=0, yaw=yaw))
+    a.static_mesh_component.set_static_mesh(mesh)
+    return label(ground(a, x, y, z), name, folder)
+
+
+def top_of(actor):
+    """Height of an actor's top, for setting props on tables and crates."""
+    origin, extent = actor.get_actor_bounds(False)
+    return origin.z + extent.z
+
+
 def start(name, x, y, yaw, tag):
     a = eas.spawn_actor_from_class(unreal.PlayerStart, V(x, y, 100), R(roll=0, pitch=0, yaw=yaw))
     a.set_editor_property("player_start_tag", tag)
@@ -128,8 +168,10 @@ for i, y in enumerate((-800, 800)):
 # --- Firing lane (Y = 0): man-sized targets ---------------------------------------------------------
 for metres in (10, 25, 50, 100):
     x = SPAWN_X + metres * 100
-    box(f"Target_{metres}m", "FiringLane", x, 0, (30, 60, 180))
+    if not prop(f"Target_{metres}m", "FiringLane", "Target_Silhouette", x, 0, yaw=180):
+        box(f"Target_{metres}m", "FiringLane", x, 0, (30, 60, 180))
     text(f"Label_{metres}m", "FiringLane", x, 0, 230, f"{metres} m")
+    prop(f"DistanceMarker_{metres}m", "FiringLane", "DistanceMarker", x, 210, yaw=180)
 box("Lane_Left", "FiringLane", SPAWN_X + 5500, -260, (11000, 20, 40))
 box("Lane_Right", "FiringLane", SPAWN_X + 5500, 260, (11000, 20, 40))
 
@@ -156,6 +198,96 @@ for i, (x, y) in enumerate(((3200, 1300), (3200, 1700))):
 box("Ramp", "CoverCourse", 4300, 1500, (800, 300, 20), pitch=15)
 text("Label_Cover", "CoverCourse", -600, 1500, 170, "crouch cover", 40)
 text("Label_Stand", "CoverCourse", 1400, 1500, 270, "standing cover", 40)
+
+# --- Dressing: Trellis props (Content/NobleFermi/Generated). Each is skipped if not imported. ---------
+
+# Ready room behind the spawn line (X < -1800): armory wall, briefing table, workbench, supplies.
+prop("Whiteboard_Map", "ReadyRoom", "Whiteboard_Map", -2450, 0)
+for i, y in enumerate((-400, -540, -680)):
+    prop(f"LoadoutLocker_{i}", "ReadyRoom", "LoadoutLocker", -2400, y)
+prop("ArmorMannequin", "ReadyRoom", "ArmorMannequinStand", -2380, -860)
+for i, y in enumerate((300, 390, 480)):
+    prop(f"WeaponRack_{i}", "ReadyRoom", "WeaponRack", -2420, y)
+for i, y in enumerate((650, 750)):
+    prop(f"WeaponDisplay_{i}", "ReadyRoom", "WeaponDisplayStand", -2200, y)
+table = prop("BriefingTable", "ReadyRoom", "TacticalTable", -2050, -550)
+if table:
+    tabletop = top_of(table)
+    for name, mesh, x, y in (("Laptop", "RuggedLaptop", -2070, -590), ("Radio", "FieldRadioStation", -2065, -500),
+                             ("Claymore", "Claymore", -2005, -610), ("C4", "C4Charge", -2005, -575),
+                             ("Smoke", "SmokeGrenade", -2000, -545), ("TimeBubble", "TimeBubbleGrenade", -2000, -525),
+                             ("TeleportBeacon", "TeleportBeacon", -2010, -495)):
+        prop(f"Table_{name}", "ReadyRoom", mesh, x, y, z=tabletop)
+prop("Chair_0", "ReadyRoom", "FoldingChair", -2160, -550)
+prop("Chair_1", "ReadyRoom", "FoldingChair", -1940, -550, yaw=180)
+prop("Workbench", "ReadyRoom", "Workbench", -2420, 900)
+prop("ToolChest", "ReadyRoom", "ToolChest", -2420, 1080)
+prop("JerryCan", "ReadyRoom", "JerryCan", -2300, 1090)
+for i, y in enumerate((950, 1010)):
+    prop(f"WeaponCases_{i}", "ReadyRoom", "WeaponCases", -2200, y)
+crate = prop("AmmoCrate", "ReadyRoom", "AmmoCrate", -2000, 450)
+if crate:
+    prop("AmmoCan", "ReadyRoom", "AmmoCan", -2010, 430, z=top_of(crate))
+    prop("FirstAidKit", "ReadyRoom", "FirstAidKit", -1990, 480, z=top_of(crate))
+prop("ArmorPlateBag", "ReadyRoom", "ArmorPlateBag", -2000, 560)
+prop("Generator", "ReadyRoom", "Generator", -2400, -1150, yaw=90)
+prop("Floodlight", "ReadyRoom", "Floodlight", -2200, -1150)
+prop("Jeep", "Vehicles", "MilitaryJeep", -2100, 1700)
+
+# Firing lane extras: bench at the line, poppers at 15 m along the lane edges, paper targets at 25 m, backstop.
+prop("ShootingBench", "FiringLane", "ShootingBench", SPAWN_X + 200, 0)
+for i, y in enumerate((-200, -130, 130, 200)):
+    prop(f"Popper_15m_{i}", "FiringLane", "Target_Popper", SPAWN_X + 1500, y, yaw=180)
+for i, y in enumerate((-150, 150)):
+    prop(f"PaperTarget_25m_{i}", "FiringLane", "Target_Paper", SPAWN_X + 2500, y, yaw=180)
+for i, y in enumerate((-163, 0, 163)):
+    prop(f"Backstop_Hesco_{i}", "FiringLane", "HescoBarrier", SPAWN_X + 10600, y)
+for i, y in enumerate((-305, 305)):
+    prop(f"Backstop_Container_{i}", "FiringLane", "Container20_Red", SPAWN_X + 11000, y, yaw=90)
+
+# Real cover pieces (Y = +2300), next to the block cover course, low to high.
+real_cover = [  # (name, mesh, x, yaw, caption)
+    ("JerseyBarrier", "JerseyBarrier", -600, 0, "jersey barrier"),
+    ("Hesco", "HescoBarrier", 400, 0, "hesco"),
+    ("Tires", "TireBarricade", 1400, 90, "tire barricade"),
+    ("Shield", "DeployableShield", 2400, 0, "deployable shield"),
+    ("Panel", "ShootHouse_Panel", 3200, 0, "shoot house panel"),
+    ("Container", "Container20_Red", 4400, 90, "container"),
+    ("VaultBox", "VaultBox", 5400, 0, "vault box"),
+]
+for name, mesh, x, yaw, caption in real_cover:
+    piece = prop(f"RealCover_{name}", "RealCover", mesh, x, 2300, yaw=yaw)
+    if piece:
+        text(f"Label_RealCover_{name}", "RealCover", x, 2300, top_of(piece) + 50, caption, 40)
+
+# Shoot house (Y = -2450): a 7.4 m room of panels, door in the west and north walls, a half divider, targets.
+PANEL = 247.0
+HX, HY = 4300.0, -2450.0
+house = [  # (x, y, yaw): yaw 0 walls run along Y, yaw 90 along X
+    (HX - 1.5 * PANEL, HY - PANEL, 0), (HX - 1.5 * PANEL, HY, 0),                      # west, door at north end
+    (HX + 1.5 * PANEL, HY - PANEL, 0), (HX + 1.5 * PANEL, HY, 0), (HX + 1.5 * PANEL, HY + PANEL, 0),  # east
+    (HX - PANEL, HY - 1.5 * PANEL, 90), (HX, HY - 1.5 * PANEL, 90), (HX + PANEL, HY - 1.5 * PANEL, 90),  # south
+    (HX - PANEL, HY + 1.5 * PANEL, 90), (HX + PANEL, HY + 1.5 * PANEL, 90),           # north, door in the middle
+    (HX, HY - PANEL, 0),                                                              # half divider from the south
+]
+for i, (x, y, yaw) in enumerate(house):
+    prop(f"ShootHouse_Panel_{i}", "ShootHouse", "ShootHouse_Panel", x, y, yaw=yaw)
+prop("ShootHouse_Target_0", "ShootHouse", "Target_Silhouette", HX + 250, HY + 150, yaw=180)
+prop("ShootHouse_Target_1", "ShootHouse", "Target_Silhouette", HX + 250, HY - 250, yaw=180)
+prop("ShootHouse_Popper", "ShootHouse", "Target_Popper", HX - 150, HY - 250, yaw=90)
+text("Label_ShootHouse", "ShootHouse", HX - 1.5 * PANEL - 100, HY + PANEL, 280, "shoot house", 50)
+
+# Down range: helicopter pad, forklift and pallets by the backstop.
+prop("Helicopter", "Vehicles", "TransportHelicopter", 7600, -1900, yaw=200)
+prop("Forklift", "Vehicles", "Forklift", 8700, 900, yaw=90)
+for i, y in enumerate((1400, 1550)):
+    pallet = prop(f"Pallet_{i}", "DownRange", "Pallet", 8800, y)
+    if pallet:
+        prop(f"Pallet_AmmoCrate_{i}", "DownRange", "AmmoCrate", 8800, y, z=top_of(pallet))
+prop("AirdropCrate", "DownRange", "AirdropCrate", 8600, -700)
+
+if missing_props:
+    log(f"[Range] props not imported, skipped: {', '.join(sorted(missing_props))}")
 
 # --- World settings and save ------------------------------------------------------------------------
 world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
