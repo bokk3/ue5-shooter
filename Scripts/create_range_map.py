@@ -2,7 +2,9 @@
 
 Layout (X is forward from the spawn line, Y is right; 1 unit = 1 cm):
   * spawn line at X = -1500: four TeamAlpha player starts facing +X
-  * firing lane (Y = 0): man-sized targets at 10, 25, 50 and 100 m, each with a distance label
+  * firing lane (Y = 0): man-sized targets at 10, 25, 50 and 100 m, each with a distance label, steel
+    poppers at 15 m and paper targets at 25 m. These are reactive (AFPSRangeTarget): poppers fall and
+    stand up again, silhouettes rock back and count head hits, and each shows its hit count and distance
   * traversal course (Y = -1500): Game Animation Sample traversable blocks, low hurdle to high mantle
   * cover course (Y = +1500): crouch-height and standing-height walls, pillars, a ramp
   * two TeamBravo starts far down range for bots (?Bots=N, default 2)
@@ -126,6 +128,24 @@ def prop(name, folder, mesh_name, x, y, yaw=0.0, z=0.0):
     return label(ground(a, x, y, z), name, folder)
 
 
+Kind = unreal.FPSRangeTargetKind
+
+
+def target(name, folder, mesh_name, kind, x, y, yaw=180.0):
+    """Reactive range target (AFPSRangeTarget): reacts to hits and shows a hit readout. The target props
+    have their pivot at the bottom centre, so the actor stands at (x, y, 0). Returns None when the prop isn't imported."""
+    path = generated.get(mesh_name)
+    mesh = unreal.load_asset(path) if path else None
+    if mesh is None:
+        missing_props.add(mesh_name)
+        return None
+    a = eas.spawn_actor_from_class(unreal.FPSRangeTarget, V(x, y, 0), R(roll=0, pitch=0, yaw=yaw))
+    a.set_editor_property("kind", kind)
+    a.set_editor_property("target_mesh_asset", mesh)
+    a.get_editor_property("target_mesh").set_static_mesh(mesh)
+    return label(a, name, folder)
+
+
 def top_of(actor):
     """Height of an actor's top, for setting props on tables and crates."""
     origin, extent = actor.get_actor_bounds(False)
@@ -168,9 +188,9 @@ for i, y in enumerate((-800, 800)):
 # --- Firing lane (Y = 0): man-sized targets ---------------------------------------------------------
 for metres in (10, 25, 50, 100):
     x = SPAWN_X + metres * 100
-    if not prop(f"Target_{metres}m", "FiringLane", "Target_Silhouette", x, 0, yaw=180):
+    if not target(f"Target_{metres}m", "FiringLane", "Target_Silhouette", Kind.SILHOUETTE, x, 0):
         box(f"Target_{metres}m", "FiringLane", x, 0, (30, 60, 180))
-    text(f"Label_{metres}m", "FiringLane", x, 0, 230, f"{metres} m")
+    text(f"Label_{metres}m", "FiringLane", x, 0, 250, f"{metres} m")
     prop(f"DistanceMarker_{metres}m", "FiringLane", "DistanceMarker", x, 210, yaw=180)
 box("Lane_Left", "FiringLane", SPAWN_X + 5500, -260, (11000, 20, 40))
 box("Lane_Right", "FiringLane", SPAWN_X + 5500, 260, (11000, 20, 40))
@@ -237,9 +257,9 @@ prop("Jeep", "Vehicles", "MilitaryJeep", -2100, 1700)
 # Firing lane extras: bench at the line, poppers at 15 m along the lane edges, paper targets at 25 m, backstop.
 prop("ShootingBench", "FiringLane", "ShootingBench", SPAWN_X + 200, 0)
 for i, y in enumerate((-200, -130, 130, 200)):
-    prop(f"Popper_15m_{i}", "FiringLane", "Target_Popper", SPAWN_X + 1500, y, yaw=180)
+    target(f"Popper_15m_{i}", "FiringLane", "Target_Popper", Kind.POPPER, SPAWN_X + 1500, y)
 for i, y in enumerate((-150, 150)):
-    prop(f"PaperTarget_25m_{i}", "FiringLane", "Target_Paper", SPAWN_X + 2500, y, yaw=180)
+    target(f"PaperTarget_25m_{i}", "FiringLane", "Target_Paper", Kind.PAPER, SPAWN_X + 2500, y)
 for i, y in enumerate((-163, 0, 163)):
     prop(f"Backstop_Hesco_{i}", "FiringLane", "HescoBarrier", SPAWN_X + 10600, y)
 for i, y in enumerate((-305, 305)):
@@ -272,9 +292,9 @@ house = [  # (x, y, yaw): yaw 0 walls run along Y, yaw 90 along X
 ]
 for i, (x, y, yaw) in enumerate(house):
     prop(f"ShootHouse_Panel_{i}", "ShootHouse", "ShootHouse_Panel", x, y, yaw=yaw)
-prop("ShootHouse_Target_0", "ShootHouse", "Target_Silhouette", HX + 250, HY + 150, yaw=180)
-prop("ShootHouse_Target_1", "ShootHouse", "Target_Silhouette", HX + 250, HY - 250, yaw=180)
-prop("ShootHouse_Popper", "ShootHouse", "Target_Popper", HX - 150, HY - 250, yaw=90)
+target("ShootHouse_Target_0", "ShootHouse", "Target_Silhouette", Kind.SILHOUETTE, HX + 250, HY + 150)
+target("ShootHouse_Target_1", "ShootHouse", "Target_Silhouette", Kind.SILHOUETTE, HX + 250, HY - 250)
+target("ShootHouse_Popper", "ShootHouse", "Target_Popper", Kind.POPPER, HX - 150, HY - 250, yaw=90)
 text("Label_ShootHouse", "ShootHouse", HX - 1.5 * PANEL - 100, HY + PANEL, 280, "shoot house", 50)
 
 # Down range: helicopter pad, forklift and pallets by the backstop.

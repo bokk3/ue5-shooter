@@ -5,6 +5,7 @@
 #include "Combat/FPSBallisticTracer.h"
 #include "Combat/FPSFermiTimeBubble.h"
 #include "Combat/FPSFermiDecoyActor.h"
+#include "Combat/FPSRangeTarget.h"
 #include "BodyMechanics/FPSHumanBones.h"
 #include "Weapons/FPSDilatedBulletActor.h"
 #include "Audio/FPSAudioSubsystem.h"
@@ -995,6 +996,10 @@ FVector AFPSWeaponBase::ResolveShot(const FVector& CameraLoc, const FVector& Sho
 					if (AFPSFermiDecoyActor* Decoy = Cast<AFPSFermiDecoyActor>(HitActor))
 					{
 						Decoy->OnDecoyHit(PawnOwner, HitResult.ImpactPoint);
+					}
+					else if (AFPSRangeTarget* RangeTarget = Cast<AFPSRangeTarget>(HitActor))
+					{
+						AFPSRangeTarget::ShowHitMarker(ShooterFPSChar, RangeTarget->RegisterHit(HitResult, PawnOwner));
 					}
 					else
 					{

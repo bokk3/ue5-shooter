@@ -1,6 +1,7 @@
 #include "Weapons/FPSDilatedBulletActor.h"
 #include "Combat/FPSFermiTimeBubble.h"
 #include "Combat/FPSFermiDecoyActor.h"
+#include "Combat/FPSRangeTarget.h"
 #include "Combat/FPSBallisticTracer.h"
 #include "Combat/FPSHealthComponent.h"
 #include "BodyMechanics/FPSHumanBones.h"
@@ -155,6 +156,13 @@ void AFPSDilatedBulletActor::Tick(float DeltaTime)
 				return;
 			}
 
+			if (AFPSRangeTarget* RangeTarget = Cast<AFPSRangeTarget>(HitActor))
+			{
+				AFPSRangeTarget::ShowHitMarker(Cast<AFPSCharacter>(ShooterActor.Get()), RangeTarget->RegisterHit(HitResult, ShooterActor.Get()));
+				Destroy();
+				return;
+			}
+
 			UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
 			if (HealthComp)
 			{
@@ -256,6 +264,10 @@ void AFPSDilatedBulletActor::ExecuteRemainderHitscan(const FVector& StartPoint)
 		AActor* HitActor = RemainderHit.GetActor();
 		if (HitActor)
 		{
+			if (AFPSRangeTarget* RangeTarget = Cast<AFPSRangeTarget>(HitActor))
+			{
+				AFPSRangeTarget::ShowHitMarker(Cast<AFPSCharacter>(ShooterActor.Get()), RangeTarget->RegisterHit(RemainderHit, ShooterActor.Get()));
+			}
 			UFPSHealthComponent* HealthComp = HitActor->FindComponentByClass<UFPSHealthComponent>();
 			if (HealthComp)
 			{

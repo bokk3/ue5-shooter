@@ -6,6 +6,10 @@
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Weapons/FPSWeaponBase.h"
+#include "Combat/FPSRangeTarget.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Components/StaticMeshComponent.h"
+#include "EngineUtils.h"
 #include "Inventory/FPSInventoryComponent.h"
 #include "Map/FPSCombatArenaMapActor.h"
 #include "Map/FPSCoastalOperationsMapActor.h"
@@ -307,6 +311,151 @@ void AFPSMultiplayerGameMode::BeginPlay()
 	{
 		RunOperatorActionTest();
 	}
+
+	if (FParse::Param(FCommandLine::Get(), TEXT("NFRangeTest")) || FParse::Value(FCommandLine::Get(), TEXT("NFRangeTest="), ActionTestDelay))
+	{
+		RunRangeTargetTest();
+	}
+}
+
+void AFPSMultiplayerGameMode::RunRangeTargetTest()
+{
+	float StartDelay = GIsEditor ? 8.0f : 14.0f;
+	FParse::Value(FCommandLine::Get(), TEXT("NFRangeTest="), StartDelay);
+	UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), TEXT("DisableAllScreenMessages"));
+
+	const FString ShotDir = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots"), TEXT("RangeTest"));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree(*ShotDir);
+
+	auto Screenshot = [ShotDir](const TCHAR* Name)
+	{
+		FScreenshotRequest::RequestScreenshot(FPaths::Combine(ShotDir, FString::Printf(TEXT("%s.png"), Name)), false, false);
+	};
+	auto LocalCharacter = [this]() -> AFPSCharacter*
+	{
+		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+		return PC ? Cast<AFPSCharacter>(PC->GetPawn()) : nullptr;
+	};
+	auto After = [this](float Seconds, TFunction<void()> Action)
+	{
+		FTimerHandle Handle;
+		GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, MoveTemp(Action)), Seconds, false);
+	};
+
+	After(StartDelay, [this, Screenshot, LocalCharacter, After]()
+	{
+		AFPSCharacter* Char = LocalCharacter();
+		if (!Char)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[RangeTest] no local character, exiting"));
+			FGenericPlatformMisc::RequestExit(false);
+			return;
+		}
+
+		// The nearest targets inside a 30 degree cone in front of the player: the lane's 10 m silhouette,
+		// the 15 m poppers and the 25 m paper targets.
+		const FVector From = Char->GetActorLocation();
+		const FVector Forward = Char->GetActorForwardVector();
+		TArray<TWeakObjectPtr<AFPSRangeTarget>> Targets;
+		for (TActorIterator<AFPSRangeTarget> It(GetWorld()); It; ++It)
+		{
+			const FVector To = (It->GetActorLocation() - From).GetSafeNormal2D();
+			if (FVector::DotProduct(To, Forward.GetSafeNormal2D()) > FMath::Cos(FMath::DegreesToRadians(30.0f)))
+			{
+				Targets.Add(*It);
+			}
+		}
+		Targets.Sort([From](const TWeakObjectPtr<AFPSRangeTarget>& A, const TWeakObjectPtr<AFPSRangeTarget>& B)
+		{
+			return FVector::DistSquared(A->GetActorLocation(), From) < FVector::DistSquared(B->GetActorLocation(), From);
+		});
+		Targets.SetNum(FMath::Min(Targets.Num(), 8));
+		UE_LOG(LogTemp, Log, TEXT("[RangeTest] %d targets in front of the player"), Targets.Num());
+		Char->StartADS();  // hip-fire spread misses the smaller targets
+		Screenshot(TEXT("before"));
+
+		// One shot per target body, plus a head shot on each silhouette.
+		struct FShot { TWeakObjectPtr<AFPSRangeTarget> Target; bool bHead; };
+		TArray<FShot> Shots;
+		for (const TWeakObjectPtr<AFPSRangeTarget>& Target : Targets)
+		{
+			Shots.Add({ Target, false });
+			if (Target->Kind == EFPSRangeTargetKind::Silhouette)
+			{
+				Shots.Add({ Target, true });
+			}
+		}
+
+		const float Spacing = 0.7f;
+		for (int32 Index = 0; Index < Shots.Num(); ++Index)
+		{
+			const FShot Shot = Shots[Index];
+			auto Aim = [LocalCharacter, Shot]()
+			{
+				AFPSCharacter* C = LocalCharacter();
+				APlayerController* PC = C ? Cast<APlayerController>(C->GetController()) : nullptr;
+				if (!PC || !PC->PlayerCameraManager || !Shot.Target.IsValid())
+				{
+					return;
+				}
+				const FBox Box = Shot.Target->TargetMesh->Bounds.GetBox();
+				const FVector Point(Box.GetCenter().X, Box.GetCenter().Y, Shot.bHead ? Box.Max.Z - Box.GetSize().Z * 0.07f : Box.GetCenter().Z);
+				PC->SetControlRotation((Point - PC->PlayerCameraManager->GetCameraLocation()).Rotation());
+			};
+			const float T = 0.5f + Index * Spacing;
+			After(T, Aim);
+			After(T + 0.3f, Aim);  // again once the camera boom has followed the new aim
+			After(T + 0.45f, [LocalCharacter]() { if (AFPSCharacter* C = LocalCharacter()) { C->StartFire(); } });
+			After(T + 0.65f, [Screenshot, Index]() { Screenshot(*FString::Printf(TEXT("shot_%02d"), Index)); });
+			After(T + 0.5f, [LocalCharacter, Shot]()
+			{
+				if (AFPSCharacter* C = LocalCharacter()) { C->StopFire(); }
+				if (Shot.Target.IsValid())
+				{
+					UE_LOG(LogTemp, Log, TEXT("[RangeTest] shot at %s %s (%s): hits %d, down %d"), *Shot.Target->GetName(),
+						Shot.bHead ? TEXT("head") : TEXT("body"), *UEnum::GetValueAsString(Shot.Target->Kind),
+						Shot.Target->GetHitCount(), Shot.Target->IsKnockedDown() ? 1 : 0);
+				}
+			});
+		}
+
+		const float End = 0.5f + Shots.Num() * Spacing;
+		After(End, [Screenshot, LocalCharacter, Targets]()
+		{
+			// Look back at the lane's middle so the after shot shows the fallen poppers and the readouts.
+			AFPSCharacter* C = LocalCharacter();
+			APlayerController* PC = C ? Cast<APlayerController>(C->GetController()) : nullptr;
+			if (PC && PC->PlayerCameraManager && Targets.Num() > 0 && Targets[0].IsValid())
+			{
+				FVector Mid = FVector::ZeroVector;
+				int32 Count = 0;
+				for (const TWeakObjectPtr<AFPSRangeTarget>& Target : Targets)
+				{
+					if (Target.IsValid()) { Mid += Target->GetActorLocation(); ++Count; }
+				}
+				Mid /= FMath::Max(1, Count);
+				Mid.Z += 80.0f;
+				PC->SetControlRotation((Mid - PC->PlayerCameraManager->GetCameraLocation()).Rotation());
+			}
+		});
+		After(End + 0.6f, [Screenshot]() { Screenshot(TEXT("after")); });
+		After(End + 4.0f, [Screenshot, Targets]()
+		{
+			int32 StillDown = 0;
+			for (const TWeakObjectPtr<AFPSRangeTarget>& Target : Targets)
+			{
+				if (Target.IsValid() && Target->IsKnockedDown()) { ++StillDown; }
+			}
+			UE_LOG(LogTemp, Log, TEXT("[RangeTest] after the reset delay: %d targets still down"), StillDown);
+			Screenshot(TEXT("reset"));
+		});
+		After(End + 5.5f, []()
+		{
+			UE_LOG(LogTemp, Log, TEXT("[RangeTest] done, exiting"));
+			FGenericPlatformMisc::RequestExit(false);
+		});
+	});
+	UE_LOG(LogTemp, Log, TEXT("[RangeTest] scheduled, starting in %.1fs, screenshots in %s"), StartDelay, *ShotDir);
 }
 
 void AFPSMultiplayerGameMode::RunOperatorActionTest()

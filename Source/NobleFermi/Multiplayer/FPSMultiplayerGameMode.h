@@ -97,6 +97,14 @@ private:
 	 */
 	void RunOperatorActionTest();
 
+	/**
+	 * -NFRangeTest[=StartDelaySeconds]: scripted check of the L_Range reactive targets. Aims at the
+	 * nearest targets in front of the player and fires one round at each (chest, then head on the
+	 * silhouettes), logs what each target registered, screenshots to Saved/Screenshots/RangeTest
+	 * before, just after each shot, after the string and once the poppers have stood up again, then exits.
+	 */
+	void RunRangeTargetTest();
+
 	UPROPERTY()
 	int32 ActiveTheaterIndex = 0;
 
